@@ -1,14 +1,19 @@
 # Nixpacks configuration for Railway deployment
 
 [phases.setup]
-nixPkgs = ["python311", "gcc", "ghostscript", "poppler_utils"]
+nixPkgs = ["python311", "python311Packages.pip", "gcc", "ghostscript", "poppler_utils"]
 
 [phases.install]
-cmds = ["pip install --upgrade pip", "pip install -r requirements.txt"]
+cmds = [
+    "python3 -m venv /opt/venv",
+    "/opt/venv/bin/pip install --upgrade pip",
+    "/opt/venv/bin/pip install -r requirements.txt"
+]
 
 [start]
-cmd = "streamlit run frontend/Home.py --server.port ${PORT:-8501} --server.address 0.0.0.0 --server.headless true"
+cmd = "/opt/venv/bin/streamlit run frontend/Home.py --server.port ${PORT:-8501} --server.address 0.0.0.0 --server.headless true"
 
 [variables]
 PYTHONUNBUFFERED = "1"
+PATH = "/opt/venv/bin:${PATH}"
 
