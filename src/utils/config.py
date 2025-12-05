@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # API Backend URL (for frontend to call backend)
+    backend_url: Optional[str] = None
+
+    # Server Configuration (for Railway deployment)
+    port: int = 8000
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",

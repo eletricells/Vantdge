@@ -1,0 +1,11 @@
+# Nixpacks configuration for Railway deployment
+
+[phases.setup]
+nixPkgs = ["python311", "gcc", "ghostscript", "poppler_utils"]
+
+[phases.install]
+cmds = ["pip install --upgrade pip", "pip install -r requirements.txt"]
+
+[variables]
+PYTHONUNBUFFERED = "1"
+

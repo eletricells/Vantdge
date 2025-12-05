@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.env.production
 
 # Python
 __pycache__/
@@ -12,16 +13,21 @@ __pycache__/
 venv/
 ENV/
 .venv/
+*.egg-info/
+dist/
+build/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Temporary files
 *.tmp
@@ -36,4 +42,10 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+
+# Railway
+.railway/
+
+# Streamlit
+.streamlit/secrets.toml
 
