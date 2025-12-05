@@ -1,0 +1,42 @@
+For each paper below, extract structured information and generate summaries.
+
+REQUIRED FIELDS:
+1. phase: Clinical trial phase (e.g., "Phase 3", "Preclinical", "Real-world")
+2. trial_name: Official trial acronym if mentioned (e.g., "PSOARING 3") or null
+3. indication: Disease/condition being treated (use canonical names)
+4. patient_population: Description of enrolled patients (age, severity, n=X)
+5. study_design: Type of study (RCT, open-label, observational, etc.)
+6. key_results: Primary and secondary endpoint results
+7. safety: Key safety findings
+8. narrative_summary: 3-4 sentence prose summary (SINGLE LINE, no newlines)
+9. takeaways: 2-3 concise key takeaways as array
+
+{% if indications_context %}
+{{ indications_context }}
+{% endif %}
+
+Papers:
+{{ papers_text }}
+
+Respond in JSON format:
+[
+  {
+    "paper": 1,
+    "phase": "Phase 3",
+    "trial_name": "TRIAL-1" or null,
+    "indication": "Disease Name",
+    "patient_population": "Adults aged 18+ (n=362)",
+    "study_design": "Randomized, double-blind, placebo-controlled",
+    "key_results": {
+      "primary_endpoint": "Result (p<0.001)",
+      "secondary_endpoints": ["Result 1", "Result 2"]
+    },
+    "safety": "Well-tolerated; most common AE: X",
+    "narrative_summary": "Single line summary of 3-4 sentences...",
+    "takeaways": ["Takeaway 1", "Takeaway 2", "Takeaway 3"]
+  },
+  ...
+]
+
+{% include 'paperscope/_partials/json_instructions.j2' %}
+

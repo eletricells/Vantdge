@@ -1,0 +1,20 @@
+Classify each paper into one or more categories.
+
+Available categories:
+{{ categories_list }}
+
+Papers to classify:
+{{ papers_text }}
+
+CLASSIFICATION RULES:
+{{ classification_rules }}
+
+Respond in JSON format:
+[
+  {"paper": 1, "categories": ["Category Name 1", "Category Name 2"]},
+  {"paper": 2, "categories": ["Category Name 3"]},
+  ...
+]
+
+{% include 'paperscope/_partials/json_instructions.j2' %}
+

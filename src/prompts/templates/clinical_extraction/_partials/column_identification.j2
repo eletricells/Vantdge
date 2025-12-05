@@ -1,0 +1,20 @@
+## COLUMN IDENTIFICATION - READ THIS FIRST
+
+🚨 CRITICAL: YOU ARE EXTRACTING FOR "{{ arm_name }}" (N={{ n }})
+
+STEP 1: Find the correct column
+- Look for column header matching "{{ arm_name }}" with N={{ n }}
+- The column header might have slight variations in formatting
+- Match BOTH the arm name AND the sample size (N={{ n }})
+
+STEP 2: Extract values ONLY from that column
+- DO NOT mix columns
+- DO NOT average values from multiple columns
+- DO NOT read from the wrong column
+
+Example: If table has "| Characteristic | Placebo (N=182) | Anifrolumab (N=180) |"
+and you're extracting for "Anifrolumab (N=180)", read ONLY from the Anifrolumab column.
+
+WRONG: Averaging values or reading from wrong column
+RIGHT: Reading exact values from the {{ arm_name }} (N={{ n }}) column
+

@@ -1,0 +1,50 @@
+Extract ALL clinical trial names/acronyms for the drug "{{ drug_name }}" from the search results.
+
+TRIAL NAME PATTERNS:
+1. All-caps acronyms: VICTORY, EVOLVE, SUMMIT, MUSE, DAISY
+2. With numbers: STEP-1, TULIP-2, ASCEND-NHQ
+3. Delivery variants: TRIAL-SC, TRIAL-IV (include as separate entries)
+4. Extensions: TRIAL-LTE, TRIAL-OLE (include as separate entries)
+5. Multi-word: CLEAR OUTCOMES, CARE MS-1
+
+EXTRACTION RULES:
+✅ DO EXTRACT:
+- Base trial names and ALL variants (numbered, delivery method, extensions)
+- Each variant as a separate entry
+- Acronyms mentioned in context of trial results/data
+
+❌ DO NOT EXTRACT:
+- Generic terms: "Phase 3", "Extension Study"
+- Common abbreviations: FDA, EMA, NEJM, SLE, RA, MS
+- Company codes without context
+
+For each trial name, extract:
+- acronym: The trial acronym/name
+- full_name: Full trial name if mentioned (or null)
+- phase: Phase 1/2/3/4 if mentioned (or null)
+- nct_number: NCT number if mentioned (or null)
+- indication: Disease/condition if mentioned (or null)
+- source_count: How many search results mention this trial
+- confidence: "high" (3+ sources, has NCT/phase), "medium" (2+ sources), "low" (1 source)
+
+Search Results:
+{{ results_text }}
+
+Respond in JSON format:
+{
+  "trial_names": [
+    {
+      "acronym": "TULIP-1",
+      "full_name": "Type I Interferon Inhibition in Lupus",
+      "phase": "Phase 3",
+      "nct_number": "NCT02446912",
+      "indication": "systemic lupus erythematosus",
+      "source_count": 3,
+      "confidence": "high"
+    },
+    ...
+  ]
+}
+
+{% include 'paperscope/_partials/json_instructions.j2' %}
+

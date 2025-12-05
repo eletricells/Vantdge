@@ -1,0 +1,58 @@
+Extract trial design metadata for {{ nct_id }} ({{ indication }}).
+
+PAPER METADATA:
+Title: {{ paper_title }}
+Authors: {{ paper_authors }}
+
+TASK: Extract comprehensive trial design information.
+
+INSTRUCTIONS:
+1. Study Design: Extract the study design classification
+   - Example: "Randomized, double-blind, placebo-controlled, Phase 3 trial"
+
+2. Trial Design Summary: Write a 2-3 sentence narrative summarizing:
+   - Study design and objectives
+   - Randomization approach
+   - Blinding
+   - Duration
+
+3. Enrollment Summary: Describe the enrolled patient population (2-3 sentences)
+   - Key demographic characteristics
+   - Disease severity requirements
+   - Treatment history requirements
+
+4. Inclusion Criteria: Extract as list of strings
+
+5. Exclusion Criteria: Extract as list of strings
+
+6. Primary Endpoint: Extract description of primary endpoint
+
+7. Secondary Endpoints: Summarize secondary endpoints
+
+8. Trial Parameters (extract exact numbers when available)
+
+OUTPUT FORMAT (JSON):
+{
+  "nct_id": "{{ nct_id }}",
+  "indication": "{{ indication }}",
+  "study_design": "Randomized, double-blind, placebo-controlled, Phase 3 trial",
+  "trial_design_summary": "2-3 sentence narrative summary...",
+  "enrollment_summary": "2-3 sentence description of enrolled patients...",
+  "inclusion_criteria": ["Age ≥18 years", "EASI ≥16", "..."],
+  "exclusion_criteria": ["Prior biologic use within 8 weeks", "..."],
+  "primary_endpoint_description": "Co-primary endpoints were...",
+  "secondary_endpoints_summary": "Secondary endpoints included...",
+  "sample_size_planned": 671,
+  "sample_size_enrolled": 671,
+  "duration_weeks": 16,
+  "randomization_ratio": "1:1:1",
+  "stratification_factors": "Stratified by baseline disease severity and region",
+  "blinding": "Double-blind",
+  "paper_pmid": "{{ paper_pmid }}",
+  "paper_doi": "{{ paper_doi }}",
+  "paper_title": "{{ paper_title }}",
+  "extraction_confidence": 0.9
+}
+
+{% include 'common/json_output_rules.j2' %}
+

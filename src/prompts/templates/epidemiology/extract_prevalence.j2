@@ -1,0 +1,53 @@
+<task>
+Extract prevalence data for "{{ disease }}" in {{ region }} from these search results.
+</task>
+
+<instructions>
+For EACH source that contains prevalence data, extract:
+1. Source title/name
+2. Source URL (if available)
+3. Source type (cdc, who, nih, pubmed, guideline, registry, company_presentation, other)
+4. Minimum prevalence estimate (if range given) per 100,000
+5. Maximum prevalence estimate (if range given) per 100,000
+6. Best/point estimate per 100,000
+7. Year of data
+8. Confidence level (HIGH for CDC/WHO/NIH, MEDIUM for peer-reviewed, LOW for other)
+9. Diagnosed percentage (% of patients who are diagnosed vs undiagnosed)
+
+Then calculate an OVERALL aggregate estimate across all sources.
+</instructions>
+
+<search_results>
+{{ formatted_results }}
+</search_results>
+
+<output_format>
+Return JSON:
+{
+    "overall": {
+        "min_estimate": <number or null>,
+        "max_estimate": <number or null>,
+        "best_estimate": <number>,
+        "year": <most recent year>,
+        "confidence": "HIGH|MEDIUM|LOW",
+        "diagnosed_percentage": <0-100 or null>
+    },
+    "source_estimates": [
+        {
+            "source_title": "...",
+            "source_url": "...",
+            "source_type": "cdc|who|nih|pubmed|guideline|registry|company_presentation|other",
+            "min_estimate": <number or null>,
+            "max_estimate": <number or null>,
+            "best_estimate": <number>,
+            "year": <year>,
+            "confidence": "HIGH|MEDIUM|LOW",
+            "diagnosed_percentage": <0-100 or null>
+        }
+    ]
+}
+
+If no prevalence data found, return null.
+Return ONLY valid JSON, no other text.
+</output_format>
+

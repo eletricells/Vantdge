@@ -1,0 +1,24 @@
+Extract disease-specific baseline data for {{ indication }}.
+
+ARM: {{ arm_name }}
+TABLES: {{ tables | join(', ') }}
+
+INSTRUCTIONS:
+1. Identify disease-specific biomarkers (e.g., TRAb levels for Graves' disease, AChR status for Myasthenia Gravis)
+2. Identify baseline severity scores (e.g., EASI for atopic dermatitis, DAS28 for RA)
+
+OUTPUT FORMAT:
+{
+  "disease_specific_baseline": {
+    "biomarker_name": value,
+    ...
+  },
+  "baseline_severity_scores": {
+    "score_name_mean": value,
+    "score_name_median": value,
+    ...
+  }
+}
+
+{% include 'common/json_output_rules.j2' %}
+

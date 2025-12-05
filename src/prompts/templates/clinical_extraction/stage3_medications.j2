@@ -1,0 +1,25 @@
+Extract prior medication use for {{ arm_name }} in {{ indication }} trial.
+
+TABLES: {{ tables | join(', ') }}
+
+🚨 CRITICAL INSTRUCTION - NUMERIC FIELDS:
+- For ALL numeric fields (percentages, median values), return NULL if value is missing
+- DO NOT return text explanations like "Not reported", "Not explicitly stated"
+- ONLY return actual numeric values or NULL
+
+INSTRUCTIONS:
+Extract prior medication percentages:
+- prior_steroid_use_pct (numeric or NULL)
+- prior_biologic_use_pct (numeric or NULL)
+- prior_tnf_inhibitor_use_pct (numeric or NULL)
+- prior_immunosuppressant_use_pct (numeric or NULL)
+- prior_topical_therapy_pct (numeric or NULL)
+- treatment_naive_pct (numeric or NULL)
+- prior_lines_median (numeric or NULL)
+
+Also populate prior_medications_detail JSON with specific drug names if mentioned.
+
+OUTPUT FORMAT: JSON with prior medication fields
+
+{% include 'common/json_output_rules.j2' %}
+

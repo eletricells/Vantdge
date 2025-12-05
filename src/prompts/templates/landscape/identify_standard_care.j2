@@ -1,0 +1,13 @@
+List the standard care drugs commonly used to treat {{ indication }}.
+
+These are established therapies that would appear as comparators in clinical trials,
+NOT novel drugs in development.
+
+Examples for rheumatoid arthritis: methotrexate, prednisone, hydroxychloroquine
+Examples for diabetes: metformin, insulin
+
+Return ONLY a JSON list of drug names: ["drug1", "drug2", ...]
+
+If there are no well-established standard care drugs (e.g., rare diseases with no approved treatments),
+return an empty list: []
+

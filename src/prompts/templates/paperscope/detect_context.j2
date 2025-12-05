@@ -1,0 +1,16 @@
+Analyze these papers about {{ drug_name }} and extract:
+
+1. Primary disease indication (be specific, e.g., "Rheumatoid Arthritis", "Non-Small Cell Lung Cancer")
+2. Drug class/modality (e.g., "Monoclonal Antibody", "JAK Inhibitor", "Small Molecule")
+
+Papers:
+{{ papers_text }}
+
+Respond in JSON format:
+{
+  "disease": "disease name" or null,
+  "drug_class": "drug class" or null
+}
+
+{% include 'paperscope/_partials/json_instructions.j2' %}
+

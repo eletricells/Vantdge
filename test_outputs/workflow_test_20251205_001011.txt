@@ -1,0 +1,395 @@
+
+================================================================================
+ CASE STUDY ANALYSIS - COMPREHENSIVE TEST (ALL 5 TABS)
+================================================================================
+  Drug: BARICITINIB
+  Started: 2025-12-05 00:10:11.770396
+  Output will be saved to: test_outputs\workflow_test_20251205_001011.txt
+
+Initializing agent...
+Agent ready.
+
+
+================================================================================
+ TAB 1: DRUG INFO FOR 'BARICITINIB'
+================================================================================
+
+  Drug Name:    baricitinib
+  Generic Name: baricitinib
+  Mechanism:    Janus Kinase Inhibitor
+  Manufacturer: Eli Lilly and Company
+
+  Approved Indications (4):
+    1. adults with severe alopecia areata
+    2. covid-19 in certain hospitalized adults
+    3. adults with moderately-to-severely active rheumatoid arthritis
+    4. moderately-to-severely active rheumatoid arthritis
+
+--- Validation ---
+  PASS: generic_name populated
+  PASS: mechanism concise: 'Janus Kinase Inhibitor'
+  PASS: Found 4 indications
+
+================================================================================
+ TAB 2: CASE SERIES SEARCH FOR 'BARICITINIB'
+================================================================================
+
+  Drug: baricitinib
+  Exclude: ['adults with severe alopecia areata', 'covid-19 in certain hospitalized adults', 'adults with moderately-to-severely active rheumatoid arthritis']...
+
+Searching... (may take 1-2 mins)
+
+--- Results: 45 papers ---
+  Full text (PMC): 22
+  LLM verified: 45
+
+  Diseases (38):
+    - vitiligo: 3
+    - atopic dermatitis: 3
+    - juvenile idiopathic arthritis: 2
+    - adult-onset Still's disease: 2
+    - systemic lupus erythematosus: 2
+    - dermatomyositis, hidradenitis suppurativa, cutaneous lupus, cutaneous Crohn's disease: 1
+    - dermatomyositis: 1
+    - giant cell arteritis: 1
+    - type I interferonopathies: 1
+    - non-infectious uveitis: 1
+    - folliculitis decalvans: 1
+    - SAPHO syndrome: 1
+    - polymyalgia rheumatica and giant cell arteritis: 1
+    - dystrophic epidermolysis bullosa: 1
+    - juvenile idiopathic arthritis-associated uveitis: 1
+
+--- Sample Papers ---
+
+  1. Oral tofacitinib, baricitinib and upadacitinib monotherapy for steroid...
+     PMID: 38853646 | Disease: vitiligo
+     Full text: False
+     Why: Prospective case series with patient outcomes for steroid-resistant vitiligo...
+
+  2. Off-Label Use of Janus Kinase Inhibitors in Inflammatory Cutaneous Dis...
+     PMID: 38051858 | Disease: dermatomyositis, hidradenitis suppurativa, cutaneous lupus, cutaneous Crohn's disease
+     Full text: False
+     Why: Case series with 6 patients showing efficacy outcomes across multiple inflammato...
+
+  3. JAK inhibitors in refractory dermatomyositis: A case series....
+     PMID: 38887110 | Disease: dermatomyositis
+     Full text: False
+     Why: Retrospective case series of 14 patients with efficacy data (CDASI scores, respo...
+
+  4. Clinical experience and safety of Janus kinase inhibitors in giant cel...
+     PMID: 37304255 | Disease: giant cell arteritis
+     Full text: True
+     Why: Retrospective case series of 15 patients with efficacy data (CRP reduction, clin...
+
+  5. Janus Kinase Inhibitors in the Treatment of Type I Interferonopathies:...
+     PMID: 35418997 | Disease: type I interferonopathies
+     Full text: True
+     Why: Case series assessing efficacy and safety in type I interferonopathies including...
+
+--- Validation ---
+  PASS: Found 45 papers
+  WARN: 2 potentially irrelevant papers
+    - Janus kinase inhibition for the treatment of refra...
+    - Pharmacokinetics, Pharmacodynamics, and Proposed D...
+
+================================================================================
+ TAB 3: DATA EXTRACTION (WITH PMC FULL TEXT)
+================================================================================
+
+  Extracting from 22 papers with PMC full text...
+  (This may take several minutes)
+
+  1. [PMC] Clinical experience and safety of Janus kinase inhibito...
+     PASS: Disease=Giant Cell Arteritis, N=15, Response=73.0%
+     Efficacy: JAK inhibitors significantly reduced CRP at 3 and 6 months and enabled prednisol...
+     Safety: Two patients experienced serious infections but treatment was retained or reintr...
+
+  2. [PMC] Janus Kinase Inhibitors in the Treatment of Type I Inte...
+     WARN: No data extracted
+
+  3. [PMC] Case report: Effectiveness of Janus kinase inhibitors i...
+     PASS: Disease=isolated noninfectious uveitis, N=3, Response=100.0%
+     Efficacy: All three patients with refractory isolated noninfectious uveitis achieved compl...
+     Safety: No serious adverse events were observed during the mean follow-up of 31.6 months...
+
+  4. [PMC] A Case Report of JAK Inhibitors Therapy for Adult-Onset...
+     PASS: Disease=Adult-onset Still's disease (AOSD) with persistent pruritic lesions, N=1, Response=100.0%
+     Efficacy: JAK inhibitors provided rapid and sustained clinical improvement with complete r...
+     Safety: Treatment was well-tolerated with only minor renal function abnormalities noted ...
+
+  5. [PMC] Use of Baricitinib in a patient with treatment-resistan...
+     PASS: Disease=pyoderma gangrenosum, N=1, Response=100.0%
+     Efficacy: Baricitinib 4 mg daily with tapering prednisone led to complete resolution of ax...
+     Safety: The patient developed septic arthritis after discontinuing baricitinib, though t...
+
+  6. [PMC] Janus kinase inhibition for the treatment of refractory...
+     PASS: Disease=Frontal Fibrosing Alopecia (FFA), N=1, Response=100.0%
+     Efficacy: Complete resolution of perifollicular scale/erythema, symptomatic improvement in...
+     Safety: No adverse events reported during 2-month treatment course. Treatment was electi...
+
+  7. [PMC] Mixed results with baricitinib in biological-resistant ...
+     PASS: Disease=Adult-onset Still's disease and undifferentiated systemic autoinflammatory disease, N=3, Response=67.0%
+     Efficacy: Baricitinib showed mixed results with 2 of 3 patients achieving complete clinica...
+     Safety: One serious opportunistic infection (Pneumocystis jirovecii pneumonia) occurred ...
+
+  8. [PMC] Assessment of Clinical Response to Janus Kinase Inhibit...
+     PASS: Disease=Familial chilblain lupus with TREX1 mutation, N=3, Response=100.0%
+     Efficacy: All 3 patients showed significant improvement of cutaneous lupus lesions with su...
+     Safety: No severe adverse reactions were reported during the 3-month treatment period. T...
+
+  9. [PMC] Rheumatological complaints in H syndrome: from inflamma...
+     PASS: Disease=H syndrome, N=1, Response=100.0%
+     Efficacy: Baricitinib alone provided only partial improvement, but combination with hydrox...
+     Safety: No adverse events or safety concerns were reported during the 12-month treatment...
+
+  10. [PMC] Off-label use of Baricitinib improves moderate and seve...
+     PASS: Disease=atopic dermatitis, N=23, Response=None%
+     Efficacy: Baricitinib 2mg daily for 4 weeks significantly improved EASI scores, vIGA score...
+     Safety: Safety outcomes were not specifically reported in this study. The authors noted ...
+
+  11. [PMC] Baricitinib restrains the immune dysregulation in patie...
+     WARN: No data extracted
+
+  12. [PMC] Alopecia Areata Following the Use of Belimumab in a Pat...
+     PASS: Disease=systemic lupus erythematosus with arthritis, N=1, Response=100.0%
+     Efficacy: Baricitinib 4mg daily resulted in significant improvement in both alopecia unive...
+     Safety: No adverse events were reported during baricitinib treatment. The patient tolera...
+
+  13. [PMC] JAK1/2 inhibition with baricitinib in the treatment of ...
+     PASS: Disease=Autoinflammatory interferonopathies (CANDLE, SAVI, and other interferonopathies), N=18, Response=67.0%
+     Efficacy: Significant improvement in daily symptoms, quality of life, and inflammatory mar...
+     Safety: Most common adverse events were infections. Two patients had serious adverse eve...
+
+  14. [PMC] Disease flares with baricitinib dose reductions and dev...
+     PASS: Disease=CANDLE/PRAAS (Chronic Atypical Neutrophilic Dermatosis with Lipodystrophy and Elevated Temperature/Proteasome-Associated Autoinflammatory Syndrome), N=10, Response=50.0%
+     Efficacy: Baricitinib demonstrated significant efficacy in CANDLE/PRAAS with 50% of patien...
+     Safety: Higher baricitinib exposure required for CANDLE/PRAAS led to significant safety ...
+
+  15. [PMC] Sustained Interferon Signature Suppression With Anifrol...
+     PASS: Disease=STING-associated vasculopathy with onset in infancy (SAVI), N=1, Response=None%
+     Efficacy: Baricitinib monotherapy over 10+ years provided insufficient control of SAVI sym...
+     Safety: Baricitinib was associated with viral reactivations including BK viruria/viremia...
+
+  16. [PMC] Pharmacokinetics, Pharmacodynamics, and Proposed Dosing...
+     PASS: Disease=CANDLE and SAVI (Mendelian interferonopathies), N=18, Response=None%
+     Efficacy: Baricitinib demonstrated dose-dependent decreases in interferon biomarkers, conf...
+     Safety: Safety outcomes were not reported in this pharmacokinetic and pharmacodynamic st...
+
+  17. [PMC] Combination of Baricitinib and Phototherapy in Adults W...
+     PASS: Disease=vitiligo, N=49, Response=None%
+     Efficacy: Baricitinib combined with narrowband UV-B phototherapy provided rapid and clinic...
+     Safety: Safety outcomes were not detailed in the provided abstract. The study mentions t...
+
+  18. [PMC] Rapid response of lichen planus to baricitinib associat...
+     PASS: Disease=cutaneous lichen planus, N=12, Response=83.3%
+     Efficacy: Baricitinib demonstrated rapid and sustained efficacy in cutaneous lichen planus...
+     Safety: Baricitinib was well tolerated with only 12 total adverse events, mostly mild to...
+
+  19. [PMC] Efficacy and safety of baricitinib in Japanese patients...
+     PASS: Disease=Autoinflammatory type I interferonopathies (NNS/CANDLE, SAVI, AGS), N=9, Response=None%
+     Efficacy: Baricitinib showed clinical benefit in NNS/CANDLE and SAVI patients with decreas...
+     Safety: All patients experienced at least one adverse event, with BK polyomavirus detect...
+
+  20. [PMC] Oral Baricitinib in the Treatment of Cutaneous Lichen P...
+     PASS: Disease=Cutaneous lichen planus, N=12, Response=83.3%
+     Efficacy: 83.3% of patients with cutaneous lichen planus responded to baricitinib 2 mg dai...
+     Safety: Safety outcomes were not reported in the abstract or available text....
+
+  21. [PMC] Baricitinib for refractory Takayasu arteritis: a prospe...
+     PASS: Disease=Takayasu arteritis (refractory), N=10, Response=60.0%
+     Efficacy: Baricitinib showed moderate efficacy with 60% of patients responding at 6 months...
+     Safety: Baricitinib was well tolerated overall with only one patient discontinuing due t...
+
+  22. [PMC] A retrospective study of the efficacy of JAK inhibitors...
+     PASS: Disease=rheumatoid arthritis-interstitial lung disease, N=18, Response=83.9%
+     Efficacy: Baricitinib as part of JAKi group showed RA-ILD stability or improvement in 83.9...
+     Safety: No specific safety outcomes reported for baricitinib or JAKi group. Safety data ...
+
+--- Validation ---
+  Successful: 20/22
+
+================================================================================
+ TAB 4: SCORING & PRIORITIZATION
+================================================================================
+
+  Scoring 20 extractions...
+
+  Standardizing disease names...
+  Standardized 18 disease names
+  Unique diseases after standardization: 13
+
+  Fetching market intelligence for each disease...
+  (This requires web search for epidemiology & standard of care)
+  Market data fetched for 0/20 diseases
+
+--- Scored Opportunities ---
+
+  1. Giant Cell Arteritis
+     Clinical:  6.0/10 (50% weight)
+     Evidence:  8.7/10 (25% weight)
+     Market:    7.3/10 (25% weight)
+     TOTAL:     7.0/10
+
+  2. isolated noninfectious uveitis
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  6.3/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     8.2/10
+
+  3. Adult-onset Still's disease (AOSD) with persistent pruritic lesions
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  7.0/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     8.4/10
+
+  4. pyoderma gangrenosum
+     Clinical:  5.5/10 (50% weight)
+     Evidence:  4.7/10 (25% weight)
+     Market:    8.3/10 (25% weight)
+     TOTAL:     6.0/10
+
+  5. Frontal Fibrosing Alopecia (FFA)
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  4.7/10 (25% weight)
+     Market:    8.3/10 (25% weight)
+     TOTAL:     8.2/10
+
+  6. Adult-onset Still's disease and undifferentiated systemic autoinflammatory disease
+     Clinical:  5.0/10 (50% weight)
+     Evidence:  7.3/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     6.0/10
+
+  7. Familial chilblain lupus with TREX1 mutation
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  5.7/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     8.1/10
+
+  8. H syndrome
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  7.0/10 (25% weight)
+     Market:    7.3/10 (25% weight)
+     TOTAL:     8.6/10
+
+  9. atopic dermatitis
+     Clinical:  7.0/10 (50% weight)
+     Evidence:  7.0/10 (25% weight)
+     Market:    6.0/10 (25% weight)
+     TOTAL:     6.8/10
+
+  10. systemic lupus erythematosus with arthritis
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  7.0/10 (25% weight)
+     Market:    7.3/10 (25% weight)
+     TOTAL:     8.6/10
+
+  11. Autoinflammatory interferonopathies (CANDLE, SAVI, and other interferonopathies)
+     Clinical:  6.0/10 (50% weight)
+     Evidence:  8.7/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     6.8/10
+
+  12. CANDLE/PRAAS (Chronic Atypical Neutrophilic Dermatosis with Lipodystrophy and Elevated Temperature/Proteasome-Associated Autoinflammatory Syndrome)
+     Clinical:  4.0/10 (50% weight)
+     Evidence:  8.7/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     5.8/10
+
+  13. STING-associated vasculopathy with onset in infancy (SAVI)
+     Clinical:  8.0/10 (50% weight)
+     Evidence:  7.0/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     7.4/10
+
+  14. CANDLE and SAVI (Mendelian interferonopathies)
+     Clinical:  5.5/10 (50% weight)
+     Evidence:  7.0/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     6.2/10
+
+  15. vitiligo
+     Clinical:  7.0/10 (50% weight)
+     Evidence:  7.0/10 (25% weight)
+     Market:    7.3/10 (25% weight)
+     TOTAL:     7.1/10
+
+  16. cutaneous lichen planus
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  6.3/10 (25% weight)
+     Market:    7.3/10 (25% weight)
+     TOTAL:     8.4/10
+
+  17. Autoinflammatory type I interferonopathies (NNS/CANDLE, SAVI, AGS)
+     Clinical:  4.0/10 (50% weight)
+     Evidence:  5.7/10 (25% weight)
+     Market:    6.7/10 (25% weight)
+     TOTAL:     5.1/10
+
+  18. Cutaneous lichen planus
+     Clinical:  7.5/10 (50% weight)
+     Evidence:  6.3/10 (25% weight)
+     Market:    7.3/10 (25% weight)
+     TOTAL:     7.2/10
+
+  19. Takayasu arteritis (refractory)
+     Clinical:  6.0/10 (50% weight)
+     Evidence:  7.0/10 (25% weight)
+     Market:    6.0/10 (25% weight)
+     TOTAL:     6.2/10
+
+  20. rheumatoid arthritis-interstitial lung disease
+     Clinical:  7.5/10 (50% weight)
+     Evidence:  8.7/10 (25% weight)
+     Market:    5.3/10 (25% weight)
+     TOTAL:     7.2/10
+
+--- Validation ---
+  Scored: 20/20
+
+================================================================================
+ TAB 5: FULL ANALYSIS SUMMARY
+================================================================================
+
+  Drug: baricitinib
+  Mechanism: Janus Kinase Inhibitor
+  Approved Indications: 4
+  Papers Found: 45
+  Papers with PMC Full Text: 22
+  Extractions: 20
+
+--- Top Off-Label Indications ---
+    vitiligo: 3 papers
+    atopic dermatitis: 3 papers
+    juvenile idiopathic arthritis: 2 papers
+    adult-onset Still's disease: 2 papers
+    systemic lupus erythematosus: 2 papers
+    dermatomyositis, hidradenitis suppurativa, cutaneous lupus, cutaneous Crohn's disease: 1 papers
+    dermatomyositis: 1 papers
+    giant cell arteritis: 1 papers
+    type I interferonopathies: 1 papers
+    non-infectious uveitis: 1 papers
+
+--- Validation ---
+  PASS: Full pipeline executed
+
+================================================================================
+ FINAL SUMMARY
+================================================================================
+  Tab 1 Drug Info:   PASS
+  Tab 2 Search:      PASS (45 papers)
+  Tab 3 Extraction:  PASS (20 successful)
+  Tab 4 Scoring:     PASS (20 scored)
+  Tab 5 Analysis:    PASS
+
+  Total API Tokens: 163,569
+  Completed: 2025-12-05 00:21:48.323602
+
+  JSON data saved to: test_outputs\workflow_data_20251205_001011.json
+
+================================================================================
+ GENERATING FINAL REPORT
+================================================================================
+  Excel report: data\case_series\baricitinib_report_20251205_001011.xlsx
+  Full JSON: data\case_series\baricitinib_full_20251205_001011.json

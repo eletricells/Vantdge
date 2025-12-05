@@ -1,0 +1,3097 @@
+{
+  "drug_name": "baricitinib",
+  "generic_name": "baricitinib",
+  "mechanism": "Janus Kinase Inhibitor",
+  "target": null,
+  "approved_indications": [
+    "adults with severe alopecia areata",
+    "covid-19 in certain hospitalized adults",
+    "adults with moderately-to-severely active rheumatoid arthritis",
+    "moderately-to-severely active rheumatoid arthritis"
+  ],
+  "opportunities": [
+    {
+      "extraction": {
+        "source": {
+          "pmid": "39666590",
+          "doi": "10.12659/AJCR.945068",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39666590/",
+          "title": "Alopecia Areata Following the Use of Belimumab in a Patient with Systemic Lupus Erythematosus and Arthritis Who Responded Well to Baricitinib: A Case Report.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Systemic lupus erythematosus",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "hydroxychloroquine",
+            "azathioprine",
+            "belimumab",
+            "methotrexate",
+            "mycophenolate mofetil",
+            "systemic and local steroid injections"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "54-year-old Saudi female with SLE, alopecia areata progressing to alopecia universalis, and oligoarthritis"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "ongoing since treatment initiation (approximately 3+ years as of March 2024)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "1 month",
+          "duration_of_response": null,
+          "effect_size_description": "Complete hair regrowth from alopecia universalis to nearly full hair restoration, complete resolution of joint symptoms with no pain or tenderness on examination",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Patient showed significant improvement in alopecia universalis with nearly complete hair regrowth after 1 month of treatment. Joint symptoms improved significantly with complete resolution of pain and tenderness, and lupus achieved remission with negative anti-ds DNA serology."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No adverse events reported during baricitinib treatment. Patient was able to taper off prednisone completely and maintained stable condition throughout follow-up period.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "approximately 3+ years (until March 2024)",
+        "key_findings": "Baricitinib effectively treated both SLE-associated alopecia universalis and arthritis when other treatments failed, including belimumab which paradoxically worsened the alopecia.",
+        "extraction_timestamp": "2025-12-04T20:21:31.897204",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Systemic lupus erythematosus",
+        "epidemiology": {
+          "us_prevalence_estimate": "128.7-143.7 per 100,000",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 313436,
+          "prevalence_source": "American College of Rheumatology studies and PMC epidemiological analyses",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Hydroxychloroquine",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Broad, routine use recommended as standard care"
+            },
+            {
+              "drug_name": "Mycophenolic acid (MMF)",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "KDIGO guidelines recommend as maintenance drug of choice for class III and IV lupus nephritis"
+            },
+            {
+              "drug_name": "Belimumab",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Biologic immunosuppressive medication for standard care"
+            },
+            {
+              "drug_name": "Anifrolumab",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Biologic immunosuppressive medication for standard care"
+            },
+            {
+              "drug_name": "Cyclophosphamide",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Standard immunosuppressive medication"
+            },
+            {
+              "drug_name": "Azathioprine",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Alternative maintenance therapy, may have inferior efficacy"
+            },
+            {
+              "drug_name": "Methotrexate",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Standard immunosuppressive medication"
+            },
+            {
+              "drug_name": "Glucocorticoids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "High-dose IV steroids for severe flares, minimize exposure and taper to \u22645mg daily"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Guidelines emphasize the need to reduce organ damage, lower morbidity and mortality rates, and reduce treatment-related side effects and toxicities, indicating ongoing challenges with current therapies",
+          "competitive_landscape": "The treatment landscape includes both established immunosuppressive therapies and newer biologics like belimumab and anifrolumab. Treatment selection requires individualization based on disease manifestations and affected organs, with emphasis on shared decision-making between patients and clinicians."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 9.5,
+        "evidence_quality": 7.0,
+        "market_opportunity": 9.7,
+        "overall_priority": 8.9,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 9.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 9.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 1
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "40115257",
+          "doi": "10.3389/fphar.2025.1509404",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/40115257/",
+          "title": "Case report: Effectiveness of Janus kinase inhibitors in the management of isolated noninfectious uveitis: a case series.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "isolated noninfectious uveitis",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 3,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "corticosteroids",
+            "methotrexate",
+            "mycophenolate mofetil",
+            "cyclosporine",
+            "adalimumab",
+            "tacrolimus"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "3 patients (1 female, 2 males, ages 28-59) with refractory isolated noninfectious uveitis including anterior, intermediate, and posterior uveitis"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily (baricitinib), 15 mg daily (upadacitinib)",
+          "frequency": null,
+          "duration": "mean follow-up 31.6 months (range 16-55 months)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "3/3 (100%)",
+          "responders_n": 3,
+          "responders_pct": 100.0,
+          "time_to_response": "mean 6.3 months (range 4-9 months)",
+          "duration_of_response": null,
+          "effect_size_description": "Complete remission lasting >1 year in all patients, BCVA improved from mean 0.4 to 0.6",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "All three patients with refractory isolated noninfectious uveitis achieved complete remission lasting more than 1 year after JAK inhibitor treatment. Visual acuity improved and inflammatory markers resolved on imaging studies including fluorescein angiography and OCT."
+        },
+        "safety": {
+          "adverse_events": [
+            "transient elevation in liver transaminases"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No significant side effects were observed in any patients throughout the follow-up period. One patient experienced a slight temporary increase in liver transaminase levels which was transient.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "mean 31.6 months (range 16-55 months)",
+        "key_findings": "First reported use of baricitinib and upadacitinib for isolated noninfectious uveitis showed 100% response rate with sustained remission and favorable safety profile.",
+        "extraction_timestamp": "2025-12-04T20:20:10.900652",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "isolated noninfectious uveitis",
+        "epidemiology": {
+          "us_prevalence_estimate": "121 cases per 100,000 adults (95% CI, 117.5-124.3); 29 cases per 100,000 children (95% CI, 26.1-33.2)",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 298801,
+          "prevalence_source": "Administrative claims from commercially insured population, PubMed ID: 27608193",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "First-line agents, cornerstone of treatment for acute disease and exacerbations"
+            },
+            {
+              "drug_name": "TNF-alpha inhibitors",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Preferred biologic therapy in step-ladder approach"
+            },
+            {
+              "drug_name": "Methotrexate",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Antimetabolite immunosuppressant for uncontrolled inflammation"
+            },
+            {
+              "drug_name": "Tocilizumab",
+              "drug_class": null,
+              "efficacy_range": "80%",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Effective for macular edema resistant to traditional treatments"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Guidelines for evaluation, immunization, prevention of complications prior to systemic therapy, treatment algorithms for therapy selection, and management of postoperative patients with non-improving inflammation are missing",
+          "competitive_landscape": "The treatment landscape follows a step-ladder approach with corticosteroids as first-line, followed by immunosuppressants, and finally biologics, particularly TNF-alpha inhibitors. There is significant variability in treatment practices among specialists, highlighting the need for standardized treatment guidelines as novel therapies become available."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 9.5,
+        "evidence_quality": 6.3,
+        "market_opportunity": 9.7,
+        "overall_priority": 8.8,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 10.0,
+          "followup_duration": 7.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 7.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 9.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 9.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 2
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "39294511",
+          "doi": "10.1007/s40268-024-00487-1",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39294511/",
+          "title": "A Case Report of JAK Inhibitors Therapy for Adult-Onset Still's Disease with Persistent Pruritic Lesions.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Adult-Onset Still's Disease",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "methylprednisolone",
+            "celecoxib",
+            "methotrexate",
+            "desloratadine"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "52-year-old woman with AOSD and persistent pruritic lesions"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "baricitinib 1 mg twice daily, then switched to upadacitinib 15 mg once daily",
+          "frequency": null,
+          "duration": "12 months total (2 months baricitinib, then upadacitinib)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "notable reduction in pruritus after starting baricitinib, complete resolution after 1 month of upadacitinib",
+          "duration_of_response": null,
+          "effect_size_description": "complete resolution of all symptoms and skin lesions, substantial reduction in glucocorticoid dose from 80mg to 2mg every 3 days",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "JAK inhibitor therapy provided rapid and sustained clinical improvement with complete resolution of persistent pruritic lesions that were refractory to conventional therapy. The patient achieved dramatic steroid dose reduction and maintained remission at 12 months."
+        },
+        "safety": {
+          "adverse_events": [
+            "slight increase in creatinine levels"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "Treatment was well-tolerated with only minor renal function abnormalities noted with baricitinib, which resolved after switching to upadacitinib. No other adverse reactions were observed during 12 months of treatment.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "12 months",
+        "key_findings": "JAK inhibitors effectively treated refractory AOSD with persistent pruritus and enabled significant steroid dose reduction with favorable safety profile.",
+        "extraction_timestamp": "2025-12-04T20:20:22.100535",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Adult-Onset Still's Disease",
+        "epidemiology": {
+          "us_prevalence_estimate": "more than 1/100,000 population",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 5820,
+          "prevalence_source": "Orphanet (PubMed ID 33013889 36361602 30218025)",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "IL-1 inhibitors",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Favorable efficacy-safety profile, considered targeted standard of care approach"
+            },
+            {
+              "drug_name": "Conventional DMARDs",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "First-line treatment before biologics are considered"
+            },
+            {
+              "drug_name": "Biologic drugs",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Reserved for patients who do not respond to conventional DMARDs"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "No standard or internationally recognized treatment guidelines exist for AOSD management. Treatment is primarily empirical and challenging due to limited clinical trials from the disease's rarity. Most doctors treat fewer than 5 patients per year, and management varies widely depending on clinical presentation.",
+          "competitive_landscape": "The treatment landscape for AOSD is characterized by a lack of standardized approaches, with only local guidelines developed in Japan and Italy. IL-1 inhibitors represent the most significant recent advancement and are emerging as a new standard of care, though the overall market remains underserved due to the disease's rarity and lack of comprehensive clinical trial data."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 9.5,
+        "evidence_quality": 7.0,
+        "market_opportunity": 9.3,
+        "overall_priority": 8.8,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 8.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 8.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 3
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38487164",
+          "doi": "10.3389/fphar.2024.1324892",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38487164/",
+          "title": "Off-label use of Baricitinib improves moderate and severe atopic dermatitis in China through inhibiting MAPK and PI3K/Akt/mTOR pathway via targeting JAK-STAT signaling of CD4",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "atopic dermatitis",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 23,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "topical corticosteroids",
+            "calcium phosphatase inhibitors",
+            "systemic antihistamines"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Adults with moderate and severe atopic dermatitis, mean age 51.2 years, 78.3% male, mean baseline EASI score 34.50"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg daily",
+          "frequency": null,
+          "duration": "4 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "Significant improvements in EASI scores, vIGA scores, and Itch NRS scores from baseline to 4 weeks",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib 2mg daily for 4 weeks improved clinical symptoms in moderate and severe atopic dermatitis patients. The treatment reduced immune hyperresponsiveness and inflammation through inhibition of JAK-STAT signaling and downstream MAPK and PI3K/Akt/mTOR pathways."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No significant adverse events or toxicities were reported during the 4-week treatment period. The authors noted that JAK inhibitors have significantly reduced side effects compared to traditional immunosuppressants.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "4 weeks",
+        "key_findings": "Baricitinib effectively improved moderate and severe atopic dermatitis through targeting JAK-STAT signaling and inhibiting Th2-mediated inflammation via MAPK and PI3K/Akt/mTOR pathways.",
+        "extraction_timestamp": "2025-12-04T20:21:11.600442",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "atopic dermatitis",
+        "epidemiology": {
+          "us_prevalence_estimate": "7.3% (95% CI: 5.9-8.8%)",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 16500000,
+          "prevalence_source": "Atopic Dermatitis in America Study",
+          "trend": "stable"
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Dupilumab",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Strongly recommended systemic therapy"
+            },
+            {
+              "drug_name": "Topical corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Standard of care for over 60 years, strong evidence-based recommendation"
+            },
+            {
+              "drug_name": "Topical calcineurin inhibitors",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Strongly recommended topical therapy"
+            },
+            {
+              "drug_name": "Abrocitinib",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Strongly recommended JAK inhibitor"
+            },
+            {
+              "drug_name": "Baricitinib",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Strongly recommended JAK inhibitor"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Guidelines recommend against systemic corticosteroids and several therapies have only conditional recommendations, indicating ongoing need for better treatments. Novel therapies continue to emerge, suggesting active development to address treatment gaps.",
+          "competitive_landscape": "The atopic dermatitis treatment landscape includes multiple strongly recommended options spanning biologics (dupilumab, tralokinumab), JAK inhibitors (abrocitinib, baricitinib, upadacitinib), and established topical therapies. The field remains active with novel FDA-approved therapies continuing to emerge, requiring frequent guideline updates to incorporate new evidence."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 9.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 10.0,
+        "overall_priority": 8.8,
+        "clinical_breakdown": {
+          "response_rate": 9.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 9.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 8.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 8.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 10.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 10.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 4
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "35462572",
+          "doi": "10.1007/s10787-022-00936-w",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/35462572/",
+          "title": "A retrospective study of the efficacy of JAK inhibitors or abatacept on rheumatoid arthritis-interstitial lung disease.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "rheumatoid arthritis-interstitial lung disease",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 31,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "bDMARD"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "31 patients (69.3% women, mean age 59.9 years) with rheumatoid arthritis-interstitial lung disease, mean disease duration 7.3 years"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "baricitinib 4 mg daily or tofacitinib 5 mg BID",
+          "frequency": null,
+          "duration": "18 months",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "26/31 (83.9%)",
+          "responders_n": 26,
+          "responders_pct": 83.9,
+          "time_to_response": "18 months",
+          "duration_of_response": null,
+          "effect_size_description": "64.5% stable disease, 19.4% improved, 16.1% worsened based on HRCT fibrosis assessment",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "JAK inhibitors showed stability or improvement of RA-ILD in 83.9% of patients over 18 months. Mean HRCT fibrosis decreased from 18.54% to 17.52% though not statistically significant."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No specific adverse events reported in the study. Safety profile appears acceptable based on completion of 18-month treatment period.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "18 months",
+        "key_findings": "JAK inhibitors demonstrated similar efficacy to abatacept in preventing progression of RA-ILD. Disease duration was the only predictor of treatment failure in JAKi-treated patients.",
+        "extraction_timestamp": "2025-12-04T20:23:18.870780",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "rheumatoid arthritis-interstitial lung disease",
+        "epidemiology": {
+          "us_prevalence_estimate": "3.2 to 6.0 cases per 100,000 people",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": "Truven Health MarketScan Commercial and Medicare Supplemental health insurance databases from 2003 to 2014",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Abatacept",
+              "drug_class": null,
+              "efficacy_range": "85%+",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "FVC/DLCO improvement or stabilization in >85% of cases, good safety profile"
+            },
+            {
+              "drug_name": "Prednisone",
+              "drug_class": null,
+              "efficacy_range": "Variable",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "First-line treatment at 0.5 mg/kg/day, tapered to 10 mg/day or less"
+            },
+            {
+              "drug_name": "Mycophenolate mofetil",
+              "drug_class": null,
+              "efficacy_range": "Variable by pattern",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Improved lung function in NSIP pattern, stable in UIP pattern"
+            },
+            {
+              "drug_name": "Cyclophosphamide",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Reserved for rapidly progressive or life-threatening cases, high toxicity risk"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Only three RCTs included RA-ILD patients, most guideline recommendations are conditional and based on low-quality evidence. Urgent need for additional high-quality RCT data for efficacy and safety of anti-inflammatory and antifibrotic medications.",
+          "competitive_landscape": "The treatment landscape for RA-ILD is largely based on limited evidence with conditional recommendations from guidelines due to lack of robust clinical trial data. Current approaches include traditional immunosuppressants and newer biologics like abatacept, but there remains significant opportunity for development of targeted therapies with stronger evidence base."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 8.5,
+        "evidence_quality": 9.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.7,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 7.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 7.0,
+        "evidence_breakdown": {
+          "sample_size": 8.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 8.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 5
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "39541169",
+          "doi": "10.1172/JCI179436",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39541169/",
+          "title": "Rapid response of lichen planus to baricitinib associated with suppression of cytotoxic CXCL13+CD8+ T cells.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "cutaneous lichen planus",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 12,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "topical steroids",
+            "oral steroids",
+            "intramuscular steroids",
+            "methotrexate",
+            "topical calcineurin inhibitors"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "12 patients with cutaneous LP, mean age 63.6 years, 91.7% female, 75% White, refractory to prior therapy"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg daily (with optional escalation to 4 mg daily)",
+          "frequency": null,
+          "duration": "16 weeks (with optional 12-week dose escalation)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "10/12 (83.3%)",
+          "responders_n": 10,
+          "responders_pct": 83.3,
+          "time_to_response": "as early as week 1 in 37.5% of patients, 100% by week 12",
+          "duration_of_response": null,
+          "effect_size_description": "50% or greater reduction in PGA scores, with 50% achieving completely clear status (PGA 0) and 50% almost clear (PGA 1)",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "83.3% of patients achieved treatment response with 50% or greater PGA score reduction at week 16. Improvements were observed as early as week 1 and sustained at week 20 (4 weeks off therapy). Significant improvements were seen across all secondary measures including lesion count, BSA, pruritus, pain, and quality of life scores."
+        },
+        "safety": {
+          "adverse_events": [
+            "mild neutropenia"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "Total of 12 adverse events with only one mild AE (neutropenia) deemed probably related to study drug. Most AEs were mild or moderate (58.3% and 25.0% respectively). No AEs led to baricitinib discontinuation.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "20 weeks (including 4 weeks off therapy)",
+        "key_findings": "Baricitinib demonstrated rapid and sustained efficacy in refractory cutaneous lichen planus with suppression of cytotoxic CXCL13+CD8+ T cells and IFN signature.",
+        "extraction_timestamp": "2025-12-04T20:22:35.882467",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "cutaneous lichen planus",
+        "epidemiology": {
+          "us_prevalence_estimate": "0.15% of US adults (age- and sex-standardized)",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 1098,
+          "prevalence_source": "Explorys database analysis of 566,851 eligible patients from over 40 healthcare networks",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "topical corticosteroids (clobetasol 0.05%)",
+              "drug_class": null,
+              "efficacy_range": "not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "first-line for limited cutaneous lichen planus, applied twice daily for 2-4 weeks"
+            },
+            {
+              "drug_name": "acitretin",
+              "drug_class": null,
+              "efficacy_range": "not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "classified as first-line therapy in some evidence reviews"
+            },
+            {
+              "drug_name": "systemic corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "second-line treatment for diffuse cutaneous lichen planus"
+            },
+            {
+              "drug_name": "intralesional triamcinolone",
+              "drug_class": null,
+              "efficacy_range": "not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "used for inadequate response to topical steroids, 5-10 mg/mL"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Multiple sources highlight a lack of clear-cut treatment results and uncertain efficacy for most therapies. Many treatments need rigorous controlled studies before widespread recommendations can be made.",
+          "competitive_landscape": "The treatment landscape shows inconsistent evidence with conflicting first-line recommendations between topical corticosteroids and acitretin. Most therapies beyond established corticosteroid treatments are considered experimental or of uncertain efficacy, indicating significant opportunity for novel therapeutic development."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 9.5,
+        "evidence_quality": 6.3,
+        "market_opportunity": 8.7,
+        "overall_priority": 8.5,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 6.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 6.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 6
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "30673078",
+          "doi": "10.1001/jamadermatol.2018.5077",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/30673078/",
+          "title": "Assessment of Clinical Response to Janus Kinase Inhibition in Patients With Familial Chilblain Lupus and TREX1 Mutation.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Familial chilblain lupus with TREX1 mutation",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 3,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "2 women and 1 man; mean age 51 years with familial chilblain lupus due to TREX1 mutation"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "3 months",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "3/3 (100%)",
+          "responders_n": 3,
+          "responders_pct": 100.0,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "Significant improvement of cutaneous lupus lesions with suppression of systemic type I IFN activation",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "All 3 patients showed significant improvement of cutaneous lupus lesions with suppression of systemic type I IFN activation. One patient had complete remission regarding pain and 2 patients had partial reduction in pain associated with joint inflammation."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No severe adverse reactions were reported during the 3-month treatment period. The treatment was well tolerated in all patients.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "3 months",
+        "key_findings": "Baricitinib demonstrated therapeutic efficacy in monogenic lupus with complete response in cutaneous lesions and systemic interferon suppression.",
+        "extraction_timestamp": "2025-12-04T20:20:50.714106",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Familial chilblain lupus with TREX1 mutation",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "baricitinib",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "JAK inhibitor, 4mg daily for 3 months showed clinical response in case series of 3 patients"
+            },
+            {
+              "drug_name": "tofacitinib",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "JAK inhibitor supported by case reports for cutaneous lupus erythematosus"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Effective treatment is currently not available for familial chilblain lupus, which presents with cold-induced painful lesions leading to mutilation and systemic involvement",
+          "competitive_landscape": "JAK inhibitors like baricitinib and tofacitinib are emerging as promising treatments based on limited case series and reports. Several phase I and II clinical trials are currently investigating JAK inhibitors for cutaneous lupus erythematosus treatment."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 9.5,
+        "evidence_quality": 5.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.2,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 10.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 7
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38263041",
+          "doi": "10.1186/s12969-023-00950-4",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38263041/",
+          "title": "Rheumatological complaints in H syndrome: from inflammatory profiling to target treatment in a case study.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "H syndrome",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "steroid injection",
+            "methotrexate"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "21-year-old female with H syndrome due to compound heterozygosity for two pathogenic variants in SLC29A3 gene, presenting with deforming arthritis, diabetes, hearing loss, and chronic inflammation"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg once daily",
+          "frequency": null,
+          "duration": "12 months",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": "6 months for partial improvement with baricitinib alone, dramatic improvement after adding hydroxychloroquine at 5 months",
+          "duration_of_response": null,
+          "effect_size_description": "Dramatic improvement with combination therapy - CRP decreased from 39.6 to 1.8 mg/L, ESR from 73 to 15 mm/h, interferon score from 22.3 to 1.4",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib monotherapy provided only partial improvement in arthritis symptoms and inflammatory markers. The combination of baricitinib plus hydroxychloroquine resulted in dramatic clinical improvement with normalization of all inflammatory markers including interferon score."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No adverse events were reported during the 12-month treatment period with baricitinib.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "12 months",
+        "key_findings": "First reported use of JAK inhibitor in H syndrome targeting interferon-mediated inflammation, with dramatic response achieved when combined with hydroxychloroquine targeting the underlying TLR7 pathway.",
+        "extraction_timestamp": "2025-12-04T20:21:01.586710",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "H syndrome",
+        "epidemiology": {
+          "us_prevalence_estimate": "<1 / 1 000 000",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 130,
+          "prevalence_source": "ORPHA:168569",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "Partial success",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Show good results but have harmful long-term effects, especially in diabetic H syndrome patients"
+            },
+            {
+              "drug_name": "Methotrexate",
+              "drug_class": null,
+              "efficacy_range": "Partial success",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Some patients showed notable improvement in hyperpigmentation, joint stiffness, and arthritis"
+            },
+            {
+              "drug_name": "Laser therapy",
+              "drug_class": null,
+              "efficacy_range": "High for hypertrichosis",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Can almost permanently remove hypertrichosis, one of the few effective treatments"
+            },
+            {
+              "drug_name": "Tocilizumab",
+              "drug_class": null,
+              "efficacy_range": "Case reports",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Emerging treatment option with limited case report evidence"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "H syndrome does not have any standard treatment for preventive and therapeutic approach toward its cutaneous and systemic presentations. Most treatments including NSAIDs, cyclosporine, cyclophosphamide, 6-mercaptopurine, and adalimumab are associated with no or partial therapeutic success.",
+          "competitive_landscape": "There is a significant lack of consensus about H syndrome treatment, with most therapeutic approaches showing unsatisfactory results except for hypertrichosis management. The field represents a major therapeutic challenge with very few treatment experiences documented and unknown pathophysiology limiting effective drug development."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 9.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.0,
+        "overall_priority": 8.2,
+        "clinical_breakdown": {
+          "response_rate": 9.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 9.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 4.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 4.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 8
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38524384",
+          "doi": "10.1177/2050313X241235444",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38524384/",
+          "title": "Use of Baricitinib in a patient with treatment-resistant pyoderma gangrenosum.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "pyoderma gangrenosum",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "oral corticosteroids",
+            "intralesional corticosteroids",
+            "minocycline",
+            "systemic corticosteroids",
+            "colchicine",
+            "intravenous immunoglobulin"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "78-year-old female with treatment-resistant pyoderma gangrenosum and metastatic high-grade serous ovarian carcinoma"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "12 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "during 12 weeks of therapy",
+          "duration_of_response": null,
+          "effect_size_description": "Right lower extremity ulcer decreased in size, ulcers on right axilla and right elbow resolved completely",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "During 12 weeks of baricitinib therapy, the patient showed significant improvement with complete resolution of axillary and elbow ulcers and decreased size of the lower extremity ulcer. However, after discontinuation, the lower extremity ulcer recurred within 4 weeks while the axillary and elbow ulcers remained healed at 13 weeks follow-up."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No adverse events directly attributed to baricitinib were reported in this case. The patient developed septic arthritis after discontinuation, but this was not linked to the medication.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "13 weeks after discontinuation",
+        "key_findings": "Baricitinib showed efficacy in treatment-resistant pyoderma gangrenosum with partial recurrence after discontinuation, suggesting potential benefit but need for continued therapy.",
+        "extraction_timestamp": "2025-12-04T20:20:32.537177",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "pyoderma gangrenosum",
+        "epidemiology": {
+          "us_prevalence_estimate": "5.8 cases per 100,000 adults (95% CI: 5.6-6.1)",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 1971,
+          "prevalence_source": "Cross-sectional analysis from electronic health records of over 58 million patients (PubMed ID: 31400451)",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Treatment of choice for most patients, standard first-line systemic therapy"
+            },
+            {
+              "drug_name": "Cyclosporine",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Treatment of choice for most patients, often used with corticosteroids"
+            },
+            {
+              "drug_name": "Mycophenolate mofetil",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Effective as steroid-sparing agent, used for treatment including peristomal cases"
+            },
+            {
+              "drug_name": "Biologic agents",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Gaining importance as alternative or first-line therapy, especially for patients with inflammatory comorbidities"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "No specific therapy is uniformly effective for patients with pyoderma gangrenosum, indicating significant treatment variability and lack of consistently effective options across all patients",
+          "competitive_landscape": "The treatment landscape includes traditional immunosuppressants like corticosteroids and cyclosporine as standard of care, with biologics emerging as important alternatives. There is active research into IL-17 inhibitors including secukinumab, brodalumab, and ixekizumab, though results have been mixed with some patients experiencing worsening while others show clinical improvement."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 9.5,
+        "evidence_quality": 4.7,
+        "market_opportunity": 8.7,
+        "overall_priority": 8.1,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 6.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 6.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 9
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38519108",
+          "doi": "10.1136/rmdopen-2023-003985",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38519108/",
+          "title": "Baricitinib for refractory Takayasu arteritis: a prospective cohort study in a tertiary referral centre.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Takayasu arteritis (refractory)",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 10,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "methotrexate",
+            "leflunomide",
+            "mycophenolate mofetil",
+            "tacrolimus",
+            "secukinumab",
+            "tocilizumab",
+            "TNF inhibitors",
+            "tofacitinib"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "10 patients with refractory TAK (9 female, 1 male), median age 28 years, median disease duration 50 months"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "average follow-up 15.3 months (range 4-31 months)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "6/10 (60%)",
+          "responders_n": 6,
+          "responders_pct": 60.0,
+          "time_to_response": "6 months",
+          "duration_of_response": null,
+          "effect_size_description": "60% overall response rate at 6 months, 40% maintained response during follow-up, 80% of patients tapered or maintained GC dose, 2 patients discontinued GCs completely",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "At 6 months, 60% of patients achieved overall treatment response. During follow-up, 40% maintained response and 80% were able to taper or maintain glucocorticoid doses, with 2 patients achieving complete GC discontinuation."
+        },
+        "safety": {
+          "adverse_events": [
+            "liver dysfunction"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "Treatment was well tolerated with no severe adverse events reported. Only one patient discontinued baricitinib due to liver dysfunction. No infections, thrombosis, or other serious adverse events were observed.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "average 15.3 months (range 4-31 months)",
+        "key_findings": "Baricitinib 4 mg daily achieved 60% response rate in refractory Takayasu arteritis patients who had failed multiple prior treatments, with favorable safety profile.",
+        "extraction_timestamp": "2025-12-04T20:23:09.367806",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Takayasu arteritis (refractory)",
+        "epidemiology": {
+          "us_prevalence_estimate": "2.6-8.4 per million population",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": "Olmsted County, Minnesota study (1971-1983) and Midwestern USA population-based study",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "tocilizumab",
+              "drug_class": null,
+              "efficacy_range": "not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "IL-6 receptor antagonist recommended by ACR guidelines for refractory disease, supported by phase 3 TAKT study"
+            },
+            {
+              "drug_name": "TNF inhibitors",
+              "drug_class": null,
+              "efficacy_range": "not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "TNF-alpha targeted therapies show prolonged efficacy in refractory cases, recommended as option in initial therapy by ACR"
+            },
+            {
+              "drug_name": "tofacitinib",
+              "drug_class": null,
+              "efficacy_range": "not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "JAK inhibitor showing treatment efficacy versus methotrexate in prospective observational study"
+            },
+            {
+              "drug_name": "tacrolimus",
+              "drug_class": null,
+              "efficacy_range": "not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Immunosuppressive agent showing response in case reports of refractory patients"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Refractory Takayasu arteritis represents a significant unmet need as patients require biologic DMARDs after failing conventional therapy, with vascular lesions causing most morbidity and mortality, often requiring invasive interventions for life-threatening situations",
+          "competitive_landscape": "The treatment landscape for refractory Takayasu arteritis is evolving with tocilizumab being the established biologic based on phase 3 trial data, while TNF inhibitors and newer agents like tofacitinib are emerging as alternatives. Current guidelines recommend a stepped approach with biologics reserved for refractory disease, indicating an active area of therapeutic development."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 8.5,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.1,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 10
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "37304255",
+          "doi": "10.3389/fimmu.2023.1187584",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/37304255/",
+          "title": "Clinical experience and safety of Janus kinase inhibitors in giant cell arteritis: a retrospective case series from Sweden.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Giant cell arteritis",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 15,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "corticosteroids",
+            "tocilizumab",
+            "methotrexate",
+            "infliximab"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Mean age 70.1 years (range 61-80), 60% women, all Caucasian, GCA patients with inadequate response to corticosteroids"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "baricitinib mean 3.86 mg daily (range 2-4 mg), tofacitinib 10 mg daily",
+          "frequency": null,
+          "duration": "mean 19 months (range 6-38 months)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "11/15 (73%) at 6 months",
+          "responders_n": 11,
+          "responders_pct": 73.0,
+          "time_to_response": "significant CRP reduction at 3 months",
+          "duration_of_response": null,
+          "effect_size_description": "Significant reductions in CRP at 3 months (p=0.02) and 6 months (p=0.02), prednisolone dose reduction at 3 months (p=0.02) and 6 months (p=0.004)",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "JAK inhibitors showed significant efficacy with rapid CRP reduction within 3 months and successful prednisolone dose reduction. No GCA relapses were observed during treatment, and 73% of patients achieved therapeutic benefit at 6 months."
+        },
+        "safety": {
+          "adverse_events": [
+            "serious infections (2 patients)",
+            "bacteremia (Enterococcus faecalis)",
+            "Aspergillus fumigatus infection"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "Two patients experienced serious infections but JAK inhibitor therapy was retained or reintroduced after recovery. No cases of malignancy, gastrointestinal perforation, or significant laboratory abnormalities were observed.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "mean 19 months",
+        "key_findings": "JAK inhibitors demonstrated encouraging efficacy in steroid-refractory GCA with acceptable safety profile in this largest case series to date with long-term follow-up.",
+        "extraction_timestamp": "2025-12-04T20:19:50.341016",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Giant cell arteritis",
+        "epidemiology": {
+          "us_prevalence_estimate": "105.6 cases per 100,000 Medicare beneficiaries (2014-2019); 200 per 100,000 people over age 50 (general estimate)",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": "Medicare fee-for-service study 2014-2019; Vasculitis Foundation",
+          "trend": "stable"
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Prednisolone/Prednisone",
+              "drug_class": null,
+              "efficacy_range": "Standard first-line",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "High-dose corticosteroids (40-60mg daily) with gradual taper over 12-18 months"
+            },
+            {
+              "drug_name": "Tocilizumab",
+              "drug_class": null,
+              "efficacy_range": "Proven efficacy",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "IL-6 receptor antagonist for corticosteroid-sparing and relapsing cases"
+            },
+            {
+              "drug_name": "Methotrexate",
+              "drug_class": null,
+              "efficacy_range": "Adjunctive therapy",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Considered for patients at high risk of corticosteroid toxicity or relapse"
+            },
+            {
+              "drug_name": "Methylprednisolone IV",
+              "drug_class": null,
+              "efficacy_range": "Emergency use",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "500-1000mg IV for 3-5 days when ocular symptoms or visual loss present"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Despite tocilizumab approval, there remains significant need for corticosteroid-sparing agents due to high toxicity risk from prolonged steroid use and disease relapse rates",
+          "competitive_landscape": "Corticosteroids remain the standard of care with tocilizumab as the primary steroid-sparing option supported by randomized controlled trial evidence. The treatment landscape is focused on reducing corticosteroid burden while maintaining disease remission, with methotrexate serving as an alternative adjunctive therapy."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 7.5,
+        "evidence_quality": 8.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.0,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 7.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 7.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 11
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "29649002",
+          "doi": "10.1172/JCI98814",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/29649002/",
+          "title": "JAK1/2 inhibition with baricitinib in the treatment of autoinflammatory interferonopathies.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Autoinflammatory interferonopathies (CANDLE, SAVI, and other interferonopathies)",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 18,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "conventional DMARDs",
+            "biologic DMARDs targeting IL-1",
+            "biologic DMARDs targeting TNF",
+            "biologic DMARDs targeting IL-6",
+            "corticosteroids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "10 patients with CANDLE, 4 with SAVI, 4 with other interferonopathies; mean age 12.5 years (range 1.2-24.1), 72% below 3rd percentile for height"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "dose escalation to optimal tolerated doses",
+          "frequency": null,
+          "duration": "mean 3.0 years (1.5-4.9 years)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "12/18 (67%)",
+          "responders_n": 12,
+          "responders_pct": 67.0,
+          "time_to_response": "improvement during dose escalation phase",
+          "duration_of_response": null,
+          "effect_size_description": "Median daily symptom score decreased from 1.3 to 0.25; median corticosteroid dose decreased from 0.44 to 0.11 mg/kg/day",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Significant improvements in daily symptom scores, corticosteroid dose reduction, quality of life, growth parameters, and inflammatory biomarkers. 5 of 10 CANDLE patients achieved lasting clinical remission with normal CRP and discontinued corticosteroids."
+        },
+        "safety": {
+          "adverse_events": [
+            "upper respiratory infections",
+            "gastroenteritis",
+            "BK viruria",
+            "BK viremia",
+            "azotemia",
+            "hepatic steatosis"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "Most common adverse events were upper respiratory infections and gastroenteritis. One patient discontinued due to BK viremia and azotemia. Some patients developed hepatic steatosis during treatment.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "median 2.8 years",
+        "key_findings": "Baricitinib effectively reduced IFN signaling and improved clinical manifestations in monogenic interferonopathies, with particularly strong responses in CANDLE patients achieving remission.",
+        "extraction_timestamp": "2025-12-04T20:21:43.599749",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Autoinflammatory interferonopathies (CANDLE, SAVI, and other interferonopathies)",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 18,
+          "prevalence_source": "PMC6026004 - Between October 2011 and October 2016, we treated 18 patients, 10 with genetically confirmed CANDLE, 4 with genetically confirmed SAVI, and 4 patients with other interferonopathies",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "baricitinib",
+              "drug_class": null,
+              "efficacy_range": "demonstrated efficacy",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "JAK inhibitor showing consistent efficacy in Japanese patients with reduction in disease scores and corticosteroid use"
+            },
+            {
+              "drug_name": "corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "supportive care",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "used for symptom management but baricitinib treatment allows for corticosteroid reduction"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Chronic systemic and organ-specific inflammation that, when untreated, results in progressive organ damage, early morbidity, and increased mortality. Need for standardized diagnostic evaluation and treatment protocols as evidenced by 2021 EULAR/ACR consensus guidelines.",
+          "competitive_landscape": "The treatment landscape is limited with baricitinib emerging as a promising targeted therapy for autoinflammatory interferonopathies including CANDLE/PRAAS, SAVI, and AGS. Current care relies heavily on consensus guidelines and supportive treatments, indicating significant opportunity for novel therapeutic approaches in this rare disease area."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 7.5,
+        "evidence_quality": 8.7,
+        "market_opportunity": 7.3,
+        "overall_priority": 7.7,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 7.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 7.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 2.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 2.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 12
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38260663",
+          "doi": "10.1101/2024.01.09.24300946",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38260663/",
+          "title": "Oral Baricitinib in the Treatment of Cutaneous Lichen Planus.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Cutaneous lichen planus",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 12,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Patients with cutaneous lichen planus"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg daily",
+          "frequency": null,
+          "duration": "16 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "10/12 (83.3%)",
+          "responders_n": 10,
+          "responders_pct": 83.3,
+          "time_to_response": "early and sustained response",
+          "duration_of_response": null,
+          "effect_size_description": "Early and sustained clinical response in majority of patients",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "83.3% of patients with cutaneous lichen planus showed clinical response to baricitinib 2 mg daily over 16 weeks. The response was characterized as early and sustained, with molecular data showing rapid decrease in interferon signature within 2 weeks of treatment."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No specific adverse events were reported in the abstract or available text.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "16 weeks",
+        "key_findings": "JAK inhibition demonstrated efficacy in cutaneous lichen planus with 83.3% response rate and rapid molecular changes including decreased interferon signature within 2 weeks.",
+        "extraction_timestamp": "2025-12-04T20:22:58.132953",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Cutaneous lichen planus",
+        "epidemiology": {
+          "us_prevalence_estimate": "0.15% (age- and sex-standardized overall prevalence)",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 1098,
+          "prevalence_source": "Explorys database analysis of 566,851 eligible patients from over 40 healthcare networks and 53 million patients across the United States",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Acitretin",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "First-line therapy for cutaneous lichen planus"
+            },
+            {
+              "drug_name": "Topical corticosteroids (clobetasol 0.05%)",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "First-line for limited cutaneous lichen planus"
+            },
+            {
+              "drug_name": "Systemic corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Second-line treatment, widely recommended based on clinical experience"
+            },
+            {
+              "drug_name": "Intralesional triamcinolone",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "For inadequate response to topical steroids"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Significant lack of clear-cut treatment results and limited high-quality evidence even for drugs considered standard therapy. Many treatments have uncertain or doubtful efficacy.",
+          "competitive_landscape": "The treatment landscape shows inconsistent evidence with acitretin as first-line and topical/systemic corticosteroids as established options, but overall efficacy data is limited. Newer therapies like topical cyclosporine and combination treatments require more rigorous controlled studies before widespread adoption."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 7.5,
+        "evidence_quality": 6.3,
+        "market_opportunity": 8.7,
+        "overall_priority": 7.5,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 6.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 6.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 13
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "39841460",
+          "doi": "10.1001/jamadermatol.2024.5737",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39841460/",
+          "title": "Combination of Baricitinib and Phototherapy in Adults With Active Vitiligo: A Randomized Clinical Trial.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "vitiligo",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 49,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "adults with active and extensive vitiligo disease, the most severe form of vitiligo"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": null,
+          "frequency": null,
+          "duration": "36 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "mean change in total Vitiligo Area Scoring Index score at week 36 was -44.8% for baricitinib group vs -9.2% for placebo group",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib combined with narrowband UV-B phototherapy showed significant improvement in vitiligo with a 44.8% reduction in disease severity score compared to 9.2% with placebo. The treatment provided rapid and clinically meaningful repigmentation in patients with severe, active vitiligo."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "Safety outcomes were not detailed in the provided abstract, though the study assessed tolerance of the combination therapy.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "36 weeks",
+        "key_findings": "Double-blind randomized trial demonstrated that baricitinib combined with phototherapy significantly reduced vitiligo disease activity and provided clinically meaningful repigmentation in severe cases.",
+        "extraction_timestamp": "2025-12-04T20:22:24.156436",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "vitiligo",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Potent/very potent topical corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "First-line treatment, once daily application, avoid periocular area"
+            },
+            {
+              "drug_name": "Topical tacrolimus 0.1% ointment",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Alternative for facial vitiligo, twice daily application"
+            },
+            {
+              "drug_name": "Narrow-band UVB phototherapy",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Superior efficacy over PUVA, aims for mild erythema lasting 24-48 hours"
+            },
+            {
+              "drug_name": "Pimecrolimus 1% cream plus narrow-band UVB",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Combination therapy option"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Limited efficacy data available for most treatments, surgical interventions only suitable for stable cases resistant to other therapies, and complementary therapies have limited supporting data",
+          "competitive_landscape": "The vitiligo treatment landscape consists primarily of topical corticosteroids and calcineurin inhibitors as first-line therapies, with phototherapy as a key treatment modality. Surgical options exist for refractory cases, but there appears to be a need for more effective treatments given the focus on combination therapies and alternative approaches."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 7.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 7.3,
+        "clinical_breakdown": {
+          "response_rate": 9.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 9.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 8.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 8.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 14
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "32669454",
+          "doi": "10.1136/rmdopen-2020-001246",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/32669454/",
+          "title": "Mixed results with baricitinib in biological-resistant adult-onset Still's disease and undifferentiated systemic autoinflammatory disease.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Adult-onset Still's disease (AOSD) and undifferentiated systemic autoinflammatory disease",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 3,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "prednisolone",
+            "methotrexate",
+            "ciclosporin",
+            "anakinra",
+            "tocilizumab",
+            "sarilumab",
+            "rituximab",
+            "infliximab"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Two patients with biological-resistant AOSD meeting Yamaguchi's criteria and one patient with AOSD-like disorder in context of myelodysplastic syndrome"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg once daily",
+          "frequency": null,
+          "duration": "9-15 months follow-up",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "2/3 (67%)",
+          "responders_n": 2,
+          "responders_pct": 67.0,
+          "time_to_response": "8\u00b12 weeks",
+          "duration_of_response": null,
+          "effect_size_description": "Complete clinical and biochemical remission in 2 patients, no response in 1 patient",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Mixed results with baricitinib in biological-resistant AOSD patients. Two of three patients achieved clinical and biochemical remission, including normalization of inflammatory markers. One patient with classical AOSD had no response despite 9 months of treatment."
+        },
+        "safety": {
+          "adverse_events": [
+            "Pneumocystis jirovecii pneumonia"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "One patient developed Pneumocystis jirovecii pneumonia at 7 months of treatment, which responded to trimethoprim-sulfamethoxazole. This represents the first reported case of pneumocystis infection following baricitinib use.",
+          "safety_profile": "Concerning"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "9-15 months",
+        "key_findings": "JAK inhibition may be effective in some patients with biological-resistant AOSD, but carries risk of opportunistic infections.",
+        "extraction_timestamp": "2025-12-04T20:20:43.151021",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Adult-onset Still's disease (AOSD) and undifferentiated systemic autoinflammatory disease",
+        "epidemiology": {
+          "us_prevalence_estimate": "0.16-0.4 per 100,000 adults",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 1615,
+          "prevalence_source": "PMC11276361 and PMC10079803",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Canakinumab",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "FDA/EMA approved anti-IL-1\u03b2 antibody, 150-300mg every 4-8 weeks, fast and robust response in majority of AOSD cases"
+            },
+            {
+              "drug_name": "High-dose corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "First-line treatment for severe AOSD complications, used as anchor therapy for decades with major safety concerns"
+            },
+            {
+              "drug_name": "NSAIDs",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "First-line therapy along with corticosteroids"
+            },
+            {
+              "drug_name": "IL-6 blockers",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Used in combination for inadequate response to corticosteroids"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "No consensual therapeutic strategy has been defined for AOSD/sJIA, few well-designed prospective studies and even fewer randomized controlled trials examining management methods exist due to disease rarity",
+          "competitive_landscape": "Anti-IL-1 agents like canakinumab represent the main biological advancement with FDA/EMA approval, showing efficacy in both articular and systemic manifestations. The treatment landscape remains challenging with traditional therapies (NSAIDs, corticosteroids) as first-line followed by biologics for refractory cases."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 5.5,
+        "evidence_quality": 7.3,
+        "market_opportunity": 8.7,
+        "overall_priority": 6.8,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 3.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 3.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 6.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 6.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 15
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "37087470",
+          "doi": "10.1186/s12969-023-00817-8",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/37087470/",
+          "title": "Efficacy and safety of baricitinib in Japanese patients with autoinflammatory type I interferonopathies (NNS/CANDLE, SAVI, And AGS).",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Autoinflammatory type I interferonopathies (NNS/CANDLE, SAVI, and AGS)",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 9,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "disease-modifying antirheumatic drugs",
+            "interleukin-1-blocking agents",
+            "corticosteroids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "9 Japanese patients (5 with NNS/CANDLE, 3 with SAVI, 1 with AGS); 55.6% female, mean age 26 years, mean corticosteroid use 0.2 mg/kg"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "Weight- and eGFR-based dosing with dose escalation over 8-week adjustment period",
+          "frequency": null,
+          "duration": "52 weeks (12-week primary treatment for NNS/CANDLE, 24-week for SAVI/AGS, followed by maintenance)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "Mean DDS decreased by 0.18-0.27 points in NNS/CANDLE and SAVI patients; corticosteroid use decreased by 18.4-62.9% in some patients",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib showed efficacy in NNS/CANDLE and SAVI patients with decreased daily diary scores and reduced corticosteroid requirements. The single AGS patient showed minimal improvement with slight increase in diary scores."
+        },
+        "safety": {
+          "adverse_events": [
+            "BK polyomavirus detection",
+            "increased blood creatine phosphokinase",
+            "anemia",
+            "upper respiratory tract infection",
+            "intracranial hemorrhage (fatal, unrelated to drug)"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "All patients experienced at least one adverse event. Common events included BK virus detection (33.3%), elevated CPK (22.2%), and anemia (22.2%). Three patients had serious adverse events, with one drug-related event and one unrelated death.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "52 weeks",
+        "key_findings": "Baricitinib demonstrated potential therapeutic benefit for NNS/CANDLE and SAVI patients but showed limited efficacy in AGS, with manageable safety profile in this vulnerable population.",
+        "extraction_timestamp": "2025-12-04T20:22:49.570296",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Autoinflammatory type I interferonopathies (NNS/CANDLE, SAVI, and AGS)",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "JAK inhibitors (including baricitinib)",
+              "drug_class": null,
+              "efficacy_range": "Variable reduction in disease activity scores",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Beneficial for improving symptoms across CANDLE/PRAAS, SAVI, and AGS. Baricitinib showed consistent efficacy in reducing daily diary scores in Japanese patients."
+            },
+            {
+              "drug_name": "Glucocorticoids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Used for disease control but should be maintained at lowest possible dose. Treatment goal is to minimize steroid dependence while maintaining disease control."
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "No cure exists for type I interferonopathies. Treatment focuses on symptom management and preventing organ damage progression rather than addressing underlying disease mechanisms.",
+          "competitive_landscape": "JAK inhibitors represent the current standard targeted therapy with demonstrated efficacy across multiple interferonopathy subtypes. The treatment landscape requires multidisciplinary approaches with limited curative options, creating opportunities for novel therapeutic interventions."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 6.5,
+        "evidence_quality": 5.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.8,
+        "clinical_breakdown": {
+          "response_rate": 6.0,
+          "safety_profile": 7.0
+        },
+        "response_rate_score": 6.0,
+        "safety_profile_score": 7.0,
+        "evidence_breakdown": {
+          "sample_size": 4.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 4.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 16
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "29134648",
+          "doi": "10.1002/cpt.936",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/29134648/",
+          "title": "Pharmacokinetics, Pharmacodynamics, and Proposed Dosing of the Oral JAK1 and JAK2 Inhibitor Baricitinib in Pediatric and Young Adult CANDLE and SAVI Patients.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "CANDLE and SAVI (Mendelian interferonopathies)",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 18,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "pediatric and young adult patients with Mendelian interferonopathies (CANDLE and SAVI) under 40kg requiring up to 4 times daily dosing"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "0.1 to 17 mg per day",
+          "frequency": null,
+          "duration": null,
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "dose-dependent decreases in interferon biomarkers with 1.83-fold higher drug exposure than adult RA patients",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib demonstrated dose-dependent decreases in interferon biomarkers, confirming in vivo effect on type-1 IFN signaling in patients with rare interferonopathies. The study established pharmacokinetic profiles showing substantially shorter half-life in patients under 40kg compared to adults."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "No specific safety outcomes were reported in the abstract or available text. The study focused primarily on pharmacokinetic and pharmacodynamic characterization rather than safety assessment.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": null,
+        "key_findings": "Baricitinib showed dose-dependent reduction in interferon biomarkers in CANDLE/SAVI patients, with weight and renal function significantly influencing drug disposition requiring weight- and eGFR-based dosing.",
+        "extraction_timestamp": "2025-12-04T20:22:15.580892",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "CANDLE and SAVI (Mendelian interferonopathies)",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "baricitinib",
+              "drug_class": null,
+              "efficacy_range": "moderate",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "JAK inhibitor showing reduction in disease scores and 23.5-61.2% decrease in corticosteroid use"
+            },
+            {
+              "drug_name": "corticosteroids",
+              "drug_class": null,
+              "efficacy_range": "variable",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "standard treatment but patients require dose reduction with baricitinib therapy"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "Limited treatment options exist for CANDLE and SAVI, with recent development of consensus treatment guidelines indicating need for standardized care approaches",
+          "competitive_landscape": "Baricitinib appears to be the primary targeted therapy being evaluated for these rare interferonopathies, with treatment guidelines recently established by EULAR and ACR in 2021. The therapeutic landscape is sparse with most patients relying on corticosteroids and supportive care."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 5.5,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.6,
+        "clinical_breakdown": {
+          "response_rate": 6.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 6.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 17
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38653530",
+          "doi": "10.1136/ard-2023-225463",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38653530/",
+          "title": "Disease flares with baricitinib dose reductions and development of flare criteria in patients with CANDLE/PRAAS.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "CANDLE/PRAAS (Chronic Atypical Neutrophilic Dermatosis with Lipodystrophy and Elevated Temperature/Proteasome-Associated Autoinflammatory Syndrome)",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 10,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "glucocorticoids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Mean age 11.5 years (range 2.3-19.6), genetically confirmed CANDLE/PRAAS patients"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "Higher exposures than rheumatoid arthritis dosing",
+          "frequency": null,
+          "duration": "Mean 6.3 years (\u00b12.3 years)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "5/10 (50%)",
+          "responders_n": 5,
+          "responders_pct": 50.0,
+          "time_to_response": "Mean 1.06 years (\u00b10.65 year) to establish effective dose",
+          "duration_of_response": null,
+          "effect_size_description": "50% achieved lasting clinical remission with normalization of interferon signature",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "50% of patients achieved lasting clinical remission on baricitinib with normalization of the interferon response gene signature. However, dose reductions >25% resulted in disease flares in 100% of cases, and <25% reductions caused flares in 29% of patients."
+        },
+        "safety": {
+          "adverse_events": [
+            "BK viral reactivation in urine",
+            "BK viraemia",
+            "BK nephropathy",
+            "cytopenias",
+            "azotaemia",
+            "macrophage activation syndrome"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "Higher exposures required for CANDLE/PRAAS led to significant safety concerns including BK viral complications and cytopenias, requiring close monitoring and dose optimization. One patient developed presumed BK nephropathy and macrophage activation syndrome after drug discontinuation.",
+          "safety_profile": "Concerning"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "Up to 9 years (October 2011 - December 2020)",
+        "key_findings": "Baricitinib showed strong efficacy in CANDLE/PRAAS but required higher doses than approved indications, leading to significant safety concerns and dose-dependent disease flares upon reduction.",
+        "extraction_timestamp": "2025-12-04T20:21:55.918911",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "CANDLE/PRAAS (Chronic Atypical Neutrophilic Dermatosis with Lipodystrophy and Elevated Temperature/Proteasome-Associated Autoinflammatory Syndrome)",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "JAK inhibitors",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Beneficial for improving CANDLE/PRAAS symptoms according to clinical guidelines"
+            },
+            {
+              "drug_name": "Glucocorticoids",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Used for disease control but should be maintained at lowest possible dose"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "CANDLE/PRAAS is an ultra-rare autoinflammatory interferonopathy with limited treatment options and emerging knowledge of targeted treatments, requiring multidisciplinary management teams for optimal care",
+          "competitive_landscape": "The treatment landscape for CANDLE/PRAAS is limited and emerging, with JAK inhibitors showing promise as targeted therapy alongside traditional glucocorticoid management. Recent clinical guidelines from EULAR and ACR represent state-of-the-art knowledge but highlight the ongoing need for standardized care approaches in this ultra-rare disease area."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 4.5,
+        "evidence_quality": 8.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.5,
+        "clinical_breakdown": {
+          "response_rate": 6.0,
+          "safety_profile": 3.0
+        },
+        "response_rate_score": 6.0,
+        "safety_profile_score": 3.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 18
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "40007227",
+          "doi": "10.1002/art.43145",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/40007227/",
+          "title": "Sustained Interferon Signature Suppression With Anifrolumab in a Patient With STING-Associated Vasculopathy with Onset in Infancy Refractory to JAK Inhibitor and Dazukibart Therapy.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "STING-Associated Vasculopathy with Onset in Infancy (SAVI)",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "dazukibart",
+            "anifrolumab"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "22-year-old patient with SAVI and de novo STING1 p.(Asn154Ser) mutation, presenting with vasculitic ulcers and systemic inflammation"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "7 mg daily initially, then combined with tocilizumab, then tapered and discontinued",
+          "frequency": null,
+          "duration": "over 10 years total, with combination therapy period before discontinuation",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "Partial effectiveness when combined with tocilizumab, but ultimately discontinued in favor of anifrolumab",
+          "primary_endpoint": null,
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib monotherapy failed to control disease despite over 10 years of treatment. Combination with tocilizumab showed partial effectiveness but was ultimately replaced by anifrolumab therapy, which allowed successful discontinuation of baricitinib."
+        },
+        "safety": {
+          "adverse_events": [
+            "BK viruria",
+            "BK viremia",
+            "Epstein-Barr virus viremia",
+            "facial molluscum contagiosum"
+          ],
+          "serious_adverse_events": null,
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": null,
+          "safety_summary": "Baricitinib caused significant viral reactivations including BK viruria/viremia, EBV viremia, and facial molluscum contagiosum. These adverse effects resolved after baricitinib was tapered and discontinued following introduction of anifrolumab.",
+          "safety_profile": "Concerning"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Weak",
+        "comparator_baseline": null,
+        "follow_up_duration": "over 10 years",
+        "key_findings": "Baricitinib had limited efficacy in SAVI and caused significant viral complications. Anifrolumab proved superior, allowing baricitinib discontinuation with resolution of adverse effects.",
+        "extraction_timestamp": "2025-12-04T20:22:06.720305",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "STING-Associated Vasculopathy with Onset in Infancy (SAVI)",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": "Orphanet",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Ruxolitinib",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "JAK1 inhibitor, suggested as more suitable than tofacitinib for SAVI treatment"
+            },
+            {
+              "drug_name": "Baricitinib",
+              "drug_class": null,
+              "efficacy_range": "Not specified",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "JAK2 inhibitor, suggested as more suitable than tofacitinib for SAVI treatment"
+            },
+            {
+              "drug_name": "Tofacitinib",
+              "drug_class": null,
+              "efficacy_range": "70%",
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "JAK3 inhibitor, complaints decreased by 70% in two weeks and completely disappeared in one month"
+            }
+          ],
+          "num_approved_drugs": 0,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": true,
+          "unmet_need_description": "No standard immunosuppressive treatment approach is able to control disease progression in SAVI patients. Traditional anti-inflammatory treatments including corticosteroids, anti-TNF, IVIG, and anti-CD20 were found to be ineffective. Lung damage is irreversible and can result in death.",
+          "competitive_landscape": "JAK inhibitors represent the primary treatment approach for SAVI, targeting the type I interferon signaling pathway that drives the disease. The field appears to be focused on comparing different JAK inhibitors (ruxolitinib, baricitinib, tofacitinib) to determine optimal treatment strategies for this rare disease."
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": null
+      },
+      "scores": {
+        "clinical_signal": 3.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 5.3,
+        "clinical_breakdown": {
+          "response_rate": 3.0,
+          "safety_profile": 3.0
+        },
+        "response_rate_score": 3.0,
+        "safety_profile_score": 3.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 19
+    }
+  ],
+  "analysis_date": "2025-12-04T20:27:36.508933",
+  "search_queries_used": [],
+  "papers_screened": 0,
+  "papers_extracted": 0,
+  "total_input_tokens": 151997,
+  "total_output_tokens": 23427,
+  "estimated_cost_usd": 0.0
+}

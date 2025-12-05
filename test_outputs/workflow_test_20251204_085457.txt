@@ -1,0 +1,172 @@
+
+================================================================================
+ CASE STUDY ANALYSIS - COMPREHENSIVE TEST (ALL 5 TABS)
+================================================================================
+  Drug: BARICITINIB
+  Started: 2025-12-04 08:54:57.486197
+  Output will be saved to: test_outputs\workflow_test_20251204_085457.txt
+
+Initializing agent...
+Agent ready.
+
+
+================================================================================
+ TAB 1: DRUG INFO FOR 'BARICITINIB'
+================================================================================
+
+  Drug Name:    baricitinib
+  Generic Name: baricitinib
+  Mechanism:    Janus Kinase Inhibitor
+  Manufacturer: Eli Lilly and Company
+
+  Approved Indications (4):
+    1. adults with severe alopecia areata
+    2. covid-19 in certain hospitalized adults
+    3. adults with moderately-to-severely active rheumatoid arthritis
+    4. moderately-to-severely active rheumatoid arthritis
+
+--- Validation ---
+  PASS: generic_name populated
+  PASS: mechanism concise: 'Janus Kinase Inhibitor'
+  PASS: Found 4 indications
+
+================================================================================
+ TAB 2: CASE SERIES SEARCH FOR 'BARICITINIB'
+================================================================================
+
+  Drug: baricitinib
+  Exclude: ['adults with severe alopecia areata', 'covid-19 in certain hospitalized adults', 'adults with moderately-to-severely active rheumatoid arthritis']...
+
+Searching... (may take 1-2 mins)
+
+--- Results: 45 papers ---
+  Full text (PMC): 22
+  LLM verified: 45
+
+  Diseases (37):
+    - vitiligo: 3
+    - atopic dermatitis: 3
+    - juvenile idiopathic arthritis: 2
+    - adult-onset Still's disease: 2
+    - autoinflammatory interferonopathies: 2
+    - systemic lupus erythematosus: 2
+    - multiple dermatologic conditions: 1
+    - dermatomyositis: 1
+    - giant cell arteritis: 1
+    - type I interferonopathies: 1
+    - uveitis: 1
+    - folliculitis decalvans: 1
+    - SAPHO syndrome: 1
+    - polymyalgia rheumatica and giant cell arteritis: 1
+    - dystrophic epidermolysis bullosa: 1
+
+--- Sample Papers ---
+
+  1. Oral tofacitinib, baricitinib and upadacitinib monotherapy for steroid...
+     PMID: 38853646 | Disease: vitiligo
+     Full text: False
+     Why: Prospective case series with patient outcomes for steroid-resistant vitiligo...
+
+  2. Off-Label Use of Janus Kinase Inhibitors in Inflammatory Cutaneous Dis...
+     PMID: 38051858 | Disease: multiple dermatologic conditions
+     Full text: False
+     Why: Case series with 6 patients across dermatomyositis, hidradenitis suppurativa, cu...
+
+  3. JAK inhibitors in refractory dermatomyositis: A case series....
+     PMID: 38887110 | Disease: dermatomyositis
+     Full text: False
+     Why: Retrospective cohort study of 14 patients with refractory dermatomyositis showin...
+
+  4. Clinical experience and safety of Janus kinase inhibitors in giant cel...
+     PMID: 37304255 | Disease: giant cell arteritis
+     Full text: True
+     Why: Retrospective case series of 15 GCA patients with baricitinib/tofacitinib showin...
+
+  5. Janus Kinase Inhibitors in the Treatment of Type I Interferonopathies:...
+     PMID: 35418997 | Disease: type I interferonopathies
+     Full text: True
+     Why: Case series assessing efficacy and safety of JAK inhibitors in type I interferon...
+
+--- Validation ---
+  PASS: Found 45 papers
+  WARN: 2 potentially irrelevant papers
+    - Janus kinase inhibition for the treatment of refra...
+    - Pharmacokinetics, Pharmacodynamics, and Proposed D...
+
+================================================================================
+ TAB 3: DATA EXTRACTION (WITH PMC FULL TEXT)
+================================================================================
+
+  Extracting from 3 papers...
+  (2 have PMC full text)
+
+  1. [PMC] Clinical experience and safety of Janus kinase inhibito...
+     PASS: Disease=Giant Cell Arteritis, N=15, Response=73.0%
+     Efficacy: JAK inhibitors showed significant anti-inflammatory effects with reductions in C...
+     Safety: Two patients experienced serious infections but JAK inhibitor therapy was retain...
+
+  2. [PMC] Janus Kinase Inhibitors in the Treatment of Type I Inte...
+     WARN: No data extracted
+
+  3. [Abstract only] Oral tofacitinib, baricitinib and upadacitinib monother...
+     WARN: No data extracted
+
+--- Validation ---
+  Successful: 1/3
+
+================================================================================
+ TAB 4: SCORING & PRIORITIZATION
+================================================================================
+
+  Scoring 1 extractions...
+
+--- Scored Opportunities ---
+
+  1. Giant Cell Arteritis
+     Clinical:  7.5/10 (50% weight)
+     Evidence:  8.7/10 (25% weight)
+     Market:    5.0/10 (25% weight)
+     TOTAL:     7.2/10
+
+--- Validation ---
+  Scored: 1/1
+
+================================================================================
+ TAB 5: FULL ANALYSIS SUMMARY
+================================================================================
+
+  Drug: baricitinib
+  Mechanism: Janus Kinase Inhibitor
+  Approved Indications: 4
+  Papers Found: 45
+  Papers with PMC Full Text: 22
+  Extractions: 1
+
+--- Top Off-Label Indications ---
+    vitiligo: 3 papers
+    atopic dermatitis: 3 papers
+    juvenile idiopathic arthritis: 2 papers
+    adult-onset Still's disease: 2 papers
+    autoinflammatory interferonopathies: 2 papers
+    systemic lupus erythematosus: 2 papers
+    multiple dermatologic conditions: 1 papers
+    dermatomyositis: 1 papers
+    giant cell arteritis: 1 papers
+    type I interferonopathies: 1 papers
+
+--- Validation ---
+  PASS: Full pipeline executed
+
+================================================================================
+ FINAL SUMMARY
+================================================================================
+  Tab 1 Drug Info:   PASS
+  Tab 2 Search:      PASS (45 papers)
+  Tab 3 Extraction:  PASS (1 successful)
+  Tab 4 Scoring:     PASS (1 scored)
+  Tab 5 Analysis:    PASS
+
+  Total API Tokens: 37,965
+  Completed: 2025-12-04 08:57:27.190756
+
+  JSON data saved to: test_outputs\workflow_data_20251204_085457.json

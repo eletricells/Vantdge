@@ -1,0 +1,123 @@
+Extract ALL baseline characteristics for trial arm: {{ arm_name }}
+
+TABLES TO ANALYZE: {{ tables | join(', ') }}
+
+BASELINE TABLES:
+{{ table_content }}
+
+🚨 CRITICAL: YOU ARE EXTRACTING FOR "{{ arm_name }}" (N={{ n }})
+
+{% include 'clinical_extraction/_partials/column_identification.j2' %}
+
+1. EXTRACT FROM BOTH TABLES AND TEXT:
+   - Primary source: Baseline/demographics tables (usually Table 1)
+   - Secondary source: Text in Results section describing baseline characteristics
+   - Extract EVERY characteristic mentioned, whether in tables or text
+   - If a characteristic appears in both table and text, prefer the table value
+   - Do NOT skip any characteristics, even if they seem minor
+
+2. EXTRACT EVERYTHING FROM THE BASELINE TABLES:
+   - Your task is to extract EVERY SINGLE ROW from the baseline/demographics tables
+   - Do NOT skip any rows, even if they seem minor or unimportant
+   - Do NOT filter based on what you think is relevant
+   - Extract the data EXACTLY as shown in the tables
+
+3. HIERARCHICAL/NESTED CHARACTERISTICS - CRITICAL:
+   - Many tables have parent rows with subcategories underneath (indented or nested)
+   - Extract EACH subcategory as a SEPARATE entry
+   - DO NOT extract just the parent row - you MUST extract ALL child rows
+
+   EXAMPLE from a typical baseline table:
+   ```
+   | Race, n (%)           |       |  ← Parent row (DO NOT extract this alone)
+   |   Asian               | 14    |  ← Extract this as "Race - Asian"
+   |   Black               | 4     |  ← Extract this as "Race - Black"
+   |   White               | 45    |  ← Extract this as "Race - White"
+   | Glucocorticoid use    | 52    |  ← Parent row (DO NOT extract this alone)
+   |   ≤10 mg/d            | 40    |  ← Extract this as "Glucocorticoid use - ≤10 mg/d"
+   |   >10 mg/d            | 12    |  ← Extract this as "Glucocorticoid use - >10 mg/d"
+   ```
+
+   - Common patterns:
+     * Race/Ethnicity with subcategories → Extract each race separately
+     * Medication use with dose categories → Extract each dose category separately
+     * Disease severity with score ranges → Extract each range separately
+     * Organ/system involvement with specific organs → Extract each organ separately
+     * Lab values with normal/abnormal ranges → Extract each range separately
+   - DO NOT skip subcategories or nested rows
+   - DO NOT summarize multiple subcategories into one entry
+   - If you see indentation or sub-bullets in a table, those are subcategories
+
+4. NUMERIC FIELDS:
+   - For ALL numeric fields (mean_value, median_value, sd_value, percentage, etc.), return NULL if value is missing
+   - DO NOT return text like "Not reported", "Not explicitly stated", "Not available"
+   - ONLY return actual numeric values or NULL
+
+5. CATEGORIZATION:
+   - Assign each characteristic to ONE of these categories:
+     * "Demographics" - Age, sex, race, weight, BMI, blood pressure, geographic region, etc.
+     * "Disease Biomarkers" - Lab values, biomarkers, antibody status, proteinuria, complement levels, etc.
+     * "Severity Scores" - Disease severity scores, activity indices, functional scores, etc.
+     * "Prior Medications" - Medication use, treatment history, concomitant medications, etc.
+   - When in doubt, use "Disease Biomarkers"
+
+6. NAMING CONVENTION:
+   - For parent characteristics with subcategories, use format: "Parent - Subcategory"
+   - Examples:
+     * "Race - Asian", "Race - Black", "Race - White"
+     * "Medication dose - ≤10 mg/day", "Medication dose - >10 mg/day"
+     * "Disease severity - Mild", "Disease severity - Moderate", "Disease severity - Severe"
+   - For standalone characteristics, use the exact name from the table
+   - Preserve the original terminology from the paper (don't rename or standardize)
+
+For EACH characteristic found:
+- characteristic_name: Clear name (e.g., "Age", "Race - Asian", "Disease duration")
+- characteristic_category: One of "Demographics", "Disease Biomarkers", "Severity Scores", "Prior Medications"
+- value_numeric: The numeric value (if applicable)
+- value_text: The categorical value (if applicable)
+- unit: Unit of measurement (e.g., "years", "kg", "mg/dL", "%")
+- n_patients: Number of patients (if applicable)
+- percentage: Percentage (if applicable)
+- mean_value: Mean (if applicable)
+- median_value: Median (if applicable)
+- sd_value: Standard deviation (if applicable)
+- range_min: Minimum value (if applicable)
+- range_max: Maximum value (if applicable)
+- cohort: Cohort name if study has subgroups (e.g., "Overall", "Subgroup A")
+- source_table: Which table this came from (e.g., "Table 1")
+
+OUTPUT FORMAT:
+{
+  "baseline": {
+    "n": <total sample size>,
+    "median_age": <value or null>,
+    "mean_age": <value or null>,
+    "age_range": <"min-max" or null>,
+    "male_pct": <percentage or null>,
+    "female_pct": <percentage or null>,
+    "race_white_pct": <percentage or null>,
+    "race_black_african_american_pct": <percentage or null>,
+    "race_asian_pct": <percentage or null>,
+    "race_hispanic_latino_pct": <percentage or null>,
+    "median_disease_duration": <value or null>,
+    "mean_disease_duration": <value or null>,
+    "disease_duration_unit": <"years" or "months" or null>,
+    "prior_steroid_use_pct": <percentage or null>,
+    "prior_biologic_use_pct": <percentage or null>,
+    "treatment_naive_pct": <percentage or null>
+  },
+  "baseline_characteristics_detail": [
+    {
+      "characteristic_name": "Age",
+      "characteristic_category": "Demographics",
+      "mean_value": 22.5,
+      "sd_value": 8.7,
+      "unit": "years",
+      "cohort": "Overall",
+      "source_table": "Table 1"
+    }
+  ]
+}
+
+{% include 'common/json_output_rules.j2' %}
+

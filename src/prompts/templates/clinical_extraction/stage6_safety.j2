@@ -1,0 +1,102 @@
+Extract ALL individual adverse events for {{ arm_name }} (N={{ n }}).
+
+TABLES: {{ tables | join(', ') }}
+
+SAFETY TABLES:
+{{ table_content }}
+
+🚨 CRITICAL COLUMN IDENTIFICATION 🚨
+You are extracting data for: "{{ arm_name }}" with N={{ n }}
+
+STEP 1: IDENTIFY THE CORRECT COLUMN
+Look at the table header row. It will look like:
+| Event | (N = 182) | (N = 180) |
+
+The columns are:
+- Column 1: Event names
+- Column 2: First treatment arm (check the N value)
+- Column 3: Second treatment arm (check the N value)
+
+YOU MUST extract from the column where the header shows (N = {{ n }})
+
+EXAMPLE - If you're extracting for "Placebo" with N=182:
+Table header: | Event | (N = 182) | (N = 180) |
+Data row:     | Herpes zoster | 2 (1.1) | 13 (7.2) |
+
+✅ CORRECT: Extract "2" from column 2 because (N = 182) matches Placebo N=182
+❌ WRONG: Do NOT extract "13" from column 3 - that's the other arm!
+
+EXAMPLE - If you're extracting for "Anifrolumab" with N=180:
+Table header: | Event | (N = 182) | (N = 180) |
+Data row:     | Herpes zoster | 2 (1.1) | 13 (7.2) |
+
+✅ CORRECT: Extract "13" from column 3 because (N = 180) matches Anifrolumab N=180
+❌ WRONG: Do NOT extract "2" from column 2 - that's the other arm!
+
+STEP 2: PARSE THE VALUES
+Values are typically formatted as: "count (percentage%)"
+Examples:
+- "153 (84.1)" means n_patients=153, incidence_pct=84.1
+- "2 (1.1)" means n_patients=2, incidence_pct=1.1
+- "0" means n_patients=0, incidence_pct=0.0
+
+STEP 3: EXTRACT EVERY SINGLE ROW
+Extract ALL events from the table, including:
+- Any adverse event
+- Serious adverse event
+- Death
+- Adverse event leading to discontinuation
+- ALL specific events listed (infections, musculoskeletal, respiratory, etc.)
+
+DO NOT skip any rows. Extract EVERY event you see.
+
+INSTRUCTIONS:
+For EACH event row in the table:
+- event_category: Categorize as "Any AE", "SAE", "AE leading to discontinuation", "Specific AE", "AE of special interest"
+- event_name: Exact event name from first column
+- n_patients: Number extracted from YOUR column (the one matching N={{ n }})
+- incidence_pct: Percentage extracted from YOUR column
+- cohort: "{{ arm_name }}"
+- timepoint: "Overall" (unless table specifies otherwise)
+- source_table: The table label (e.g., "Table 5")
+
+CONCRETE EXAMPLE FOR YOUR EXTRACTION:
+You are extracting for: {{ arm_name }} (N={{ n }})
+
+If the table shows:
+| Event | (N = 182) | (N = 180) |
+|:------|:----------|:----------|
+| Any adverse event | 153 (84.1) | 159 (88.3) |
+| Herpes zoster | 2 (1.1) | 13 (7.2) |
+| Bronchitis | 7 (3.8) | 22 (12.2) |
+
+And you're extracting for the arm with N={{ n }}, you should extract from the column with header "(N = {{ n }})".
+
+OUTPUT FORMAT:
+{
+  "endpoints": [
+    {
+      "event_category": "Any AE",
+      "event_name": "Any adverse event",
+      "n_patients": <number from YOUR column>,
+      "incidence_pct": <percentage from YOUR column>,
+      "cohort": "{{ arm_name }}",
+      "timepoint": "Overall",
+      "source_table": "<table label>"
+    },
+    {
+      "event_category": "Specific AE",
+      "event_name": "Herpes zoster",
+      "n_patients": <number from YOUR column>,
+      "incidence_pct": <percentage from YOUR column>,
+      "cohort": "{{ arm_name }}",
+      "timepoint": "Overall",
+      "source_table": "<table label>"
+    }
+  ]
+}
+
+🚨 REMEMBER: Extract from the column matching N={{ n }}, and extract EVERY SINGLE ROW.
+
+{% include 'common/json_output_rules.j2' %}
+

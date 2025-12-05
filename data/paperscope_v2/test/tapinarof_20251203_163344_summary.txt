@@ -1,0 +1,47 @@
+PaperScope 2.0 Summary
+================================================================================
+
+Drug: tapinarof
+Disease: Plaque Psoriasis and Atopic Dermatitis
+Drug Class: Small Molecule Aryl Hydrocarbon Receptor Agonist
+Search Date: 2025-12-03T16:33:44.777072
+Total Papers: 69
+Total Searches: 21
+Elapsed Time: 678.6s
+
+Papers by Category
+--------------------------------------------------------------------------------
+Preclinical/Mechanistic: 7
+Phase 1: 4
+Phase 2: 9
+Phase 3 - Primary Trials: 11
+Phase 3 - Long-term Extensions: 5
+Phase 3 - Pooled/Post-hoc Analyses: 7
+Biomarker Studies: 1
+Subgroup Analyses - Demographics: 6
+Special Populations: 4
+Pharmacokinetics/Pharmacodynamics: 2
+Post-marketing/Real-world: 1
+Safety/Pharmacovigilance: 1
+Systematic Reviews/Meta-analyses: 20
+Other: 4
+
+Trial Families
+--------------------------------------------------------------------------------
+NCT03956355: 2 papers (Primary: 1, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+NCT03983980: 2 papers (Primary: 1, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+NRF2: 2 papers (Primary: 1, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+SEMA3A: 1 papers (Primary: 0, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+INTERLEUKIN-17: 1 papers (Primary: 1, Extensions: 0, Post-hoc: 0, Subgroup: 0)
+GSK2894512: 3 papers (Primary: 2, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+INTERLEUKIN-2: 1 papers (Primary: 0, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+WBI-1001: 1 papers (Primary: 1, Extensions: 0, Post-hoc: 0, Subgroup: 0)
+EASI-75: 1 papers (Primary: 0, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+CRD420251000807: 0 papers (Primary: 0, Extensions: 0, Post-hoc: 0, Subgroup: 0)
+JAK2: 0 papers (Primary: 0, Extensions: 0, Post-hoc: 0, Subgroup: 0)
+STAT3: 0 papers (Primary: 0, Extensions: 0, Post-hoc: 0, Subgroup: 0)
+ZBB4: 1 papers (Primary: 0, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+DMVT-505: 1 papers (Primary: 0, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+PASI75: 1 papers (Primary: 0, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+ZBA4: 1 papers (Primary: 0, Extensions: 1, Post-hoc: 0, Subgroup: 0)
+NCT04053387: 1 papers (Primary: 0, Extensions: 1, Post-hoc: 0, Subgroup: 0)

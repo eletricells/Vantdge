@@ -1,0 +1,30 @@
+[
+  {
+    "indication": "adults with severe alopecia areata",
+    "approval_date": "2022-06-13",
+    "year": 2022,
+    "confidence": "high",
+    "source_text": "FDA Approves Lilly and Incyte's Olumiant (baricitinib) as First and Only Systemic Medicine for Adult"
+  },
+  {
+    "indication": "covid-19 in certain hospitalized adults",
+    "approval_date": "2022-05-11",
+    "year": 2022,
+    "confidence": "high",
+    "source_text": "FDA Approves Olumiant (baricitinib) Treatment for COVID-19 in Certain Hospitalized Adults"
+  },
+  {
+    "indication": "adults with moderately-to-severely active rheumatoid arthritis",
+    "approval_date": "2018-06-01",
+    "year": 2018,
+    "confidence": "high",
+    "source_text": "FDA Approves Olumiant (baricitinib) 2 mg Tablets for the Treatment of Adults with Moderately-to-Seve"
+  },
+  {
+    "indication": "moderately-to-severely active rheumatoid arthritis",
+    "approval_date": "2018-04-23",
+    "year": 2018,
+    "confidence": "high",
+    "source_text": "FDA Advisory Committee Recommends the Approval of Baricitinib 2mg, but not 4mg, for the Treatment of"
+  }
+]

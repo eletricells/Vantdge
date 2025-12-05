@@ -1,0 +1,159 @@
+Extract efficacy endpoints for {{ arm_name }}.
+
+{% include 'clinical_extraction/_partials/event_rate_warning.j2' %}
+
+TABLES: {{ tables | join(', ') }}
+{% if standard_endpoints %}
+
+STANDARD CLINICAL ENDPOINTS FOR {{ indication }}:
+{% for ep in standard_endpoints %}
+- {{ ep }}
+{% endfor %}
+{% endif %}
+
+EFFICACY TABLES:
+{{ table_content }}
+
+INSTRUCTIONS:
+
+🚨 CRITICAL INSTRUCTION #1 - EVENT RATE DATA vs RESPONDER DATA:
+⚠️ MOST COMMON ERROR: Putting event counts in responders_n field!
+
+ASK YOURSELF: Is this endpoint measuring:
+A) % of patients who achieved something? → Use responders_n, responders_pct
+B) Rate of events per patient-year? → Use mean_value/median_value, endpoint_unit
+
+Examples:
+- "50% achieved remission" → RESPONDER DATA → responders_n, responders_pct
+- "1.7 flares per patient-year (51 events)" → EVENT RATE DATA → mean_value: 1.7, endpoint_unit: "events per patient-year"
+  ⚠️ Use the RATE (1.7), NOT the event count (51)!
+
+IF THE ENDPOINT NAME CONTAINS: "Flares", "Infections", "Events", "Exacerbations", "per patient-year"
+→ This is almost always EVENT RATE DATA, NOT responder data!
+→ Extract the RATE value → put in mean_value or median_value
+→ IGNORE event counts → do NOT put in responders_n!
+
+🚨 CRITICAL INSTRUCTION #2 - PREVENTING VALUE FABRICATION:
+- ONLY extract values that are EXPLICITLY STATED in text or table cells
+- If a value appears only in a figure/graph without accompanying text, set the field to NULL
+- DO NOT estimate, interpolate, read from bar charts, or guess any values
+- DO NOT extract values from figure legends unless they contain exact numbers in text
+- If you cannot find an exact numerical value stated in text or a table, return NULL for that field
+- When in doubt, return NULL rather than risk fabrication
+
+Example: If Figure 1 shows a bar chart with SRI-4 response rates but no text values are provided,
+return NULL for responders_pct. Do NOT try to estimate the percentage from the visual height of bars.
+
+Example: If text says "SRI-4 response rates are shown in Figure 2" but Figure 2 has no extractable text,
+return NULL for responders_pct. Do NOT guess the value.
+
+1. Extract ALL efficacy endpoints at ALL timepoints (but ONLY if values are explicitly stated)
+2. For each endpoint, extract:
+   - endpoint_name (CLEAN NAME - remove analysis type qualifiers like "(ITT)", "(PP)", "(ITT population)", etc.)
+   - is_standard_endpoint (true if matches standard endpoints above)
+   - timepoint (e.g., "Week 16")
+   - timepoint_weeks (INTEGER - convert to weeks for sorting, e.g., "Week 2" → 2, "Week 24" → 24)
+   - analysis_type (EXTRACT SEPARATELY - "ITT", "PP", "Safety", "Per-protocol", "Intent-to-treat", etc.)
+   - Data values (IMPORTANT - see field usage below, NULL if not explicitly stated)
+   - endpoint_unit (CRITICAL - extract units for ALL continuous values)
+   - p_value, stat_sig
+   - source_table
+
+3. Match to standard endpoints when possible (fuzzy matching OK)
+
+CRITICAL DEDUPLICATION RULES:
+- "24-hour UPCR (ITT population)" → endpoint_name: "24-hour UPCR", analysis_type: "ITT"
+- "24-hour UPCR (PP)" → endpoint_name: "24-hour UPCR", analysis_type: "PP"
+- "Mean eGFR - ITT" → endpoint_name: "Mean eGFR", analysis_type: "ITT"
+- Remove ALL analysis population qualifiers from endpoint_name!
+
+CRITICAL: ALWAYS extract endpoint_unit for continuous outcomes!
+- If paper says "Mean eGFR 102.4 ml/min per 1.73 m²", extract: mean_value: 102.4, endpoint_unit: "ml/min per 1.73 m²"
+- If paper says "Change in UPCR -2.0 mg/mg", extract: change_from_baseline_mean: -2.0, endpoint_unit: "mg/mg"
+- If paper says "Percent change +50%", extract: pct_change_from_baseline: 50 (NO unit needed for percent)
+
+🚨🚨🚨 CRITICAL: FIELD USAGE FOR DATA VALUES 🚨🚨🚨
+
+RULE 1: Binary/Categorical Outcomes (% achieving endpoint)
+→ Use responders_n and responders_pct
+Example: "6/8 patients achieved response"
+→ responders_n: 6, n_evaluated: 8, responders_pct: 75.0
+
+RULE 2: Continuous Outcomes - ABSOLUTE VALUES
+→ Use mean_value OR median_value (NUMBER ONLY) + endpoint_unit (UNIT ONLY)
+Examples:
+  "Mean eGFR 102.4 ml/min" → mean_value: 102.4, endpoint_unit: "ml/min per 1.73 m²"
+  "Median eGFR 98.5 ml/min" → median_value: 98.5, endpoint_unit: "ml/min per 1.73 m²"
+
+RULE 3: Continuous Outcomes - PERCENT CHANGE
+→ Use pct_change_from_baseline (NUMBER ONLY, no % sign)
+Example: "Mean change -50.9%" → pct_change_from_baseline: -50.9
+
+RULE 4: Continuous Outcomes - ABSOLUTE CHANGE
+→ Use change_from_baseline_mean OR change_from_baseline (NUMBER ONLY) + endpoint_unit
+Examples:
+  "Mean change -2.0 mg/mg" → change_from_baseline_mean: -2.0, endpoint_unit: "mg/mg"
+  "Median change -1.8 mg/mg" → change_from_baseline: -1.8, endpoint_unit: "mg/mg"
+
+🚨🚨🚨 RULE 5: EVENT RATE DATA (CRITICAL - MOST COMMON ERROR!) 🚨🚨🚨
+
+EVENT RATES measure EVENTS (not responders)!
+Examples: "Flares", "Infections", "Exacerbations", "Adverse Events per patient-year"
+
+⚠️ IF endpoint measures EVENT RATES (not % of patients achieving something):
+→ Extract the RATE value (e.g., 1.7) → put in mean_value OR median_value
+→ Extract the unit (e.g., "events per patient-year") → put in endpoint_unit
+→ IGNORE event counts (e.g., "51 events") - these are NOT responder counts!
+→ Set responders_n = NULL (event counts are NOT patient counts!)
+→ Set responders_pct = NULL
+→ Set n_evaluated = number of patients in the analysis
+
+Example from Figure: "Overall Flares: 1.7 per patient-year (51 events/PY)"
+
+CORRECT ✓:
+{
+  "endpoint_name": "Overall Flares",
+  "timepoint": "Week 48",
+  "mean_value": 1.7,
+  "endpoint_unit": "events per patient-year",
+  "responders_n": null,
+  "responders_pct": null,
+  "n_evaluated": 68
+}
+
+WRONG ✗ (DO NOT DO THIS):
+{
+  "endpoint_name": "Overall Flares",
+  "responders_n": 51,
+  "mean_value": null
+}
+
+⚠️ KEY DISTINCTION:
+- "50% of patients achieved remission" → responders_n: 34, responders_pct: 50 (RESPONDER DATA)
+- "1.7 flares per patient-year (51 events)" → mean_value: 1.7, endpoint_unit: "events per patient-year" (EVENT RATE DATA - ignore the 51!)
+
+DO NOT include units, SD, or annotations in numeric fields!
+WRONG: mean_value: "3.3 g/dl (SD 0.7)" ✗
+RIGHT: mean_value: 3.3, endpoint_unit: "g/dl" ✓
+
+OUTPUT FORMAT:
+{
+  "endpoints": [
+    {
+      "endpoint_category": "Primary",
+      "endpoint_name": "EASI-75",
+      "endpoint_unit": null,
+      "is_standard_endpoint": true,
+      "timepoint": "Week 16",
+      "timepoint_weeks": 16,
+      "analysis_type": "ITT",
+      "responders_pct": 48.0,
+      "stat_sig": true,
+      "p_value": "p<0.001",
+      "source_table": "Table 3"
+    }
+  ]
+}
+
+{% include 'common/json_output_rules.j2' %}
+

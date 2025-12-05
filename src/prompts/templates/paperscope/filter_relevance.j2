@@ -1,0 +1,22 @@
+For each paper below, determine if it is about the drug "{{ drug_name }}".
+
+Score each paper from 0.0 to 1.0:
+- 1.0: Definitely about {{ drug_name }} (primary focus)
+- 0.8: Probably about {{ drug_name }} (major focus)
+- 0.6: Possibly about {{ drug_name }} (mentions it, may discuss other drugs too)
+- 0.4: Mentions {{ drug_name }} but primarily about other drugs
+- 0.2: Barely mentions {{ drug_name }}
+- 0.0: Not about {{ drug_name }} at all
+
+Papers:
+{{ papers_text }}
+
+Respond in JSON format:
+[
+  {"paper": 1, "score": 0.9, "reason": "Primary focus on {{ drug_name }}"},
+  {"paper": 2, "score": 0.3, "reason": "Primarily about other_drug, not {{ drug_name }}"},
+  ...
+]
+
+{% include 'paperscope/_partials/json_instructions.j2' %}
+

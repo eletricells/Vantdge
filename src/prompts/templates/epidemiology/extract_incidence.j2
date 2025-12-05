@@ -1,0 +1,29 @@
+<task>
+Extract annual incidence data (new cases per year) for "{{ disease }}" in {{ region }} from these search results.
+</task>
+
+<instructions>
+1. Look for incidence rates (new cases per 100,000 per year)
+2. Look for absolute numbers of new cases per year
+3. If only incidence rate is given, calculate absolute cases using population: {{ population }}
+4. Provide confidence level based on source quality
+</instructions>
+
+<search_results>
+{{ formatted_results }}
+</search_results>
+
+<output_format>
+Return JSON:
+{
+    "incidence_per_100k": <number or null>,
+    "annual_new_cases": <number or null>,
+    "year": <most recent year or null>,
+    "confidence": "HIGH|MEDIUM|LOW",
+    "sources": ["source1", "source2"]
+}
+
+If no incidence data found, return null.
+Return ONLY valid JSON, no other text.
+</output_format>
+

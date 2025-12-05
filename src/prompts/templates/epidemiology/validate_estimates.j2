@@ -1,0 +1,39 @@
+<task>
+Cross-reference the following prevalence estimates for "{{ disease }}" against validation sources to identify conflicts or quality issues.
+</task>
+
+<current_estimates>
+{% if current_estimates %}
+{% for estimate in current_estimates %}
+{{ estimate }}
+{% endfor %}
+{% else %}
+No estimates yet
+{% endif %}
+</current_estimates>
+
+<validation_sources>
+{{ formatted_results }}
+</validation_sources>
+
+<instructions>
+Identify any:
+1. Large discrepancies (>50% difference) between estimates
+2. Outdated data (>5 years old)
+3. Conflicting information from high-quality sources
+4. Missing data for major regions
+5. Unusually wide confidence intervals
+</instructions>
+
+<output_format>
+Return JSON array of quality flags:
+[
+    "Large discrepancy between US estimate (X) and validation source (Y)",
+    "Data is outdated (2015)",
+    "Conflicting estimates from CDC and WHO"
+]
+
+If no issues found, return empty array [].
+Return ONLY valid JSON, no other text.
+</output_format>
+

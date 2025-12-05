@@ -1,0 +1,38 @@
+<task>
+Extract biomarkers for "{{ disease }}" from these search results.
+</task>
+
+<search_results>
+{{ formatted_results }}
+</search_results>
+
+<instructions>
+For each biomarker, extract:
+- Biomarker name
+- Type (genetic, protein, imaging, clinical)
+- Category (diagnostic, prognostic, predictive)
+- Prevalence in population (%)
+- Clinical significance
+- Treatment implications
+- Evidence strength (STRONG, MODERATE, WEAK)
+</instructions>
+
+<output_format>
+Return JSON array:
+[
+    {
+        "biomarker_name": "...",
+        "biomarker_type": "genetic|protein|imaging|clinical",
+        "biomarker_category": "diagnostic|prognostic|predictive",
+        "prevalence_in_population": <0-100>,
+        "clinical_significance": "...",
+        "treatment_implications": "...",
+        "evidence_strength": "STRONG|MODERATE|WEAK",
+        "sources": ["source1", "source2"]
+    }
+]
+
+If no biomarker data found, return empty array [].
+Return ONLY valid JSON, no other text.
+</output_format>
+

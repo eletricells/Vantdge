@@ -1,0 +1,19 @@
+<task>
+For the disease "{{ disease }}", identify the most clinically relevant ways to segment the patient population.
+</task>
+
+<instructions>
+Common segmentation types include:
+- Severity (mild, moderate, severe)
+- Disease subtypes
+- Age groups
+- Biomarker status
+
+Return a JSON array of 2-4 segmentation types that would be most relevant for this disease.
+Example: ["severity", "disease subtype", "age"]
+</instructions>
+
+<output_format>
+Return ONLY the JSON array, no other text.
+</output_format>
+

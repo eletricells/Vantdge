@@ -1,0 +1,10 @@
+## NUMERIC FIELD RULES
+
+For all numeric fields (mean_value, median_value, sd, etc.):
+- Extract ONLY the numeric value (e.g., 45.2)
+- Do NOT include units in numeric fields (units go in separate unit fields)
+- Do NOT include ± symbols or ranges in numeric fields
+- For ranges like "40-50", extract the midpoint (45) or use min/max fields if available
+- For "mean ± SD" like "45.2 ± 12.3", extract mean=45.2 and sd=12.3 separately
+- Use null for missing values, not 0 or empty string
+

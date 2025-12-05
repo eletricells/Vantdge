@@ -1,0 +1,14 @@
+Extract drug names from this text about {{ indication }}.
+
+Text:
+{{ text }}
+
+Instructions:
+- Only extract drugs specifically for treating {{ indication }}
+- Include both generic and brand names
+- Include research codes (e.g., PF-06700841, ABBV-999)
+- Exclude unrelated drugs mentioned in passing
+- Return ONLY a JSON list of drug names: ["drug1", "drug2", ...]
+
+Be comprehensive but precise.
+

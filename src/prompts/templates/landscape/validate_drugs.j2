@@ -1,0 +1,33 @@
+Analyze these drugs being studied for {{ indication }} and determine:
+
+1. **Development Status**: Is the drug actively being developed for {{ indication }}?
+   - "Active": Currently in active trials or recently completed with ongoing development
+   - "Discontinued": Trials terminated, withdrawn, or suspended with no recent activity
+   - "Completed": Trials completed but no ongoing development (may be approved or abandoned)
+
+2. **Trial Type**: Are the trials industry-sponsored or investigator-initiated?
+   - "Industry": Sponsored by pharmaceutical/biotech companies
+   - "Investigator": Initiated by academic institutions, hospitals, or individual researchers
+   - "Mixed": Both industry and investigator trials
+
+Drugs to analyze:
+{{ drug_summaries }}
+
+Return a JSON array with this structure:
+[
+  {
+    "drug_name": "Drug Name",
+    "development_status": "Active|Discontinued|Completed",
+    "trial_type": "Industry|Investigator|Mixed",
+    "reasoning": "Brief explanation (1-2 sentences)"
+  }
+]
+
+Guidelines:
+- If sponsor is a university, hospital, or individual researcher → Investigator
+- If sponsor is a pharmaceutical/biotech company → Industry
+- If trials are all "Terminated", "Withdrawn", "Suspended" → Discontinued
+- If trials are "Completed" with no recent activity (>2 years) → Completed
+- If trials are "Recruiting", "Active", "Enrolling" → Active
+- Standard care drugs in investigator trials are likely testing existing drugs → Investigator
+

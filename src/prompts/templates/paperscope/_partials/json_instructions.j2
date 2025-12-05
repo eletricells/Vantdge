@@ -1,0 +1,22 @@
+
+CRITICAL JSON FORMATTING RULES:
+1. Respond with VALID JSON only - no markdown, no code blocks, no explanations
+2. ALL string values must be on a SINGLE LINE - absolutely NO newlines (\n) within strings
+3. Use proper JSON escaping: use \" for quotes inside strings
+4. NO trailing commas before closing brackets ] or braces }
+5. Ensure all arrays and objects are properly closed
+6. If uncertain about any field, use null rather than omitting it
+
+Before responding, validate your JSON is well-formed.
+
+EXAMPLE VALID RESPONSE:
+{"paper": 1, "categories": ["Phase 3 - Primary Trials"], "confidence": "high"}
+
+EXAMPLE INVALID RESPONSE (do not do this):
+{
+  "paper": 1,
+  "categories": ["Phase 3"],  // <- trailing comma
+  "notes": "This is a
+  multi-line string"  // <- newline in string
+}
+

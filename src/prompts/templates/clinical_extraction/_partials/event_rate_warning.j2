@@ -1,0 +1,22 @@
+🚨🚨🚨 CRITICAL WARNING - EVENT RATE DATA 🚨🚨🚨
+
+BEFORE YOU START: Check if any endpoints measure EVENT RATES (not % of patients):
+- Flares, Infections, Exacerbations, Adverse Events per patient-year
+- These show a RATE (e.g., "1.7 flares per patient-year") and sometimes an event count
+
+FOR EVENT RATE DATA:
+✓ Extract the RATE value (e.g., 1.7) → put in mean_value field
+✓ Extract the unit (e.g., "events per patient-year") → put in endpoint_unit field
+✓ IGNORE the event count (e.g., 51 events) - this is NOT a responder count!
+✓ Set responders_n = NULL (event counts are NOT patient counts!)
+✓ Set responders_pct = NULL
+
+Example: "Overall Flares: 1.7 flares per patient-year (51 events/PY)"
+→ mean_value: 1.7 (the RATE, not the event count!)
+→ endpoint_unit: "events per patient-year"
+→ responders_n: NULL (NOT 51! 51 is event count, not patient count)
+
+🚨 KEY POINT: If you see "X.X per patient-year" and "YY events", use X.X (the rate), NOT YY!
+
+🚨🚨🚨 END CRITICAL WARNING 🚨🚨🚨
+

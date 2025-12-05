@@ -1,0 +1,86 @@
+Analyze the clinical trial paper for {{ nct_id }} ({{ indication }}).
+
+TASK: Identify where baseline, efficacy, and safety data are located in the paper.
+
+INSTRUCTIONS:
+1. Scan the paper for tables and figures containing:
+   - Baseline characteristics (demographics, prior medications, disease severity)
+   - Efficacy endpoints (primary, secondary outcomes at various timepoints)
+   - Safety endpoints (adverse events, serious adverse events)
+
+🚨 CRITICAL INSTRUCTION - PREVENTING HALLUCINATIONS:
+
+STEP 1: Read the paper carefully to identify which arms were DISCONTINUED or STOPPED EARLY
+- Look for phrases like "discontinued after interim analysis", "stopped early", "terminated"
+- Look for phrases like "data in Supplementary Table X" or "data not shown"
+- These arms should be COMPLETELY EXCLUDED from extraction
+
+STEP 2: For each arm mentioned in the paper, verify it has data in the MAIN tables
+- Check if the arm appears as a COLUMN in Table 1 (baseline characteristics)
+- Check if the arm appears in Table 2, Table 3, etc. (efficacy/safety results)
+- If an arm is only mentioned in text but NOT in any main table columns, EXCLUDE it
+
+STEP 3: Use OFFICIAL ARM NAMES from the paper, not dosing descriptions
+- If paper says "ABBV-599 high dose (elsubrutinib 60 mg + upadacitinib 30 mg)", use "ABBV-599 high dose"
+- If paper says "Drug A 300mg", use "Drug A 300mg" (not just "Drug A")
+- Use the name that appears in table headers and figure legends
+
+STEP 4: When in doubt, EXCLUDE the arm
+- It is better to miss a discontinued arm than to fabricate data for it
+- If you cannot find baseline data for an arm in Table 1, DO NOT include it
+- If an arm is described as discontinued, DO NOT include it even if you see some data
+
+Example 1: If paper says "elsubrutinib arm was discontinued after interim analysis,
+baseline data in Supplementary Table 1" and Table 1 only has columns for ABBV-599, Upadacitinib, and Placebo,
+DO NOT include elsubrutinib in trial_arms list. Add to notes: "Excluded discontinued arms: elsubrutinib 60mg"
+
+Example 2: If paper says "ABBV-599 high dose (elsubrutinib 60 mg and upadacitinib 30 mg once daily)",
+use arm_name: "ABBV-599 high dose", dosing_regimen: "elsubrutinib 60 mg and upadacitinib 30 mg once daily"
+
+2. Identify all trial arms/treatment groups WITH DATA IN MAIN TABLES:
+   - For RANDOMIZED CONTROLLED TRIALS: Identify all ACTIVE arms with data (e.g., Drug, Placebo, Active Comparator)
+   - For SINGLE-ARM STUDIES: Identify the one treatment arm (often just the drug being tested)
+   - For DOSE-RANGING STUDIES: Identify each dose level as a separate arm
+
+   IMPORTANT: Single-arm studies have only ONE treatment group (no placebo/comparator).
+   These are common in early-phase trials. You MUST still identify and return this arm!
+
+3. Extract sample size (n) for each arm from the Methods or Results sections
+
+4. Output JSON with exact table/figure references
+
+OUTPUT FORMAT:
+{
+  "baseline_tables": ["Table 1", "Table 2"],
+  "efficacy_tables": ["Table 3", "Figure 2"],
+  "safety_tables": ["Table 4"],
+  "trial_arms": [
+    {
+      "arm_name": "Treatment" or "Pegcetacoplan 360mg" or "Placebo",
+      "dosing_regimen": "360 mg SC daily" or null,
+      "background_therapy": "Standard of care" or null,
+      "n": 224
+    }
+  ],
+  "confidence": 0.9,
+  "notes": "Single-arm study" or "Randomized controlled trial" or "Excluded discontinued arms: elsubrutinib 60mg, ABBV-599 low dose"
+}
+
+EXAMPLES OF TRIAL ARM IDENTIFICATION:
+
+Single-arm study:
+- If paper says "8 patients received pegcetacoplan 360 mg daily"
+- Return: {"arm_name": "Pegcetacoplan 360mg", "dosing_regimen": "360 mg SC daily", "n": 8}
+
+Randomized controlled trial:
+- If paper says "224 patients randomized to drug (n=112) or placebo (n=112)"
+- Return two arms: {"arm_name": "Drug", "n": 112} and {"arm_name": "Placebo", "n": 112}
+
+Discontinued arms (DO NOT INCLUDE):
+- If paper says "elsubrutinib arm discontinued after interim analysis, baseline data in Supplementary Table 1"
+- And you only have Table 1 (not Supplementary Table 1)
+- DO NOT include elsubrutinib in trial_arms
+- Add to notes: "Excluded discontinued arms: elsubrutinib 60mg"
+
+{% include 'common/json_output_rules.j2' %}
+

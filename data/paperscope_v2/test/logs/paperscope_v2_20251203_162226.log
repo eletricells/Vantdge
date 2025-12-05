@@ -1,0 +1,36 @@
+2025-12-03 16:22:26 | INFO     | EVENT: workflow_start
+2025-12-03 16:22:26 | INFO     |   drug_name: tapinarof
+2025-12-03 16:22:26 | INFO     |   disease_indication: None
+2025-12-03 16:22:26 | INFO     |   drug_class: None
+2025-12-03 16:22:32 | INFO     | EVENT: context_detected
+2025-12-03 16:22:32 | INFO     |   disease: Plaque Psoriasis and Atopic Dermatitis
+2025-12-03 16:22:32 | INFO     |   drug_class: Small Molecule Aryl Hydrocarbon Receptor Agonist
+2025-12-03 16:23:04 | INFO     | EVENT: trials_discovered
+2025-12-03 16:23:04 | INFO     |   count: 17
+2025-12-03 16:23:04 | INFO     |   trial_names: ['DATA FROM', 'FOR PLAQUE', 'IN CHILDREN', 'PSORIASIS\n\nTHE', 'PSOARING 1', 'PSOARING 3', 'OF ATOPIC', 'PSOARING 2', 'ADORING 2', 'THE TREATMENT', 'TRIALS OF', 'DERMATITIS IN', 'PRESENT NEW', 'AND ADULTS', 'DERMAVANT TO', 'TAPINAROF CREAM', 'ADORING 1']
+2025-12-03 16:23:06 | INFO     | EVENT: indications_discovered
+2025-12-03 16:23:06 | INFO     |   count: 8
+2025-12-03 16:23:06 | INFO     |   indications: ['Atopic Dermatitis', 'Cutaneous Lupus Erythematosus', 'Dermatitis, Atopic', 'Icd10 Code L40.9 For Psoriasis', 'Palmoplantar Keratoderma', 'Plaque Psoriasis', 'Plaque Type Psorisis', 'Psoriasis']
+2025-12-03 16:23:17 | INFO     | EVENT: literature_search_complete
+2025-12-03 16:23:17 | INFO     |   total_searches: 21
+2025-12-03 16:23:17 | INFO     |   unique_pmids: 78
+2025-12-03 16:24:56 | INFO     | EVENT: web_search_complete
+2025-12-03 16:24:56 | INFO     |   papers_found: 18
+2025-12-03 16:25:04 | INFO     | EVENT: articles_fetched
+2025-12-03 16:25:04 | INFO     |   total_articles: 107
+2025-12-03 16:26:19 | INFO     | EVENT: relevance_filter_complete
+2025-12-03 16:26:19 | INFO     |   filtered_out: 38
+2025-12-03 16:26:19 | INFO     |   remaining: 69
+2025-12-03 16:33:41 | INFO     | EVENT: summaries_generated
+2025-12-03 16:33:41 | INFO     |   total_articles: 69
+2025-12-03 16:33:44 | INFO     | EVENT: clinicaltrials_search_complete
+2025-12-03 16:33:44 | INFO     |   trials_found: 24
+2025-12-03 16:33:44 | INFO     |   ongoing_trials: 0
+2025-12-03 16:33:51 | INFO     | EVENT: workflow_complete
+2025-12-03 16:33:51 | INFO     |   elapsed_seconds: 678.5993239879608
+2025-12-03 16:33:51 | INFO     |   total_papers: 69
+2025-12-03 16:33:51 | INFO     |   token_usage: API Calls: 32
+Input Tokens: 100,306
+Output Tokens: 35,796
+Total Tokens: 136,102
+2025-12-03 16:33:51 | INFO     |   parse_success_rate: 1.0
