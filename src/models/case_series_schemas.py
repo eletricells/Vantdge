@@ -174,6 +174,9 @@ class StandardOfCareTreatment(BaseModel):
     """A standard of care treatment"""
     drug_name: str = Field(..., description="Drug name")
     drug_class: Optional[str] = Field(None, description="Drug class")
+    is_branded_innovative: bool = Field(False, description="True if branded innovative drug (biologic, novel small molecule)")
+    fda_approved: bool = Field(False, description="True if FDA-approved for this EXACT indication")
+    fda_approved_indication: Optional[str] = Field(None, description="The exact indication name from FDA label")
     efficacy_range: Optional[str] = Field(None, description="Efficacy range (e.g., '60-70%')")
     efficacy_pct: Optional[float] = Field(None, description="Efficacy percentage for comparison")
     annual_cost_usd: Optional[float] = Field(None, description="Annual cost in USD")
@@ -181,13 +184,24 @@ class StandardOfCareTreatment(BaseModel):
     notes: Optional[str] = Field(None, description="Additional notes")
 
 
+class PipelineTherapy(BaseModel):
+    """A drug in clinical development pipeline"""
+    drug_name: str = Field(..., description="Drug name or code")
+    company: Optional[str] = Field(None, description="Sponsoring company")
+    mechanism: Optional[str] = Field(None, description="Mechanism of action")
+    phase: str = Field(..., description="Trial phase (Phase 1, 2, 3)")
+    trial_id: Optional[str] = Field(None, description="ClinicalTrials.gov ID (NCT number)")
+    expected_completion: Optional[str] = Field(None, description="Expected completion date")
+
+
 class StandardOfCareData(BaseModel):
     """Standard of care for a disease"""
     top_treatments: List[StandardOfCareTreatment] = Field(default_factory=list)
-    approved_drug_names: List[str] = Field(default_factory=list, description="List of FDA-approved drug names")
-    num_approved_drugs: Optional[int] = Field(0, description="Number of approved drugs for indication")
-    num_pipeline_therapies: Optional[int] = Field(0, description="Number of pipeline therapies in clinical trials")
-    pipeline_details: Optional[str] = Field(None, description="Details on pipeline therapies")
+    approved_drug_names: List[str] = Field(default_factory=list, description="List of FDA-approved branded innovative drug names")
+    num_approved_drugs: Optional[int] = Field(0, description="Number of FDA-approved branded innovative drugs")
+    num_pipeline_therapies: Optional[int] = Field(0, description="Number of drugs in active clinical trials (Phase 1-3)")
+    pipeline_therapies: List[PipelineTherapy] = Field(default_factory=list, description="Detailed pipeline therapy list")
+    pipeline_details: Optional[str] = Field(None, description="Summary of pipeline therapies")
     avg_annual_cost_usd: Optional[float] = Field(None, description="Average annual cost of top 3 branded drugs")
     treatment_paradigm: Optional[str] = Field(None, description="Description of treatment approach")
     unmet_need: bool = Field(False, description="Whether there is unmet need")
@@ -196,14 +210,30 @@ class StandardOfCareData(BaseModel):
     soc_source: Optional[str] = Field(None, description="Source for SOC data")
 
 
+class AttributedSource(BaseModel):
+    """A source with attribution to specific data elements"""
+    url: Optional[str] = Field(None, description="Source URL")
+    title: Optional[str] = Field(None, description="Source title/name")
+    attribution: str = Field(..., description="What this source is used for (e.g., 'Epidemiology', 'TAM Analysis')")
+
+
 class MarketIntelligence(BaseModel):
     """Complete market intelligence for an indication"""
     disease: str = Field(..., description="Disease name")
     epidemiology: EpidemiologyData = Field(default_factory=EpidemiologyData)
     standard_of_care: StandardOfCareData = Field(default_factory=StandardOfCareData)
-    market_size_estimate: Optional[str] = Field(None, description="Market size estimate")
-    market_size_usd: Optional[float] = Field(None, description="Market size in USD (patient pop x avg cost)")
+    # Simple market sizing (patient pop x avg cost) - kept for backward compatibility
+    market_size_estimate: Optional[str] = Field(None, description="Simple market size estimate (patient pop x cost)")
+    market_size_usd: Optional[float] = Field(None, description="Simple market size in USD")
     growth_rate: Optional[str] = Field(None, description="Market growth rate")
+    # TAM analysis - more sophisticated market sizing
+    tam_usd: Optional[float] = Field(None, description="Total Addressable Market in USD")
+    tam_estimate: Optional[str] = Field(None, description="TAM formatted string (e.g., '$2.5B')")
+    tam_rationale: Optional[str] = Field(None, description="Detailed explanation of TAM calculation assumptions")
+    # Source tracking - attributed sources for transparency
+    tam_sources: List[str] = Field(default_factory=list, description="Source URLs used for TAM analysis")
+    pipeline_sources: List[str] = Field(default_factory=list, description="Source URLs used for pipeline data")
+    attributed_sources: List[AttributedSource] = Field(default_factory=list, description="All sources with attributions")
 
 
 # ============================================================

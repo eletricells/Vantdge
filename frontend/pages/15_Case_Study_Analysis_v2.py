@@ -74,8 +74,10 @@ def get_agent():
     return DrugRepurposingCaseSeriesAgent(
         anthropic_api_key=settings.anthropic_api_key,
         database_url=database_url,
+        case_series_database_url=database_url,  # Use same DB for case series persistence
         tavily_api_key=getattr(settings, 'tavily_api_key', None),
-        pubmed_email='noreply@example.com'
+        pubmed_email='noreply@example.com',
+        cache_max_age_days=30
     )
 
 try:
@@ -143,13 +145,67 @@ with st.sidebar:
         st.session_state.v2_opportunities = []
         st.rerun()
 
+    # Historical Runs Section
+    st.markdown("---")
+    st.subheader("📜 Historical Runs")
+
+    if agent.database_available:
+        historical_runs = agent.get_historical_runs(limit=10)
+        if historical_runs:
+            # Create a selectbox for historical runs
+            run_options = ["-- Select a run to load --"]
+            run_map = {}
+            for run in historical_runs:
+                started = run.get('started_at')
+                if started:
+                    date_str = started.strftime("%Y-%m-%d %H:%M") if hasattr(started, 'strftime') else str(started)[:16]
+                else:
+                    date_str = "Unknown"
+                status = run.get('status', 'unknown')
+                opps = run.get('opportunities_found', 0) or 0
+                label = f"{run.get('drug_name', 'Unknown')} ({date_str}) - {opps} opps"
+                run_options.append(label)
+                run_map[label] = run.get('run_id')
+
+            selected_run = st.selectbox(
+                "Load Historical Run",
+                options=run_options,
+                key="historical_run_select"
+            )
+
+            if selected_run != "-- Select a run to load --":
+                run_id = run_map.get(selected_run)
+                if run_id and st.button("📥 Load Selected Run", use_container_width=True):
+                    with st.spinner("Loading historical run..."):
+                        result = agent.load_historical_run(run_id)
+                        if result:
+                            st.session_state.v2_drug_name = result.drug_name
+                            st.session_state.v2_drug_info = {
+                                'drug_name': result.drug_name,
+                                'generic_name': result.generic_name,
+                                'mechanism': result.mechanism,
+                                'target': result.target,
+                                'approved_indications': result.approved_indications or []
+                            }
+                            st.session_state.v2_opportunities = result.opportunities
+                            st.session_state.v2_extractions = [opp.extraction for opp in result.opportunities]
+                            st.success(f"✅ Loaded run with {len(result.opportunities)} opportunities")
+                            st.rerun()
+                        else:
+                            st.error("Failed to load historical run")
+        else:
+            st.info("No historical runs found")
+    else:
+        st.info("Database not connected - historical runs unavailable")
+
 # Main content - Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "💊 Approved Indications",
     "🔍 Case Series Search",
     "📋 Data Extraction",
     "📊 Scoring & Results",
-    "📈 Full Analysis"
+    "📈 Full Analysis",
+    "📜 Historical Runs"
 ])
 
 # =====================================================
@@ -820,3 +876,129 @@ with tab5:
                     mime="text/csv",
                     use_container_width=True
                 )
+
+# =====================================================
+# TAB 6: HISTORICAL RUNS
+# =====================================================
+
+with tab6:
+    st.header("📜 Historical Analysis Runs")
+    st.markdown("""
+    View and manage historical drug repurposing analyses. Click on any run to view details
+    or load it into the current session.
+    """)
+
+    if not agent.database_available:
+        st.warning("⚠️ Database not connected. Historical runs feature requires a PostgreSQL database.")
+        st.info("""
+        To enable historical runs:
+        1. Set `DATABASE_URL` or `DRUG_DATABASE_URL` in your `.env` file
+        2. Run the case series schema migration: `psql -f mcp_server/case_series_schema.sql`
+        """)
+    else:
+        # Fetch historical runs
+        runs = agent.get_historical_runs(limit=50)
+
+        if runs:
+            st.success(f"✅ Database connected - Found {len(runs)} historical runs")
+
+            # Display as a table
+            import pandas as pd
+
+            runs_data = []
+            for run in runs:
+                started = run.get('started_at')
+                completed = run.get('completed_at')
+                duration = run.get('duration_seconds')
+
+                if started:
+                    date_str = started.strftime("%Y-%m-%d %H:%M") if hasattr(started, 'strftime') else str(started)[:16]
+                else:
+                    date_str = "Unknown"
+
+                if duration:
+                    duration_str = f"{duration:.1f}s"
+                elif completed and started:
+                    try:
+                        dur = (completed - started).total_seconds()
+                        duration_str = f"{dur:.1f}s"
+                    except:
+                        duration_str = "N/A"
+                else:
+                    duration_str = "N/A"
+
+                runs_data.append({
+                    "Run ID": run.get('run_id', '')[:8] + "...",
+                    "Drug": run.get('drug_name', 'Unknown'),
+                    "Date": date_str,
+                    "Status": run.get('status', 'unknown'),
+                    "Papers Found": run.get('papers_found', 0) or 0,
+                    "Extracted": run.get('papers_extracted', 0) or 0,
+                    "Opportunities": run.get('opportunities_found', 0) or 0,
+                    "Cost": f"${run.get('estimated_cost_usd', 0) or 0:.2f}",
+                    "Duration": duration_str,
+                    "Cache Hits": f"{run.get('papers_from_cache', 0) or 0}P/{run.get('market_intel_from_cache', 0) or 0}M",
+                    "_full_run_id": run.get('run_id', '')
+                })
+
+            df = pd.DataFrame(runs_data)
+
+            # Display table (without the hidden column)
+            st.dataframe(
+                df.drop(columns=['_full_run_id']),
+                use_container_width=True,
+                hide_index=True
+            )
+
+            # Allow loading a specific run
+            st.markdown("---")
+            st.subheader("🔍 View Run Details")
+
+            run_id_input = st.text_input(
+                "Enter Run ID (first 8 characters shown in table)",
+                placeholder="e.g., abc12345-..."
+            )
+
+            # Also allow selection from runs
+            run_labels = [f"{r.get('drug_name', 'Unknown')} - {r.get('started_at', 'Unknown')}"
+                         for r in runs]
+            selected_idx = st.selectbox(
+                "Or select from recent runs",
+                options=range(len(run_labels)),
+                format_func=lambda i: run_labels[i]
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("📋 View Details", use_container_width=True):
+                    run_id = run_id_input or runs[selected_idx].get('run_id')
+                    if run_id:
+                        details = agent.get_run_details(run_id)
+                        if details:
+                            st.json(details)
+                        else:
+                            st.error("Run not found")
+
+            with col2:
+                if st.button("📥 Load into Session", type="primary", use_container_width=True):
+                    run_id = run_id_input or runs[selected_idx].get('run_id')
+                    if run_id:
+                        with st.spinner("Loading run..."):
+                            result = agent.load_historical_run(run_id)
+                            if result:
+                                st.session_state.v2_drug_name = result.drug_name
+                                st.session_state.v2_drug_info = {
+                                    'drug_name': result.drug_name,
+                                    'generic_name': result.generic_name,
+                                    'mechanism': result.mechanism,
+                                    'target': result.target,
+                                    'approved_indications': result.approved_indications or []
+                                }
+                                st.session_state.v2_opportunities = result.opportunities
+                                st.session_state.v2_extractions = [opp.extraction for opp in result.opportunities]
+                                st.success(f"✅ Loaded! {len(result.opportunities)} opportunities. Go to Scoring tab to view.")
+                            else:
+                                st.error("Failed to load run")
+        else:
+            st.info("📭 No historical runs found. Run an analysis to see it here!")

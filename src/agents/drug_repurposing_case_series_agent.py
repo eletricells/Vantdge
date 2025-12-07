@@ -25,6 +25,7 @@ import logging
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple, Set
@@ -46,6 +47,7 @@ from src.models.case_series_schemas import (
     EpidemiologyData,
     StandardOfCareData,
     StandardOfCareTreatment,
+    PipelineTherapy,
     MarketIntelligence,
     OpportunityScores,
     RepurposingOpportunity,
@@ -56,6 +58,8 @@ from src.tools.pubmed import PubMedAPI
 from src.tools.web_search import WebSearchTool
 from src.tools.drug_database import DrugDatabase
 from src.tools.dailymed import DailyMedAPI
+from src.tools.semantic_scholar import SemanticScholarAPI
+from src.tools.case_series_database import CaseSeriesDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -72,27 +76,33 @@ class DrugRepurposingCaseSeriesAgent:
         self,
         anthropic_api_key: str,
         database_url: Optional[str] = None,
+        case_series_database_url: Optional[str] = None,
         pubmed_email: str = "user@example.com",
         pubmed_api_key: Optional[str] = None,
         tavily_api_key: Optional[str] = None,
-        output_dir: str = "data/case_series"
+        semantic_scholar_api_key: Optional[str] = None,
+        output_dir: str = "data/case_series",
+        cache_max_age_days: int = 30
     ):
         """
         Initialize agent with all required tools.
-        
+
         Args:
             anthropic_api_key: Anthropic API key for Claude
             database_url: PostgreSQL database URL (optional, for drug lookups)
+            case_series_database_url: PostgreSQL URL for case series persistence/caching
             pubmed_email: Email for PubMed API
             pubmed_api_key: PubMed API key (optional, increases rate limits)
             tavily_api_key: Tavily API key for web search
+            semantic_scholar_api_key: Semantic Scholar API key (optional, for higher rate limits)
             output_dir: Directory for output files
+            cache_max_age_days: Days before cached market intelligence expires (default: 30)
         """
         # Initialize Claude client
         self.client = Anthropic(api_key=anthropic_api_key)
         self.model = "claude-sonnet-4-20250514"
         self.max_tokens = 16000
-        
+
         # Initialize tools
         self.pubmed = PubMedAPI(
             email=pubmed_email,
@@ -102,7 +112,11 @@ class DrugRepurposingCaseSeriesAgent:
         self.web_search = None
         if tavily_api_key:
             self.web_search = WebSearchTool(api_key=tavily_api_key)
-        
+
+        # Semantic Scholar API for semantic search and citation mining
+        self.semantic_scholar = SemanticScholarAPI(api_key=semantic_scholar_api_key)
+        logger.info("Semantic Scholar API initialized (citation mining enabled)")
+
         # Database connection (optional)
         self.drug_db = None
         if database_url:
@@ -120,15 +134,39 @@ class DrugRepurposingCaseSeriesAgent:
         # Drugs.com scraper (lazy loaded)
         self._drugs_com_scraper = None
 
+        # Case Series Database for persistence and caching
+        self.cs_db = None
+        self.cache_max_age_days = cache_max_age_days
+        cs_db_url = case_series_database_url or database_url
+        if cs_db_url:
+            try:
+                self.cs_db = CaseSeriesDatabase(cs_db_url, cache_max_age_days=cache_max_age_days)
+                if self.cs_db.is_available:
+                    logger.info("Case series database connected (caching enabled)")
+                else:
+                    logger.warning("Case series database not available (caching disabled)")
+                    self.cs_db = None
+            except Exception as e:
+                logger.warning(f"Could not initialize case series database: {e}")
+                self.cs_db = None
+
+        # Current run tracking
+        self._current_run_id = None
+        self._cache_stats = {
+            'papers_from_cache': 0,
+            'market_intel_from_cache': 0,
+            'tokens_saved_by_cache': 0
+        }
+
         # Output directory
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Cost tracking
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.search_count = 0
-        
+
         logger.info("DrugRepurposingCaseSeriesAgent initialized")
     
     # =========================================================================
@@ -144,92 +182,164 @@ class DrugRepurposingCaseSeriesAgent:
     ) -> DrugAnalysisResult:
         """
         Main entry point: analyze a drug for repurposing opportunities.
-        
+
         Args:
             drug_name: Drug name to analyze
             max_papers: Maximum papers to screen
             include_web_search: Whether to include Tavily web search
             enrich_market_data: Whether to enrich with market intelligence
-            
+
         Returns:
             DrugAnalysisResult with all opportunities found
         """
         logger.info(f"Starting repurposing analysis for: {drug_name}")
         start_time = datetime.now()
-        
-        # Reset cost tracking
+
+        # Reset cost and cache tracking
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.search_count = 0
-        
-        # Step 1: Get drug information and approved indications
-        drug_info = self._get_drug_info(drug_name)
-        approved_indications = drug_info.get("approved_indications", [])
-        logger.info(f"Found {len(approved_indications)} approved indications")
+        self._cache_stats = {
+            'papers_from_cache': 0,
+            'market_intel_from_cache': 0,
+            'tokens_saved_by_cache': 0
+        }
 
-        # Step 2: Search for case series/reports
-        papers = self._search_case_series(
-            drug_name,
-            approved_indications,
-            max_papers=max_papers,
-            include_web_search=include_web_search
-        )
-        logger.info(f"Found {len(papers)} potential case series/reports")
+        # Create database run for tracking
+        run_params = {
+            'max_papers': max_papers,
+            'include_web_search': include_web_search,
+            'enrich_market_data': enrich_market_data
+        }
+        if self.cs_db:
+            self._current_run_id = self.cs_db.create_run(drug_name, run_params)
+            logger.info(f"Created analysis run: {self._current_run_id}")
 
-        # Step 3: Extract structured data from each paper
-        opportunities = []
-        for i, paper in enumerate(papers, 1):
-            logger.info(f"Extracting data from paper {i}/{len(papers)}: {paper.get('title', 'Unknown')[:50]}...")
-            try:
-                extraction = self._extract_case_series_data(drug_name, drug_info, paper)
-                if extraction:
-                    opportunity = RepurposingOpportunity(extraction=extraction)
-                    opportunities.append(opportunity)
-            except Exception as e:
-                logger.error(f"Error extracting paper {i}: {e}")
-                continue
+        try:
+            # Step 1: Get drug information and approved indications
+            drug_info = self._get_drug_info(drug_name)
+            approved_indications = drug_info.get("approved_indications", [])
+            logger.info(f"Found {len(approved_indications)} approved indications")
 
-            # Rate limiting
-            if i < len(papers):
-                time.sleep(0.5)
+            # Save drug info to database
+            if self.cs_db:
+                self.cs_db.save_drug(
+                    drug_name=drug_name,
+                    generic_name=drug_info.get("generic_name"),
+                    mechanism=drug_info.get("mechanism"),
+                    target=drug_info.get("target"),
+                    approved_indications=approved_indications,
+                    data_sources=drug_info.get("data_sources", [])
+                )
 
-        logger.info(f"Successfully extracted {len(opportunities)} case series")
+            # Step 2: Search for case series/reports
+            papers = self._search_case_series(
+                drug_name,
+                approved_indications,
+                max_papers=max_papers,
+                include_web_search=include_web_search
+            )
+            logger.info(f"Found {len(papers)} potential case series/reports")
 
-        # Step 4: Enrich with market intelligence
-        if enrich_market_data and opportunities:
-            opportunities = self._enrich_with_market_data(opportunities)
+            # Update run stats
+            if self.cs_db and self._current_run_id:
+                self.cs_db.update_run_stats(self._current_run_id, papers_found=len(papers))
 
-        # Step 5: Score and rank opportunities
-        opportunities = self._score_opportunities(opportunities)
-        opportunities.sort(key=lambda x: x.scores.overall_priority, reverse=True)
+            # Step 3: Extract structured data from each paper
+            opportunities = []
+            extraction_ids = {}  # Map extraction to database ID
+            for i, paper in enumerate(papers, 1):
+                logger.info(f"Extracting data from paper {i}/{len(papers)}: {paper.get('title', 'Unknown')[:50]}...")
+                try:
+                    extraction = self._extract_case_series_data(drug_name, drug_info, paper)
+                    if extraction:
+                        opportunity = RepurposingOpportunity(extraction=extraction)
+                        opportunities.append(opportunity)
 
-        # Assign ranks
-        for i, opp in enumerate(opportunities, 1):
-            opp.rank = i
+                        # Save extraction to database
+                        if self.cs_db and self._current_run_id:
+                            ext_id = self.cs_db.save_extraction(
+                                self._current_run_id, extraction, drug_name
+                            )
+                            if ext_id:
+                                extraction_ids[id(opportunity)] = ext_id
+                except Exception as e:
+                    logger.error(f"Error extracting paper {i}: {e}")
+                    continue
 
-        # Calculate cost
-        estimated_cost = self._calculate_cost()
+                # Rate limiting
+                if i < len(papers):
+                    time.sleep(0.5)
 
-        # Build result
-        result = DrugAnalysisResult(
-            drug_name=drug_name,
-            generic_name=drug_info.get("generic_name"),
-            mechanism=drug_info.get("mechanism"),
-            target=drug_info.get("target"),
-            approved_indications=approved_indications,
-            opportunities=opportunities,
-            analysis_date=datetime.now(),
-            papers_screened=len(papers),
-            papers_extracted=len(opportunities),
-            total_input_tokens=self.total_input_tokens,
-            total_output_tokens=self.total_output_tokens,
-            estimated_cost_usd=estimated_cost
-        )
+            logger.info(f"Successfully extracted {len(opportunities)} case series")
 
-        duration = (datetime.now() - start_time).total_seconds()
-        logger.info(f"Analysis complete in {duration:.1f}s. Found {len(opportunities)} opportunities. Cost: ${estimated_cost:.2f}")
+            # Update run stats
+            if self.cs_db and self._current_run_id:
+                self.cs_db.update_run_stats(self._current_run_id, papers_extracted=len(opportunities))
 
-        return result
+            # Step 4: Enrich with market intelligence
+            if enrich_market_data and opportunities:
+                opportunities = self._enrich_with_market_data(opportunities)
+
+            # Step 5: Score and rank opportunities
+            opportunities = self._score_opportunities(opportunities)
+            opportunities.sort(key=lambda x: x.scores.overall_priority, reverse=True)
+
+            # Assign ranks and save opportunities
+            for i, opp in enumerate(opportunities, 1):
+                opp.rank = i
+                # Save opportunity to database
+                if self.cs_db and self._current_run_id:
+                    ext_id = extraction_ids.get(id(opp))
+                    if ext_id:
+                        self.cs_db.save_opportunity(
+                            self._current_run_id, ext_id, opp, drug_name
+                        )
+
+            # Calculate cost
+            estimated_cost = self._calculate_cost()
+
+            # Build result
+            result = DrugAnalysisResult(
+                drug_name=drug_name,
+                generic_name=drug_info.get("generic_name"),
+                mechanism=drug_info.get("mechanism"),
+                target=drug_info.get("target"),
+                approved_indications=approved_indications,
+                opportunities=opportunities,
+                analysis_date=datetime.now(),
+                papers_screened=len(papers),
+                papers_extracted=len(opportunities),
+                total_input_tokens=self.total_input_tokens,
+                total_output_tokens=self.total_output_tokens,
+                estimated_cost_usd=estimated_cost
+            )
+
+            # Mark run as completed
+            if self.cs_db and self._current_run_id:
+                self.cs_db.update_run_stats(
+                    self._current_run_id,
+                    opportunities_found=len(opportunities),
+                    total_input_tokens=self.total_input_tokens,
+                    total_output_tokens=self.total_output_tokens,
+                    estimated_cost_usd=estimated_cost,
+                    papers_from_cache=self._cache_stats['papers_from_cache'],
+                    market_intel_from_cache=self._cache_stats['market_intel_from_cache'],
+                    tokens_saved_by_cache=self._cache_stats['tokens_saved_by_cache']
+                )
+                self.cs_db.update_run_status(self._current_run_id, 'completed')
+
+            duration = (datetime.now() - start_time).total_seconds()
+            cache_info = f" (cache: {self._cache_stats['papers_from_cache']} papers, {self._cache_stats['market_intel_from_cache']} market intel)"
+            logger.info(f"Analysis complete in {duration:.1f}s. Found {len(opportunities)} opportunities. Cost: ${estimated_cost:.2f}{cache_info}")
+
+            return result
+
+        except Exception as e:
+            # Mark run as failed
+            if self.cs_db and self._current_run_id:
+                self.cs_db.update_run_status(self._current_run_id, 'failed', str(e))
+            raise
 
     def analyze_mechanism(
         self,
@@ -281,6 +391,57 @@ class DrugRepurposingCaseSeriesAgent:
             analysis_date=datetime.now(),
             total_cost_usd=total_cost
         )
+
+    # =========================================================================
+    # HISTORICAL RUNS / DATABASE METHODS
+    # =========================================================================
+
+    def get_historical_runs(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get list of historical analysis runs.
+
+        Args:
+            limit: Maximum number of runs to return
+
+        Returns:
+            List of run summaries with drug_name, started_at, status, etc.
+        """
+        if not self.cs_db:
+            logger.warning("Case series database not available - no historical runs")
+            return []
+        return self.cs_db.get_historical_runs(limit=limit)
+
+    def load_historical_run(self, run_id: str) -> Optional[DrugAnalysisResult]:
+        """Load a historical run as a DrugAnalysisResult object.
+
+        Args:
+            run_id: UUID of the run to load
+
+        Returns:
+            DrugAnalysisResult or None if not found
+        """
+        if not self.cs_db:
+            logger.warning("Case series database not available")
+            return None
+        return self.cs_db.load_run_as_result(run_id)
+
+    def get_run_details(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Get full details of a specific run including extractions and opportunities.
+
+        Args:
+            run_id: UUID of the run
+
+        Returns:
+            Dict with run info, extractions, and opportunities
+        """
+        if not self.cs_db:
+            logger.warning("Case series database not available")
+            return None
+        return self.cs_db.get_run_details(run_id)
+
+    @property
+    def database_available(self) -> bool:
+        """Check if the case series database is available for persistence/caching."""
+        return self.cs_db is not None and self.cs_db.is_available
 
     # =========================================================================
     # DRUG INFORMATION RETRIEVAL
@@ -684,91 +845,55 @@ Return ONLY the JSON array, nothing else."""
         self,
         drug_name: str,
         exclude_indications: List[str],
-        max_papers: int = 200,  # Higher default, but LLM filtering will reduce
+        max_papers: int = 200,
         include_web_search: bool = True,
-        use_llm_filtering: bool = True
+        include_semantic_scholar: bool = True,
+        include_citation_mining: bool = True,
+        use_llm_filtering: bool = True,
+        parallel_search: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        Search for case series and case reports.
+        Comprehensive search for case series and case reports.
 
-        Two-stage approach:
-        1. Broad PubMed search - get ALL potentially relevant papers
-        2. LLM-based filtering - Claude evaluates each abstract for clinical relevance
+        Multi-layer search strategy (runs in parallel for speed):
+        1. Enhanced PubMed search - clinical data indicators, not just "case report"
+        2. Semantic Scholar search - semantic relevance ranking
+        3. Citation snowballing - mine references from review articles
+        4. Web search - grey literature
+        5. LLM filtering - Claude validates clinical data presence
 
-        Combines PubMed (peer-reviewed) and Tavily (grey literature) searches.
+        This approach finds papers that describe patient outcomes even if they
+        don't explicitly use "case report" terminology.
+
+        Args:
+            parallel_search: If True, run search layers concurrently (faster but uses more resources)
         """
-        papers = []
-        seen_ids = set()
+        all_papers = []
 
-        # Exclusion terms for PubMed - filter out obvious non-case-reports at query level
-        exclusion_terms = 'NOT ("Review"[Publication Type] OR "Systematic Review"[Publication Type] OR "Meta-Analysis"[Publication Type] OR "Guideline"[Publication Type])'
+        if parallel_search:
+            # Run searches in parallel for speed optimization
+            all_papers = self._search_parallel(
+                drug_name,
+                include_web_search,
+                include_semantic_scholar,
+                include_citation_mining
+            )
+        else:
+            # Sequential search (original behavior)
+            seen_ids = set()
+            all_papers.extend(self._search_pubmed_enhanced(drug_name, seen_ids))
 
-        # PubMed search strategies - BROAD search to get all relevant papers
-        pubmed_queries = [
-            f'"{drug_name}"[Title/Abstract] AND ("case report"[Publication Type] OR "case series"[Title/Abstract] OR "case study"[Title/Abstract]) {exclusion_terms}',
-            f'"{drug_name}"[Title/Abstract] AND ("off-label"[Title/Abstract] OR "off label"[Title/Abstract]) {exclusion_terms}',
-            f'"{drug_name}"[Title/Abstract] AND ("expanded access"[Title/Abstract] OR "compassionate use"[Title/Abstract]) {exclusion_terms}',
-            f'"{drug_name}"[Title/Abstract] AND "repurpos"[Title/Abstract] {exclusion_terms}',
-            f'"{drug_name}"[Title/Abstract] AND ("efficacy"[Title/Abstract] OR "successful treatment"[Title/Abstract]) {exclusion_terms}',
-        ]
+            if include_semantic_scholar:
+                all_papers.extend(self._search_semantic_scholar(drug_name, seen_ids))
 
-        # Get ALL papers from each query (up to max_papers total)
-        papers_per_query = max(50, max_papers // len(pubmed_queries))
+            if include_citation_mining:
+                all_papers.extend(self._mine_review_citations(drug_name, seen_ids))
 
-        for query in pubmed_queries:
-            try:
-                logger.info(f"PubMed search: {query[:80]}...")
-                pmids = self.pubmed.search(query, max_results=papers_per_query)
-                self.search_count += 1
+            if include_web_search and self.web_search:
+                all_papers.extend(self._search_web(drug_name, seen_ids))
 
-                if pmids:
-                    new_pmids = [p for p in pmids if p not in seen_ids]
-                    seen_ids.update(new_pmids)
-
-                    if new_pmids:
-                        abstracts = self.pubmed.fetch_abstracts(new_pmids)
-                        for paper in abstracts:
-                            paper['source'] = 'PubMed'
-                            paper['search_query'] = query
-                            papers.append(paper)
-                        logger.info(f"  Found {len(new_pmids)} new papers")
-
-                time.sleep(0.3)  # Rate limiting
-
-            except Exception as e:
-                logger.error(f"PubMed search error: {e}")
-
-        # Web search for grey literature
-        if include_web_search and self.web_search:
-            web_queries = [
-                f"{drug_name} case report",
-                f"{drug_name} case series",
-                f"{drug_name} off-label use efficacy",
-            ]
-
-            for query in web_queries:
-                try:
-                    logger.info(f"Web search: {query}")
-                    results = self.web_search.search(query, max_results=10)
-                    self.search_count += 1
-
-                    for result in results:
-                        title = result.get('title', '')
-                        url = result.get('url', '')
-                        if url not in seen_ids:
-                            seen_ids.add(url)
-                            papers.append({
-                                'title': title,
-                                'abstract': result.get('content', ''),
-                                'url': url,
-                                'source': 'Web Search',
-                                'search_query': query
-                            })
-
-                    time.sleep(0.3)
-
-                except Exception as e:
-                    logger.error(f"Web search error: {e}")
+        # Deduplicate papers from parallel search
+        papers = self._deduplicate_papers(all_papers)
 
         logger.info(f"Total papers from search: {len(papers)}")
 
@@ -791,6 +916,354 @@ Return ONLY the JSON array, nothing else."""
             except Exception as e:
                 logger.warning(f"Could not check PMC availability: {e}")
 
+        return papers
+
+    def _search_parallel(
+        self,
+        drug_name: str,
+        include_web_search: bool,
+        include_semantic_scholar: bool,
+        include_citation_mining: bool
+    ) -> List[Dict[str, Any]]:
+        """
+        Run all search layers in parallel for speed optimization.
+
+        Returns combined results (deduplication done by caller).
+        """
+        all_papers = []
+        search_tasks = []
+
+        # Define search functions to run in parallel
+        # Each returns (source_name, papers_list)
+        def pubmed_search():
+            seen = set()
+            return ("PubMed", self._search_pubmed_enhanced(drug_name, seen))
+
+        def semantic_search():
+            seen = set()
+            return ("Semantic Scholar", self._search_semantic_scholar(drug_name, seen))
+
+        def citation_search():
+            seen = set()
+            return ("Citation Mining", self._mine_review_citations(drug_name, seen))
+
+        def web_search():
+            seen = set()
+            return ("Web Search", self._search_web(drug_name, seen))
+
+        # Build task list
+        search_tasks.append(pubmed_search)
+
+        if include_semantic_scholar:
+            search_tasks.append(semantic_search)
+
+        if include_citation_mining:
+            search_tasks.append(citation_search)
+
+        if include_web_search and self.web_search:
+            search_tasks.append(web_search)
+
+        # Run in parallel with ThreadPoolExecutor
+        logger.info(f"Running {len(search_tasks)} search layers in parallel...")
+        start_time = time.time()
+
+        with ThreadPoolExecutor(max_workers=len(search_tasks)) as executor:
+            futures = {executor.submit(task): task.__name__ for task in search_tasks}
+
+            for future in as_completed(futures):
+                try:
+                    source_name, papers = future.result()
+                    logger.info(f"  {source_name}: {len(papers)} papers")
+                    all_papers.extend(papers)
+                except Exception as e:
+                    task_name = futures[future]
+                    logger.error(f"  {task_name} failed: {e}")
+
+        elapsed = time.time() - start_time
+        logger.info(f"Parallel search completed in {elapsed:.1f}s, {len(all_papers)} total papers (before dedup)")
+
+        return all_papers
+
+    def _deduplicate_papers(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Deduplicate papers based on PMID, DOI, or title similarity.
+
+        Keeps the first occurrence (PubMed > Semantic Scholar > Citation Mining > Web).
+        """
+        seen_pmids = set()
+        seen_dois = set()
+        seen_titles = set()
+        unique_papers = []
+
+        for paper in papers:
+            pmid = paper.get('pmid')
+            doi = paper.get('doi')
+            title = (paper.get('title') or '').lower().strip()
+
+            # Check for duplicates
+            is_duplicate = False
+
+            if pmid and pmid in seen_pmids:
+                is_duplicate = True
+            elif doi and doi in seen_dois:
+                is_duplicate = True
+            elif title and len(title) > 20:
+                # Fuzzy title match - normalize and check
+                normalized_title = re.sub(r'[^\w\s]', '', title)[:100]
+                if normalized_title in seen_titles:
+                    is_duplicate = True
+
+            if not is_duplicate:
+                unique_papers.append(paper)
+                if pmid:
+                    seen_pmids.add(pmid)
+                if doi:
+                    seen_dois.add(doi)
+                if title and len(title) > 20:
+                    normalized_title = re.sub(r'[^\w\s]', '', title)[:100]
+                    seen_titles.add(normalized_title)
+
+        logger.info(f"Deduplication: {len(papers)} -> {len(unique_papers)} papers")
+        return unique_papers
+
+    def _search_pubmed_enhanced(
+        self,
+        drug_name: str,
+        seen_ids: Set[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Enhanced PubMed search with precision-preserving query expansion.
+
+        Uses clinical data indicators to find papers with patient outcomes
+        even if they don't use "case report" terminology.
+        """
+        papers = []
+
+        # Exclusion terms - filter out obvious non-clinical papers
+        exclusion_terms = 'NOT ("Review"[Publication Type] OR "Systematic Review"[Publication Type] OR "Meta-Analysis"[Publication Type] OR "Guideline"[Publication Type] OR "Editorial"[Publication Type])'
+
+        # Clinical data indicators - terms suggesting patient-level data
+        clinical_indicators = '("patients treated" OR "treated with" OR "received treatment" OR "treatment response" OR "clinical response" OR "our experience" OR "retrospective" OR "case series" OR "case report")'
+
+        # Publication types with clinical data
+        clinical_pub_types = '("Case Reports"[Publication Type] OR "Clinical Study"[Publication Type] OR "Observational Study"[Publication Type])'
+
+        # Build enhanced query set
+        pubmed_queries = [
+            # Original case report search (proven effective)
+            f'"{drug_name}"[Title/Abstract] AND {clinical_pub_types} {exclusion_terms}',
+
+            # Clinical indicator search (finds case series without "case" in title)
+            f'"{drug_name}"[Title/Abstract] AND {clinical_indicators} {exclusion_terms}',
+
+            # Off-label searches (keep these)
+            f'"{drug_name}"[Title/Abstract] AND ("off-label" OR "off label") {exclusion_terms}',
+            f'"{drug_name}"[Title/Abstract] AND ("expanded access" OR "compassionate use") {exclusion_terms}',
+            f'"{drug_name}"[Title/Abstract] AND "repurpos"[Title/Abstract] {exclusion_terms}',
+
+            # Pediatric/juvenile with clinical data (NEW - catches JDM)
+            f'"{drug_name}"[Title/Abstract] AND (pediatric OR juvenile OR children) AND (treated OR response OR outcome OR patients) {exclusion_terms}',
+
+            # Common autoimmune conditions with clinical data (NEW)
+            f'"{drug_name}"[Title/Abstract] AND (dermatomyositis OR myositis OR lupus OR vasculitis) AND (patients OR treated OR response) {exclusion_terms}',
+
+            # Retrospective/cohort studies (NEW - often contain case data)
+            f'"{drug_name}"[Title/Abstract] AND (retrospective OR "cohort study" OR observational) AND (efficacy OR outcome OR response) {exclusion_terms}',
+        ]
+
+        papers_per_query = 40  # Get reasonable number per query
+
+        for query in pubmed_queries:
+            try:
+                logger.info(f"PubMed search: {query[:80]}...")
+                pmids = self.pubmed.search(query, max_results=papers_per_query)
+                self.search_count += 1
+
+                if pmids:
+                    new_pmids = [p for p in pmids if p not in seen_ids]
+                    seen_ids.update(new_pmids)
+
+                    if new_pmids:
+                        abstracts = self.pubmed.fetch_abstracts(new_pmids)
+                        for paper in abstracts:
+                            paper['source'] = 'PubMed'
+                            paper['search_query'] = query[:100]
+                            papers.append(paper)
+                        logger.info(f"  Found {len(new_pmids)} new papers")
+
+                time.sleep(0.3)
+
+            except Exception as e:
+                logger.error(f"PubMed search error: {e}")
+
+        logger.info(f"PubMed enhanced search: {len(papers)} total papers")
+        return papers
+
+    def _search_semantic_scholar(
+        self,
+        drug_name: str,
+        seen_ids: Set[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Search Semantic Scholar for papers using semantic relevance ranking.
+
+        Better at finding relevant papers that use different terminology.
+        """
+        papers = []
+
+        # Semantic search queries (neural embedding based, not keyword)
+        # 3 queries for balanced coverage and speed
+        ss_queries = [
+            f"{drug_name} case report case series treatment outcomes patients",
+            f"{drug_name} off-label compassionate use clinical efficacy",
+            f"{drug_name} refractory resistant disease treatment response",
+        ]
+
+        for query in ss_queries:
+            try:
+                logger.info(f"Semantic Scholar search: {query}")
+                results = self.semantic_scholar.search_papers(
+                    query,
+                    limit=40,  # Get more per query since fewer queries
+                    publication_types=["CaseReport", "JournalArticle"]
+                )
+                self.search_count += 1
+
+                for paper in results:
+                    # Get identifiers for deduplication
+                    external_ids = paper.get("externalIds") or {}
+                    pmid = external_ids.get("PubMed")
+                    doi = external_ids.get("DOI")
+                    s2_id = paper.get("paperId")
+
+                    # Check if we've seen this paper
+                    if pmid and pmid in seen_ids:
+                        continue
+                    if doi and doi in seen_ids:
+                        continue
+                    if s2_id and s2_id in seen_ids:
+                        continue
+
+                    # Mark as seen
+                    if pmid:
+                        seen_ids.add(pmid)
+                    if doi:
+                        seen_ids.add(doi)
+                    if s2_id:
+                        seen_ids.add(s2_id)
+
+                    # Format for our pipeline
+                    formatted = self.semantic_scholar.format_paper_for_case_series(paper)
+                    formatted['search_query'] = query
+                    papers.append(formatted)
+
+            except Exception as e:
+                logger.error(f"Semantic Scholar search error: {e}")
+
+        logger.info(f"Semantic Scholar search: {len(papers)} papers")
+        return papers
+
+    def _mine_review_citations(
+        self,
+        drug_name: str,
+        seen_ids: Set[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Citation snowballing strategy: find review articles and extract their references.
+
+        Reviews aggregate all case studies in a field - mining their references
+        gives comprehensive coverage even for papers that don't match our queries.
+        """
+        papers = []
+
+        try:
+            logger.info(f"Mining citations from review articles for {drug_name}...")
+
+            # Get references from review articles (3 reviews x 50 refs for balanced coverage)
+            review_refs = self.semantic_scholar.mine_review_references(
+                drug_name,
+                disease_area=None,  # Search broadly
+                max_reviews=3,
+                max_refs_per_review=50
+            )
+            self.search_count += 1
+
+            for paper in review_refs:
+                # Get identifiers for deduplication
+                external_ids = paper.get("externalIds") or {}
+                pmid = external_ids.get("PubMed")
+                doi = external_ids.get("DOI")
+                s2_id = paper.get("paperId")
+
+                # Check if we've seen this paper
+                if pmid and pmid in seen_ids:
+                    continue
+                if doi and doi in seen_ids:
+                    continue
+                if s2_id and s2_id in seen_ids:
+                    continue
+
+                # Mark as seen
+                if pmid:
+                    seen_ids.add(pmid)
+                if doi:
+                    seen_ids.add(doi)
+                if s2_id:
+                    seen_ids.add(s2_id)
+
+                # Format for our pipeline
+                formatted = self.semantic_scholar.format_paper_for_case_series(paper)
+                formatted['source'] = 'Citation Mining'
+                papers.append(formatted)
+
+            logger.info(f"Citation mining: {len(papers)} papers from review references")
+
+        except Exception as e:
+            logger.error(f"Citation mining error: {e}")
+
+        return papers
+
+    def _search_web(
+        self,
+        drug_name: str,
+        seen_ids: Set[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Web search for grey literature and conference presentations.
+        """
+        papers = []
+
+        web_queries = [
+            f"{drug_name} case report",
+            f"{drug_name} case series patient outcomes",
+            f"{drug_name} off-label treatment efficacy",
+        ]
+
+        for query in web_queries:
+            try:
+                logger.info(f"Web search: {query}")
+                results = self.web_search.search(query, max_results=10)
+                self.search_count += 1
+
+                for result in results:
+                    title = result.get('title', '')
+                    url = result.get('url', '')
+                    if url and url not in seen_ids:
+                        seen_ids.add(url)
+                        papers.append({
+                            'title': title,
+                            'abstract': result.get('content', ''),
+                            'url': url,
+                            'source': 'Web Search',
+                            'search_query': query
+                        })
+
+                time.sleep(0.3)
+
+            except Exception as e:
+                logger.error(f"Web search error: {e}")
+
+        logger.info(f"Web search: {len(papers)} papers")
         return papers
 
     def _filter_papers_with_llm(
@@ -840,33 +1313,42 @@ APPROVED INDICATIONS TO EXCLUDE: {exclude_str}
 
 For each paper, determine if it contains ORIGINAL CLINICAL DATA that would be useful for evaluating off-label efficacy.
 
-INCLUDE papers that have:
+STRICT REQUIREMENTS - To be INCLUDED, a paper MUST contain:
+1. A specific number of patients treated (e.g., "n=5 patients", "15 patients received", "a 12-year-old girl")
+2. Clinical outcome data (response rate, improvement, remission, disease activity scores)
+3. Treatment details (drug name with dose or duration mentioned)
+
+INCLUDE papers that have ALL of the above:
 - Case reports or case series with patient outcomes
 - Retrospective or prospective studies with efficacy data
-- Compassionate use / expanded access reports
+- Cohort studies with treatment outcomes
+- Compassionate use / expanded access reports with results
 - Real-world evidence with response rates
+- Studies labeled "experience with" or "treated with" that report outcomes
 
 EXCLUDE papers that are:
-- Reviews, guidelines, consensus statements, position papers
-- Basic science / mechanistic studies without patients
-- Pharmacokinetics/pharmacodynamics studies without efficacy
+- Reviews, guidelines, consensus statements, position papers (even if they cite patient data)
+- Basic science / mechanistic studies without patients treated
+- Pharmacokinetics/pharmacodynamics studies without clinical efficacy
 - Drug monitoring / analytical method papers
-- Studies ONLY about approved indications listed above
+- Studies ONLY about approved indications: {exclude_str}
 - Safety-only studies without efficacy outcomes
 - Clinical trial protocols (not results)
+- Letters/editorials without original patient data
+- In vitro or animal studies only
 
 {papers_text}
 
 Return ONLY a JSON object with this exact format:
 {{
     "evaluations": [
-        {{"paper_index": 1, "include": true, "reason": "Case series with 15 patients showing efficacy in vitiligo", "disease": "vitiligo"}},
-        {{"paper_index": 2, "include": false, "reason": "Review article, no original patient data", "disease": null}},
+        {{"paper_index": 1, "include": true, "reason": "Case series with 15 patients showing 80% response rate in dermatomyositis", "disease": "dermatomyositis", "patient_count": 15}},
+        {{"paper_index": 2, "include": false, "reason": "Review article summarizing literature, no original patient data", "disease": null, "patient_count": null}},
         ...
     ]
 }}
 
-Evaluate ALL {len(batch)} papers. Return ONLY the JSON, no other text."""
+Evaluate ALL {len(batch)} papers. Be thorough but strict - only include papers with actual patient treatment data. Return ONLY the JSON, no other text."""
 
             try:
                 response = self.client.messages.create(
@@ -1265,8 +1747,19 @@ Disease:"""
             paper: Paper dict with title, abstract, pmid, pmcid, etc.
             fetch_full_text: If True, attempt to fetch full text from PMC for better extraction
         """
+        pmid = paper.get('pmid', '')
         title = paper.get('title', 'Unknown')
         abstract = paper.get('abstract', paper.get('content', ''))
+
+        # Check cache for existing extraction
+        if self.cs_db and pmid:
+            cached = self.cs_db.load_extraction(drug_name, pmid)
+            if cached:
+                logger.info(f"Using cached extraction for PMID {pmid}")
+                self._cache_stats['papers_from_cache'] += 1
+                # Estimate tokens saved (average extraction is ~2000 tokens)
+                self._cache_stats['tokens_saved_by_cache'] += 2000
+                return cached
 
         # Try to fetch full text from PMC if available and enabled
         full_text_content = None
@@ -1621,14 +2114,26 @@ Return ONLY the JSON mapping."""
         return opportunities
 
     def _get_market_intelligence(self, disease: str) -> MarketIntelligence:
-        """Get market intelligence for a disease."""
+        """Get comprehensive market intelligence for a disease."""
+        from src.models.case_series_schemas import AttributedSource
+
+        # Check cache for fresh market intelligence
+        if self.cs_db:
+            cached = self.cs_db.check_market_intel_fresh(disease)
+            if cached:
+                logger.info(f"Using cached market intelligence for: {disease}")
+                self._cache_stats['market_intel_from_cache'] += 1
+                # Estimate tokens saved (average market intel is ~3000 tokens)
+                self._cache_stats['tokens_saved_by_cache'] += 3000
+                return cached
 
         market_intel = MarketIntelligence(disease=disease)
+        attributed_sources = []
 
         if not self.web_search:
             return market_intel
 
-        # Get epidemiology data
+        # 1. Get epidemiology data
         self.search_count += 1
         epi_results = self.web_search.search(
             f"{disease} prevalence United States epidemiology patients",
@@ -1638,56 +2143,208 @@ Return ONLY the JSON mapping."""
         if epi_results:
             epi_data = self._extract_epidemiology(disease, epi_results)
             market_intel.epidemiology = epi_data
+            # Track epidemiology sources
+            for r in epi_results[:2]:  # Top 2 sources
+                if r.get('url'):
+                    attributed_sources.append(AttributedSource(
+                        url=r.get('url'),
+                        title=r.get('title', 'Unknown'),
+                        attribution='Epidemiology'
+                    ))
 
-        # Get FDA approved drugs specifically
+        # 2. Get FDA approved drugs specifically
         self.search_count += 1
         fda_results = self.web_search.search(
             f'"{disease}" FDA approved drugs treatments biologics site:fda.gov OR site:drugs.com OR site:medscape.com',
             max_results=5
         )
 
-        # Get standard of care and pipeline
+        # 3. Get standard of care
         self.search_count += 1
         soc_results = self.web_search.search(
-            f"{disease} standard of care treatment guidelines clinical trials pipeline",
+            f"{disease} standard of care treatment guidelines first line second line therapy",
             max_results=5
         )
 
-        # Combine results for better extraction
+        # Combine results for SOC extraction
         all_treatment_results = (fda_results or []) + (soc_results or [])
         if all_treatment_results:
             soc_data = self._extract_standard_of_care(disease, all_treatment_results)
             market_intel.standard_of_care = soc_data
+            # Track SOC sources (FDA approvals, treatment guidelines)
+            for r in (fda_results or [])[:2]:
+                if r.get('url'):
+                    attributed_sources.append(AttributedSource(
+                        url=r.get('url'),
+                        title=r.get('title', 'Unknown'),
+                        attribution='Approved Treatments'
+                    ))
+            for r in (soc_results or [])[:1]:
+                if r.get('url'):
+                    attributed_sources.append(AttributedSource(
+                        url=r.get('url'),
+                        title=r.get('title', 'Unknown'),
+                        attribution='Treatment Paradigm'
+                    ))
+
+        # 4. Get dedicated pipeline data (ClinicalTrials.gov focused)
+        self.search_count += 1
+        pipeline_results = self.web_search.search(
+            f'"{disease}" clinical trial Phase 2 OR Phase 3 site:clinicaltrials.gov OR site:biopharmcatalyst.com',
+            max_results=5
+        )
+
+        if pipeline_results:
+            pipeline_data = self._extract_pipeline_data(disease, pipeline_results)
+            # Merge pipeline data into SOC
+            market_intel.standard_of_care.pipeline_therapies = pipeline_data.get('therapies', [])
+            market_intel.standard_of_care.num_pipeline_therapies = len(pipeline_data.get('therapies', []))
+            if pipeline_data.get('details'):
+                market_intel.standard_of_care.pipeline_details = pipeline_data['details']
+            # Track pipeline sources
+            market_intel.pipeline_sources = [r.get('url') for r in pipeline_results if r.get('url')][:3]
+            for r in pipeline_results[:2]:
+                if r.get('url'):
+                    attributed_sources.append(AttributedSource(
+                        url=r.get('url'),
+                        title=r.get('title', 'Unknown'),
+                        attribution='Pipeline/Clinical Trials'
+                    ))
+
+        # 5. Get TAM analysis data (market reports, treatment penetration)
+        self.search_count += 1
+        tam_results = self.web_search.search(
+            f'"{disease}" market size TAM treatment penetration addressable market forecast',
+            max_results=5
+        )
+
+        # Calculate simple market sizing (backward compatibility)
+        market_intel = self._calculate_market_sizing(market_intel)
+
+        # 6. Extract TAM with rationale
+        if tam_results or all_treatment_results:
+            tam_data = self._extract_tam_analysis(
+                disease,
+                tam_results or [],
+                market_intel.epidemiology,
+                market_intel.standard_of_care
+            )
+            market_intel.tam_usd = tam_data.get('tam_usd')
+            market_intel.tam_estimate = tam_data.get('tam_estimate')
+            market_intel.tam_rationale = tam_data.get('tam_rationale')
+            # Track TAM sources
+            if tam_results:
+                market_intel.tam_sources = [r.get('url') for r in tam_results if r.get('url')][:3]
+                for r in tam_results[:2]:
+                    if r.get('url'):
+                        attributed_sources.append(AttributedSource(
+                            url=r.get('url'),
+                            title=r.get('title', 'Unknown'),
+                            attribution='TAM/Market Analysis'
+                        ))
+
+        # Store all attributed sources
+        market_intel.attributed_sources = attributed_sources
+
+        # Save to database for caching
+        if self.cs_db:
+            self.cs_db.save_market_intelligence(market_intel)
+            logger.debug(f"Saved market intelligence to cache for: {disease}")
+
+        return market_intel
+
+    def _calculate_market_sizing(self, market_intel: MarketIntelligence) -> MarketIntelligence:
+        """Calculate market size estimates based on epidemiology and treatment cost data."""
+        epi = market_intel.epidemiology
+        soc = market_intel.standard_of_care
+
+        patient_pop = epi.patient_population_size or 0
+        avg_cost = soc.avg_annual_cost_usd
+
+        # Calculate market size if we have the data
+        if patient_pop > 0:
+            # Use provided cost or estimate based on patient population (rare vs common disease)
+            if not avg_cost:
+                if patient_pop < 10000:
+                    # Ultra-rare: high-priced biologics/gene therapies
+                    avg_cost = 200000
+                elif patient_pop < 50000:
+                    # Rare: specialty biologics
+                    avg_cost = 100000
+                elif patient_pop < 200000:
+                    # Specialty: specialty drugs
+                    avg_cost = 50000
+                else:
+                    # Common: mix of specialty and generics
+                    avg_cost = 25000
+
+            market_size_usd = patient_pop * avg_cost
+            market_intel.market_size_usd = market_size_usd
+
+            # Format market size estimate
+            if market_size_usd >= 1_000_000_000:
+                market_intel.market_size_estimate = f"${market_size_usd / 1_000_000_000:.1f}B"
+            elif market_size_usd >= 1_000_000:
+                market_intel.market_size_estimate = f"${market_size_usd / 1_000_000:.0f}M"
+            else:
+                market_intel.market_size_estimate = f"${market_size_usd / 1_000:.0f}K"
+
+        # Estimate growth rate based on disease characteristics
+        if epi.trend:
+            trend = epi.trend.lower()
+            if 'increasing' in trend:
+                market_intel.growth_rate = "5-10% CAGR (increasing prevalence)"
+            elif 'decreasing' in trend:
+                market_intel.growth_rate = "0-2% CAGR (decreasing prevalence)"
+            else:
+                market_intel.growth_rate = "3-5% CAGR (stable prevalence)"
+        elif soc.unmet_need:
+            # High unmet need often correlates with market growth
+            market_intel.growth_rate = "5-8% CAGR (high unmet need)"
+        elif soc.num_pipeline_therapies and soc.num_pipeline_therapies > 3:
+            # Active pipeline suggests growth potential
+            market_intel.growth_rate = "4-7% CAGR (active pipeline)"
+        else:
+            market_intel.growth_rate = "3-5% CAGR (estimated)"
 
         return market_intel
 
     def _extract_epidemiology(self, disease: str, results: List[Dict]) -> EpidemiologyData:
         """Extract epidemiology data from search results."""
         # Include URLs in the search results for source citation
+        # Note: Tavily API returns 'content', not 'snippet'
         results_with_urls = []
         for r in results:
             results_with_urls.append({
                 'title': r.get('title'),
-                'snippet': r.get('snippet'),
+                'content': r.get('content') or r.get('snippet'),  # Tavily uses 'content'
                 'url': r.get('url')
             })
 
         prompt = f"""Extract epidemiology data for {disease} from these search results.
 
 Search Results:
-{json.dumps(results_with_urls, indent=2)[:5000]}
+{json.dumps(results_with_urls, indent=2)[:6000]}
 
 Return ONLY valid JSON:
 {{
     "us_prevalence_estimate": "estimated US prevalence (e.g. '1 in 10,000' or '200,000 patients') or null",
     "us_incidence_estimate": "annual incidence estimate or null",
-    "patient_population_size": integer estimate of US patient count or null (MUST be integer, not string),
+    "patient_population_size": integer estimate of US patient count (MUST be integer, not string),
     "prevalence_source": "name of source (e.g. 'NIH GARD', 'CDC', journal name) or null",
     "prevalence_source_url": "URL of the source or null",
     "trend": "increasing/stable/decreasing or null"
 }}
 
-IMPORTANT: patient_population_size must be a single integer, not a range or string.
+CRITICAL FOR patient_population_size:
+- This MUST be an integer estimate of US patients (not null unless truly unknown)
+- If prevalence is given as percentage (e.g., "1%"), calculate: US population (335M) * prevalence
+- If prevalence is "1 in X", calculate: 335,000,000 / X
+- If worldwide cases given (e.g., "130 worldwide"), estimate US portion (~4% of world population)
+- If a range is given, use the midpoint
+- Example: "1-2% prevalence" -> 335M * 0.015 = 5,025,000
+- Example: "1 in 10,000" -> 335M / 10000 = 33,500
+- Example: "130 worldwide" -> 130 * 0.04 = ~5 (round to nearest integer)
 Return ONLY the JSON."""
 
         try:
@@ -1707,22 +2364,48 @@ Return ONLY the JSON."""
             return EpidemiologyData()
 
     def _extract_standard_of_care(self, disease: str, results: List[Dict]) -> StandardOfCareData:
-        """Extract standard of care from search results."""
+        """Extract standard of care from search results - BRANDED INNOVATIVE DRUGS ONLY."""
         # Include URLs for source citation
+        # Note: Tavily API returns 'content', not 'snippet'
         results_with_urls = []
         for r in results:
             results_with_urls.append({
                 'title': r.get('title'),
-                'snippet': r.get('snippet'),
+                'content': r.get('content') or r.get('snippet'),  # Tavily uses 'content'
                 'url': r.get('url')
             })
 
-        prompt = f"""Extract FDA-approved treatments and standard of care information for {disease}.
+        prompt = f"""Extract FDA-approved BRANDED INNOVATIVE treatments for {disease}.
 
-IMPORTANT: Count FDA-approved drugs accurately. Include:
-- Drugs with SPECIFIC FDA approval for this disease
-- Drugs approved for related/similar indications commonly used (e.g., biologics like Ilaris/canakinumab, Kineret/anakinra, Actemra/tocilizumab for autoinflammatory diseases)
-- Both brand and generic names count as 1 drug
+=== CRITICAL: INDICATION-SPECIFIC FDA APPROVALS ONLY ===
+Only count drugs with FDA approval for THIS EXACT INDICATION: "{disease}"
+
+IMPORTANT INDICATION DISTINCTIONS (different FDA labels):
+- "Systemic Lupus Erythematosus (SLE)" ≠ "Lupus Nephritis" (different indications!)
+  * SLE approved: Benlysta, Saphnelo
+  * Lupus Nephritis approved: Lupkynis, Benlysta
+- "Rheumatoid Arthritis" ≠ "Juvenile Idiopathic Arthritis"
+- "Atopic Dermatitis" (adult) may have different approvals than pediatric
+- "Crohn's Disease" ≠ "Ulcerative Colitis"
+
+If analyzing "{disease}", only count drugs FDA-approved for EXACTLY "{disease}".
+Do NOT count drugs approved for related but different indications.
+
+=== BRANDED INNOVATIVE DRUGS ONLY ===
+INCLUDE (is_branded_innovative=true):
+- Biologics: monoclonal antibodies, fusion proteins, recombinant proteins
+  Examples: Ilaris, Kineret, Actemra, Humira, Enbrel, Cosentyx, Stelara, Dupixent, Ocrevus
+- Novel small molecules with brand names: JAK inhibitors, kinase inhibitors, targeted therapies
+  Examples: Olumiant (baricitinib), Xeljanz (tofacitinib), Rinvoq (upadacitinib), Jakafi
+- Specialty drugs: IVIG products, enzyme replacement therapies
+  Examples: Octagam 10%, Gamunex-C, Cerezyme, Fabrazyme
+- Gene/cell therapies: Zolgensma, Luxturna, Yescarta
+
+EXCLUDE (is_branded_innovative=false):
+- Generic drugs even with brand names: corticosteroids (prednisone, Medrol), methotrexate, azathioprine, cyclosporine
+- Supportive care: NSAIDs, pain medications, antihistamines
+- OTC medications: eye drops, topical steroids
+- Branded generics: Cyclogyl (cyclopentolate), generic-equivalent products
 
 Search Results:
 {json.dumps(results_with_urls, indent=2)[:6000]}
@@ -1730,21 +2413,35 @@ Search Results:
 Return ONLY valid JSON:
 {{
     "top_treatments": [
-        {{"drug_name": "Brand Name (generic)", "drug_class": "class", "fda_approved": true/false, "efficacy_range": "60-70%", "notes": "FDA indication or off-label"}},
-        {{"drug_name": "Drug2", "drug_class": "class", "fda_approved": true/false, "efficacy_range": "50-60%", "notes": "note"}}
+        {{
+            "drug_name": "Brand Name (generic)",
+            "drug_class": "class (e.g., IL-1 inhibitor, JAK inhibitor)",
+            "is_branded_innovative": true/false,
+            "fda_approved": true/false,
+            "fda_approved_indication": "EXACT indication name from FDA label or null",
+            "line_of_therapy": "1L/2L/3L or null",
+            "efficacy_range": "60-70%",
+            "annual_cost_usd": integer or null,
+            "notes": "FDA approval details including specific indication"
+        }}
     ],
-    "approved_drug_names": ["list", "of", "FDA", "approved", "drug", "names"],
-    "num_approved_drugs": integer count of FDA-approved drugs (count accurately from top_treatments where fda_approved=true),
-    "num_pipeline_therapies": integer count of drugs in clinical trials,
-    "pipeline_details": "brief description of key pipeline drugs and their phases or null",
-    "treatment_paradigm": "brief description of treatment approach",
-    "unmet_need": true or false,
-    "unmet_need_description": "description of unmet need or null",
-    "competitive_landscape": "2-sentence summary including approved drugs and unmet needs",
-    "soc_source": "primary source name and URL for this information"
+    "approved_drug_names": ["Brand1 (generic1)", "Brand2 (generic2)"],
+    "num_approved_drugs": integer (count of drugs FDA-approved for EXACTLY "{disease}"),
+    "avg_annual_cost_usd": integer (average of branded innovative drugs only),
+    "treatment_paradigm": "1-2 sentence description of treatment approach including line of therapy",
+    "unmet_need": true/false,
+    "unmet_need_description": "description or null",
+    "competitive_landscape": "2-sentence summary",
+    "soc_source": "source name and URL"
 }}
 
-CRITICAL: Be thorough in identifying FDA-approved drugs. Many rare diseases have approved biologics.
+VALIDATION RULES:
+1. fda_approved=true ONLY if FDA approved for EXACTLY "{disease}" (not related conditions)
+2. approved_drug_names MUST only contain drugs where is_branded_innovative=true AND fda_approved=true for THIS indication
+3. num_approved_drugs MUST exactly equal length of approved_drug_names list
+4. Generic drugs (corticosteroids, methotrexate, etc.) should NEVER appear in approved_drug_names
+5. If drug is approved for related but different indication (e.g., Lupus Nephritis vs SLE), set fda_approved=false
+
 Return ONLY the JSON."""
 
         try:
@@ -1758,22 +2455,45 @@ Return ONLY the JSON."""
             content = self._clean_json_response(response.content[0].text.strip())
             data = json.loads(content)
 
-            # Build treatments
+            # Build treatments with new fields
             treatments = []
+            approved_innovative_count = 0
+            approved_innovative_names = []
+
             for t in data.get('top_treatments', []):
+                is_branded = t.get('is_branded_innovative', False)
+                is_approved = t.get('fda_approved', False)
+                fda_indication = t.get('fda_approved_indication')
+
                 treatments.append(StandardOfCareTreatment(
                     drug_name=t.get('drug_name', 'Unknown'),
                     drug_class=t.get('drug_class'),
+                    is_branded_innovative=is_branded,
+                    fda_approved=is_approved,
+                    fda_approved_indication=fda_indication,
+                    line_of_therapy=t.get('line_of_therapy'),
                     efficacy_range=t.get('efficacy_range'),
+                    annual_cost_usd=t.get('annual_cost_usd'),
                     notes=t.get('notes')
                 ))
 
+                # Count branded innovative drugs that are FDA approved FOR THIS EXACT INDICATION
+                if is_branded and is_approved:
+                    approved_innovative_count += 1
+                    approved_innovative_names.append(t.get('drug_name', 'Unknown'))
+
+            # Use validated count from top_treatments (cross-validation)
+            # This ensures count matches the actual list
+            final_approved_names = approved_innovative_names if approved_innovative_names else data.get('approved_drug_names', [])
+            final_count = len(final_approved_names)
+
             return StandardOfCareData(
                 top_treatments=treatments,
-                approved_drug_names=data.get('approved_drug_names', []),
-                num_approved_drugs=data.get('num_approved_drugs', 0),
+                approved_drug_names=final_approved_names,
+                num_approved_drugs=final_count,
                 num_pipeline_therapies=data.get('num_pipeline_therapies', 0),
                 pipeline_details=data.get('pipeline_details'),
+                avg_annual_cost_usd=data.get('avg_annual_cost_usd'),
                 treatment_paradigm=data.get('treatment_paradigm'),
                 unmet_need=data.get('unmet_need', False),
                 unmet_need_description=data.get('unmet_need_description'),
@@ -1783,6 +2503,165 @@ Return ONLY the JSON."""
         except Exception as e:
             logger.error(f"Error extracting SOC: {e}")
             return StandardOfCareData()
+
+    def _extract_pipeline_data(self, disease: str, results: List[Dict]) -> Dict[str, Any]:
+        """Extract comprehensive pipeline data from ClinicalTrials.gov focused search."""
+        results_with_urls = []
+        for r in results:
+            results_with_urls.append({
+                'title': r.get('title'),
+                'content': r.get('content') or r.get('snippet'),
+                'url': r.get('url')
+            })
+
+        prompt = f"""Extract clinical trial pipeline data for {disease}.
+
+Search Results:
+{json.dumps(results_with_urls, indent=2)[:5000]}
+
+Return ONLY valid JSON:
+{{
+    "pipeline_therapies": [
+        {{
+            "drug_name": "Drug name or code (e.g., 'ABC-123' or 'drugname')",
+            "company": "Sponsoring company",
+            "mechanism": "Mechanism of action",
+            "phase": "Phase 1/Phase 2/Phase 3",
+            "trial_id": "NCT number if available",
+            "expected_completion": "Expected date or null"
+        }}
+    ],
+    "pipeline_summary": "1-2 sentence summary of pipeline activity"
+}}
+
+RULES:
+- Only include drugs in ACTIVE clinical trials (Phase 1, 2, or 3)
+- EXCLUDE: Preclinical drugs, discontinued trials, already approved drugs
+- EXCLUDE: Trials for other indications even if same drug
+- Include NCT numbers when available
+- Focus on this SPECIFIC indication: {disease}
+
+Return ONLY the JSON."""
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=1500,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            self._track_tokens(response.usage)
+
+            content = self._clean_json_response(response.content[0].text.strip())
+            data = json.loads(content)
+
+            # Build pipeline therapy objects
+            therapies = []
+            for t in data.get('pipeline_therapies', []):
+                therapies.append(PipelineTherapy(
+                    drug_name=t.get('drug_name', 'Unknown'),
+                    company=t.get('company'),
+                    mechanism=t.get('mechanism'),
+                    phase=t.get('phase', 'Unknown'),
+                    trial_id=t.get('trial_id'),
+                    expected_completion=t.get('expected_completion')
+                ))
+
+            return {
+                'therapies': therapies,
+                'details': data.get('pipeline_summary')
+            }
+        except Exception as e:
+            logger.error(f"Error extracting pipeline data: {e}")
+            return {'therapies': [], 'details': None}
+
+    def _extract_tam_analysis(
+        self,
+        disease: str,
+        tam_results: List[Dict],
+        epidemiology: EpidemiologyData,
+        soc: StandardOfCareData
+    ) -> Dict[str, Any]:
+        """Extract TAM (Total Addressable Market) with detailed rationale."""
+        results_with_urls = []
+        for r in tam_results:
+            results_with_urls.append({
+                'title': r.get('title'),
+                'content': r.get('content') or r.get('snippet'),
+                'url': r.get('url')
+            })
+
+        # Provide context from already-extracted data
+        context = {
+            'patient_population': epidemiology.patient_population_size,
+            'prevalence': epidemiology.us_prevalence_estimate,
+            'num_approved_drugs': soc.num_approved_drugs,
+            'treatment_paradigm': soc.treatment_paradigm,
+            'avg_annual_cost': soc.avg_annual_cost_usd,
+            'unmet_need': soc.unmet_need
+        }
+
+        prompt = f"""Calculate the Total Addressable Market (TAM) for a NEW DRUG entering the {disease} market.
+
+=== KNOWN DATA ===
+{json.dumps(context, indent=2)}
+
+=== MARKET RESEARCH RESULTS ===
+{json.dumps(results_with_urls, indent=2)[:4000]}
+
+=== TAM CALCULATION FRAMEWORK ===
+TAM should account for REALISTIC market penetration, not total patient population x cost.
+
+Consider:
+1. TREATMENT FUNNEL:
+   - What % of patients are diagnosed?
+   - What % of diagnosed patients receive treatment?
+   - What line of therapy would a new drug likely be positioned? (1L, 2L, 3L)
+   - What % of patients reach each line of therapy?
+
+2. MARKET PENETRATION:
+   - How many approved competitors exist?
+   - What market share could a new entrant realistically capture?
+   - Typical new drug peak market share: 10-30% in crowded markets, 30-50% in underserved
+
+3. TREATMENT DURATION:
+   - Is this chronic or acute treatment?
+   - What is typical treatment duration and compliance?
+
+4. PRICING:
+   - What is realistic pricing for this indication?
+   - Orphan drugs: $100K-500K/yr, Specialty: $50K-150K/yr, Primary care: $10K-50K/yr
+
+Return ONLY valid JSON:
+{{
+    "tam_usd": integer (Total Addressable Market in USD),
+    "tam_estimate": "formatted string (e.g., '$2.5B')",
+    "tam_rationale": "Detailed 2-4 sentence explanation including: patient funnel (X diagnosed, Y% treated, Z% reach target LOT), assumed market share (A%), pricing ($B/yr), calculation steps"
+}}
+
+EXAMPLE tam_rationale:
+"Of ~100,000 US patients with [disease], ~70% are diagnosed (70K), ~60% receive systemic treatment (42K), ~30% fail 1L therapy and are candidates for 2L+ (12.6K). A new 2L drug could capture 25-35% market share (~3.8K patients). At $75K/yr, TAM = $285M. High unmet need in refractory population supports premium pricing."
+
+Return ONLY the JSON."""
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=1500,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            self._track_tokens(response.usage)
+
+            content = self._clean_json_response(response.content[0].text.strip())
+            data = json.loads(content)
+
+            return {
+                'tam_usd': data.get('tam_usd'),
+                'tam_estimate': data.get('tam_estimate'),
+                'tam_rationale': data.get('tam_rationale')
+            }
+        except Exception as e:
+            logger.error(f"Error extracting TAM: {e}")
+            return {'tam_usd': None, 'tam_estimate': None, 'tam_rationale': None}
 
     # =========================================================================
     # SCORING
@@ -2312,13 +3191,48 @@ Return ONLY the JSON."""
                     })
                 pd.DataFrame(opp_data).to_excel(writer, sheet_name='Opportunities', index=False)
 
-            # Market Intelligence sheet - enhanced with sources and pipeline
+            # Market Intelligence sheet - enhanced with TAM and pipeline details
             market_data = []
             for opp in result.opportunities:
                 if opp.market_intelligence:
                     mi = opp.market_intelligence
                     epi = mi.epidemiology
                     soc = mi.standard_of_care
+
+                    # Format pipeline therapies with details
+                    pipeline_details_formatted = None
+                    if soc.pipeline_therapies:
+                        pipeline_items = []
+                        for pt in soc.pipeline_therapies:
+                            item = f"{pt.drug_name} ({pt.phase})"
+                            if pt.company:
+                                item += f" - {pt.company}"
+                            if pt.trial_id:
+                                item += f" [{pt.trial_id}]"
+                            pipeline_items.append(item)
+                        pipeline_details_formatted = "; ".join(pipeline_items)
+                    elif soc.pipeline_details:
+                        pipeline_details_formatted = soc.pipeline_details
+
+                    # Group sources by category into separate columns
+                    sources_by_category = {
+                        'Epidemiology': [],
+                        'Approved Treatments': [],
+                        'Treatment Paradigm': [],
+                        'Pipeline/Clinical Trials': [],
+                        'TAM/Market Analysis': []
+                    }
+                    if mi.attributed_sources:
+                        for src in mi.attributed_sources:
+                            if src.attribution in sources_by_category:
+                                sources_by_category[src.attribution].append(src.url or src.title or 'Unknown')
+
+                    # Format each category as comma-separated URLs
+                    sources_epidemiology = ', '.join(sources_by_category['Epidemiology']) if sources_by_category['Epidemiology'] else None
+                    sources_approved = ', '.join(sources_by_category['Approved Treatments']) if sources_by_category['Approved Treatments'] else None
+                    sources_treatment = ', '.join(sources_by_category['Treatment Paradigm']) if sources_by_category['Treatment Paradigm'] else None
+                    sources_pipeline = ', '.join(sources_by_category['Pipeline/Clinical Trials']) if sources_by_category['Pipeline/Clinical Trials'] else None
+                    sources_tam = ', '.join(sources_by_category['TAM/Market Analysis']) if sources_by_category['TAM/Market Analysis'] else None
 
                     market_data.append({
                         'Disease': mi.disease,
@@ -2327,25 +3241,33 @@ Return ONLY the JSON."""
                         'US Incidence': epi.us_incidence_estimate,
                         'Patient Population': epi.patient_population_size,
                         'Prevalence Trend': epi.trend,
-                        'Epidemiology Source': epi.prevalence_source,
-                        'Epidemiology Source URL': epi.prevalence_source_url,
-                        # Competitive landscape - separate columns
+                        # Competitive landscape - branded innovative drugs only
                         'Approved Treatments (Count)': soc.num_approved_drugs,
                         'Approved Drug Names': ', '.join(soc.approved_drug_names) if soc.approved_drug_names else None,
                         'Pipeline Therapies (Count)': soc.num_pipeline_therapies,
-                        'Pipeline Details': soc.pipeline_details,
+                        'Pipeline Details': pipeline_details_formatted,
                         'Treatment Paradigm': soc.treatment_paradigm,
-                        'Top Treatments': ', '.join([t.drug_name for t in soc.top_treatments]) if soc.top_treatments else None,
+                        'Top Treatments': ', '.join([f"{t.drug_name} ({'FDA' if t.fda_approved else 'off-label'})" for t in soc.top_treatments]) if soc.top_treatments else None,
                         # Unmet need
                         'Unmet Need': 'Yes' if soc.unmet_need else 'No',
                         'Unmet Need Description': soc.unmet_need_description,
-                        # Market
+                        # Market - Simple calculation (backward compatibility)
                         'Avg Annual Cost (USD)': soc.avg_annual_cost_usd,
                         'Market Size Estimate': mi.market_size_estimate,
                         'Market Size (USD)': mi.market_size_usd,
                         'Market Growth Rate': mi.growth_rate,
+                        # TAM - Sophisticated market analysis (NEW)
+                        'TAM (Total Addressable Market)': mi.tam_estimate,
+                        'TAM (USD)': mi.tam_usd,
+                        'TAM Rationale': mi.tam_rationale,
+                        # Additional context
                         'Competitive Landscape': soc.competitive_landscape,
-                        'SOC Source': soc.soc_source
+                        # Sources - Separate columns by category for easy filtering
+                        'Sources - Epidemiology': sources_epidemiology,
+                        'Sources - Approved Drugs': sources_approved,
+                        'Sources - Treatment': sources_treatment,
+                        'Sources - Pipeline': sources_pipeline,
+                        'Sources - TAM/Market': sources_tam
                     })
             if market_data:
                 pd.DataFrame(market_data).to_excel(writer, sheet_name='Market Intelligence', index=False)
