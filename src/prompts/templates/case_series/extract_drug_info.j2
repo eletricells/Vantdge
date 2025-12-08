@@ -1,0 +1,17 @@
+Extract drug information from these search results for {{ drug_name }}.
+
+Search Results:
+{{ search_results | to_json }}
+
+Return ONLY valid JSON:
+{
+    "generic_name": "generic name or null",
+    "mechanism": "mechanism of action or null",
+    "target": "molecular target or null",
+    "approved_indications": ["indication 1", "indication 2", ...]
+}
+
+Be comprehensive with indications.
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

@@ -88,16 +88,16 @@ class PromptManager:
         if not template_name.endswith('.j2'):
             template_name = f"{template_name}.j2"
 
-        hashable_vars = {}
-        for k, v in variables.items():
-            if isinstance(v, list):
-                hashable_vars[k] = tuple(v)
-            elif isinstance(v, dict):
-                hashable_vars[k] = tuple(sorted(v.items()))
-            else:
-                hashable_vars[k] = v
-        cache_key = f"{template_name}:{hash(frozenset(hashable_vars.items()))}"
-        if self._cache is not None and cache_key in self._cache:
+        # For caching, convert variables to a hashable representation
+        # Use JSON serialization for complex nested structures
+        try:
+            import json
+            cache_key = f"{template_name}:{hash(json.dumps(variables, sort_keys=True, default=str))}"
+        except (TypeError, ValueError):
+            # If serialization fails, skip caching for this call
+            cache_key = None
+
+        if cache_key and self._cache is not None and cache_key in self._cache:
             logger.debug(f"Using cached prompt: {template_name}")
             return self._cache[cache_key]
 
@@ -105,7 +105,7 @@ class PromptManager:
             template = self.env.get_template(template_name)
             rendered = template.render(**variables)
 
-            if self._cache is not None:
+            if cache_key and self._cache is not None:
                 self._cache[cache_key] = rendered
 
             logger.debug(f"Rendered prompt: {template_name}")

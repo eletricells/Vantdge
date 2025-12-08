@@ -6,8 +6,11 @@ and expanded access programs.
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field
+
+# Import clinical extraction models for detailed endpoint data
+from src.models.clinical_extraction_schemas import EfficacyEndpoint, SafetyEndpoint
 
 
 # =====================================================
@@ -243,21 +246,44 @@ class OffLabelCaseStudy(BaseModel):
     development_potential: Optional[str] = Field(None, description="High, Medium, Low")
     key_findings: Optional[str] = Field(None, description="1-2 sentence summary")
     
-    # Detailed data (child records)
+    # Detailed data (child records) - backward compatible
     baseline_characteristics: Optional[OffLabelBaseline] = Field(None, description="Detailed baseline data")
     outcomes: List[OffLabelOutcome] = Field(default_factory=list, description="Detailed outcome data")
     safety_events: List[OffLabelSafetyEvent] = Field(default_factory=list, description="Detailed safety data")
-    
+
+    # Enhanced clinical data from multi-stage extraction (NEW)
+    # These use the same models as ClinicalDataExtractor for consistency
+    detailed_efficacy_endpoints: List[EfficacyEndpoint] = Field(
+        default_factory=list,
+        description="Detailed efficacy endpoints from multi-stage extraction (EfficacyEndpoint format)"
+    )
+    detailed_safety_endpoints: List[SafetyEndpoint] = Field(
+        default_factory=list,
+        description="Detailed safety endpoints from multi-stage extraction (SafetyEndpoint format)"
+    )
+    standard_endpoints_matched: List[str] = Field(
+        default_factory=list,
+        description="Standard endpoints from landscape discovery that were matched"
+    )
+
     # Metadata
     paper_path: Optional[str] = Field(None, description="Path to downloaded paper")
     is_open_access: bool = Field(False, description="Whether paper is open access")
     citation_count: Optional[int] = Field(None, description="Number of citations")
-    
+
     # Extraction metadata
     extracted_by: str = Field("Claude Sonnet 4.5", description="Model used for extraction")
     extraction_timestamp: datetime = Field(default_factory=datetime.now, description="When extraction was performed")
     extraction_confidence: Optional[float] = Field(None, description="Confidence in extraction (0.0-1.0)")
     extraction_notes: Optional[str] = Field(None, description="Notes about extraction")
+    extraction_method: Literal["single_pass", "multi_stage"] = Field(
+        "single_pass",
+        description="Extraction method used: single_pass (abstract-only) or multi_stage (full-text)"
+    )
+    extraction_stages_completed: List[str] = Field(
+        default_factory=list,
+        description="List of extraction stages completed (e.g., ['section_id', 'efficacy', 'safety'])"
+    )
 
     # Evidence quality assessment (NEW)
     evidence_quality: Optional[Dict[str, Any]] = Field(None, description="Evidence quality assessment using GRADE criteria")

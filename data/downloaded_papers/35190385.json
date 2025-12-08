@@ -1,0 +1,65 @@
+{
+  "paper_id": "35190385_PMC9592156",
+  "pmid": "35190385",
+  "pmcid": "PMC9592156",
+  "title": "Baricitinib for relapsing giant cell arteritis: a prospective open-label 52-week pilot study",
+  "authors": [
+    "Matthew J. Koster",
+    "Cynthia S. Crowson",
+    "Rachel E. Giblon"
+  ],
+  "journal": "Ann Rheum Dis",
+  "year": "2022",
+  "month": "6",
+  "doi": "10.1136/annrheumdis-2021-221961",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/35190385/",
+  "content": "Baricitinib for relapsing giant cell arteritis: a prospective open-label 52-week pilot study\n\nAbstract:\nBackground/Purpose: Pre-clinical vascular inflammation models have demonstrated effective suppression of arterial wall lesional T-cells through inhibition of Janus kinase 3 (JAK3) and JAK1. However, JAK inhibition in patients with giant cell arteritis (GCA) has not been prospectively investigated. Methods: We performed a prospective, open-label, pilot study of baricitinib (4mg/day) with a tiered glucocorticoid entry and accelerated taper in patients with relapsing GCA. Results: 15 patients were enrolled (11, 73% female) with a mean(SD) age at entry 72.4(7.2) years, median(IQR) duration of GCA of 9 (7, 21) months, and median of 1(1, 2) prior relapse. Four (27%) patients entered the study on prednisone 30 mg/day, 6 (40%) at 20 mg/day, and 5 (33%) at 10mg/day. Fourteen patients completed 52 weeks of baricitinib. At week 52, 14/15 (93%) patients had ≥1 adverse event with the most frequent events including: infection not requiring antibiotics (n=8), infection requiring antibiotics (n=5), nausea (n=6), leg swelling (n=2), fatigue (n=2), diarrhea (n=1). One subject required baricitinib discontinuation due to adverse event. One serious adverse event was recorded. Only 1 of 14 (7%) patients relapsed during the study. The remaining 13 patients achieved steroid discontinuation and remained in disease remission during the 52-week study duration. Conclusion: In this proof-of-concept study, baricitinib at 4 mg/day was well-tolerated and allowed glucocorticoid discontinuation in most patients with relapsing GCA. Larger randomized clinical trials are needed to determine the utility of JAK inhibition in GCA.\n\nFull Text:\n",
+  "sections": {
+    "background/purpose:": {
+      "title": "Background/Purpose:",
+      "content": "Pre-clinical vascular inflammation models have demonstrated effective suppression of arterial wall lesional T-cells through inhibition of Janus kinase 3 (JAK3) and JAK1. However, JAK inhibition in patients with giant cell arteritis (GCA) has not been prospectively investigated.",
+      "subsections": [],
+      "paragraph_count": 1
+    },
+    "methods:": {
+      "title": "Methods:",
+      "content": "We performed a prospective, open-label, pilot study of baricitinib (4mg/day) with a tiered glucocorticoid entry and accelerated taper in patients with relapsing GCA.",
+      "subsections": [],
+      "paragraph_count": 1
+    },
+    "results:": {
+      "title": "Results:",
+      "content": "15 patients were enrolled (11, 73% female) with a mean(SD) age at entry 72.4(7.2) years, median(IQR) duration of GCA of 9 (7, 21) months, and median of 1(1, 2) prior relapse. Four (27%) patients entered the study on prednisone 30 mg/day, 6 (40%) at 20 mg/day, and 5 (33%) at 10mg/day. Fourteen patients completed 52 weeks of baricitinib. At week 52, 14/15 (93%) patients had ≥1 adverse event with the most frequent events including: infection not requiring antibiotics (n=8), infection requiring antibiotics (n=5), nausea (n=6), leg swelling (n=2), fatigue (n=2), diarrhea (n=1). One subject required baricitinib discontinuation due to adverse event. One serious adverse event was recorded. Only 1 of 14 (7%) patients relapsed during the study. The remaining 13 patients achieved steroid discontinuation and remained in disease remission during the 52-week study duration.",
+      "subsections": [],
+      "paragraph_count": 1
+    },
+    "conclusion:": {
+      "title": "Conclusion:",
+      "content": "In this proof-of-concept study, baricitinib at 4 mg/day was well-tolerated and allowed glucocorticoid discontinuation in most patients with relapsing GCA. Larger randomized clinical trials are needed to determine the utility of JAK inhibition in GCA.",
+      "subsections": [],
+      "paragraph_count": 1
+    }
+  },
+  "tables": [],
+  "captions": {
+    "figures": [],
+    "tables": [],
+    "supplementary": []
+  },
+  "references": [],
+  "metadata": {
+    "source": "PubMed Central",
+    "open_access": true,
+    "extraction_method": "PMC XML + tidypmc approach (text, table, caption, reference, metadata)",
+    "tables_validated": false,
+    "sections_detected": 4,
+    "captions_extracted": 0,
+    "references_extracted": 0,
+    "keywords": [],
+    "volume": "81",
+    "issue": "6",
+    "pages": "861-867",
+    "article_type": "research-article",
+    "pub_date": "2022-6"
+  }
+}

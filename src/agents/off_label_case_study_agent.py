@@ -32,13 +32,24 @@ from src.models.off_label_schemas import (
     StudyClassification,
     OffLabelValidationResult
 )
+from src.models.clinical_extraction_schemas import (
+    EfficacyEndpoint,
+    SafetyEndpoint,
+    DataSectionIdentification
+)
 from src.tools.off_label_database import OffLabelDatabase
 from src.tools.pubmed import PubMedAPI
 from src.tools.web_search import WebSearchTool
 from src.tools.clinicaltrials import ClinicalTrialsAPI
+from src.tools.clinical_extraction_database import ClinicalExtractionDatabase
 from src.utils.paper_extraction_service import PaperExtractionService
 
 logger = logging.getLogger(__name__)
+
+# Token budgets for multi-stage extraction (reduced for case studies vs RCTs)
+THINKING_BUDGET_SECTIONS = 3000  # Section identification
+THINKING_BUDGET_EFFICACY = 4000  # Efficacy extraction
+THINKING_BUDGET_SAFETY = 2000   # Safety extraction
 
 # PyMuPDF for PDF extraction
 try:
@@ -48,6 +59,448 @@ try:
 except ImportError:
     logger.warning("pymupdf4llm not available. PDF extraction will be limited to abstracts.")
     PYMUPDF_AVAILABLE = False
+
+
+class CaseStudyDataExtractor:
+    """
+    Lightweight multi-stage data extractor for case studies.
+
+    Adapts the Clinical Data Extractor's multi-stage pipeline for case studies:
+    - Stage 1: Section identification (identify tables with efficacy/safety data)
+    - Stage 2: Efficacy extraction (with standard endpoint matching)
+    - Stage 3: Safety extraction
+
+    Simplified vs full Clinical Data Extractor:
+    - No trial arm handling (case studies typically single-arm)
+    - No demographics stage (handled by main extraction)
+    - Reduced thinking budgets (case studies simpler than RCTs)
+    """
+
+    def __init__(
+        self,
+        client: Anthropic,
+        model: str = "claude-sonnet-4-20250514",
+        max_tokens: int = 16000,
+        database_url: Optional[str] = None
+    ):
+        """
+        Initialize extractor.
+
+        Args:
+            client: Anthropic client
+            model: Model to use
+            max_tokens: Max output tokens
+            database_url: Database URL for standard endpoints lookup
+        """
+        self.client = client
+        self.model = model
+        self.max_tokens = max_tokens
+        self.database_url = database_url
+        self._clinical_db = None
+
+    @property
+    def clinical_db(self) -> Optional[ClinicalExtractionDatabase]:
+        """Lazy-load clinical extraction database."""
+        if self._clinical_db is None and self.database_url:
+            try:
+                self._clinical_db = ClinicalExtractionDatabase(self.database_url)
+            except Exception as e:
+                logger.warning(f"Could not connect to clinical extraction DB: {e}")
+        return self._clinical_db
+
+    def extract_multi_stage(
+        self,
+        paper: Dict[str, Any],
+        drug_name: str,
+        indication: str,
+        n_patients: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Run multi-stage extraction on a case study paper.
+
+        Args:
+            paper: Paper dict with 'content', 'tables', etc.
+            drug_name: Drug being studied
+            indication: Disease/indication being treated
+            n_patients: Number of patients (for deciding pipeline depth)
+
+        Returns:
+            Dict with:
+                - efficacy_endpoints: List[EfficacyEndpoint]
+                - safety_endpoints: List[SafetyEndpoint]
+                - standard_endpoints_matched: List[str]
+                - stages_completed: List[str]
+                - extraction_method: "multi_stage"
+        """
+        result = {
+            "efficacy_endpoints": [],
+            "safety_endpoints": [],
+            "standard_endpoints_matched": [],
+            "stages_completed": [],
+            "extraction_method": "multi_stage"
+        }
+
+        paper_content = paper.get('content', '') or paper.get('full_text', '')
+        if not paper_content or len(paper_content) < 500:
+            logger.warning("Paper content too short for multi-stage extraction")
+            return result
+
+        # Get standard endpoints for this indication
+        standard_endpoints = self._get_standard_endpoints(indication)
+
+        # Stage 1: Identify sections with efficacy/safety data
+        logger.info("Multi-stage extraction: Stage 1 - Section identification")
+        sections = self._stage1_identify_sections(paper, indication)
+        result["stages_completed"].append("section_id")
+
+        # Stage 2: Extract efficacy endpoints
+        logger.info("Multi-stage extraction: Stage 2 - Efficacy extraction")
+        efficacy = self._stage2_extract_efficacy(
+            paper, sections, standard_endpoints, indication, drug_name
+        )
+        result["efficacy_endpoints"] = efficacy
+        result["stages_completed"].append("efficacy")
+
+        # Track which standard endpoints were matched
+        for ep in efficacy:
+            if ep.is_standard_endpoint and ep.endpoint_name not in result["standard_endpoints_matched"]:
+                result["standard_endpoints_matched"].append(ep.endpoint_name)
+
+        # Stage 3: Extract safety endpoints
+        logger.info("Multi-stage extraction: Stage 3 - Safety extraction")
+        safety = self._stage3_extract_safety(paper, sections, drug_name)
+        result["safety_endpoints"] = safety
+        result["stages_completed"].append("safety")
+
+        logger.info(f"Multi-stage extraction complete: {len(efficacy)} efficacy, {len(safety)} safety endpoints")
+        return result
+
+    def _get_standard_endpoints(self, indication: str) -> List[str]:
+        """Get standard endpoints for indication from database."""
+        if not self.clinical_db:
+            return []
+        try:
+            return self.clinical_db.get_standard_endpoints(indication)
+        except Exception as e:
+            logger.warning(f"Could not get standard endpoints: {e}")
+            return []
+
+    def _stage1_identify_sections(
+        self,
+        paper: Dict[str, Any],
+        indication: str
+    ) -> DataSectionIdentification:
+        """
+        Stage 1: Identify sections containing efficacy and safety data.
+
+        Uses extended thinking to interpret table structures.
+        """
+        paper_content = paper.get('content', '')[:30000]
+        tables = paper.get('tables', [])
+
+        # Format tables for prompt
+        tables_text = ""
+        if tables:
+            for i, table in enumerate(tables):
+                label = table.get('label', f'Table {i+1}')
+                content = table.get('content', '')[:2000]
+                tables_text += f"\n{label}:\n{content}\n"
+
+        prompt = f"""Analyze this case study paper and identify which sections/tables contain:
+1. EFFICACY DATA - Treatment outcomes, response rates, clinical improvements
+2. SAFETY DATA - Adverse events, side effects, discontinuations
+
+Indication being treated: {indication}
+
+Paper content (excerpt):
+{paper_content[:15000]}
+
+Tables found:
+{tables_text[:10000] if tables_text else "No structured tables found"}
+
+Return JSON:
+{{
+    "efficacy_tables": ["Table 1", "Table 2"],  // Tables with efficacy data
+    "safety_tables": ["Table 3"],  // Tables with safety data
+    "efficacy_sections": ["Results", "Outcomes"],  // Text sections with efficacy
+    "safety_sections": ["Safety", "Adverse Events"],  // Text sections with safety
+    "confidence": 0.85,  // Confidence in identification (0-1)
+    "notes": "Brief notes on data location"
+}}"""
+
+        response = self._call_claude_with_thinking(prompt, THINKING_BUDGET_SECTIONS)
+        text = self._extract_text_response(response)
+
+        try:
+            json_str = self._extract_json_from_text(text)
+            data = json.loads(json_str)
+
+            # Map to DataSectionIdentification (simplified - no trial arms for case studies)
+            return DataSectionIdentification(
+                baseline_tables=[],  # Not used for case studies
+                efficacy_tables=data.get('efficacy_tables', []),
+                safety_tables=data.get('safety_tables', []),
+                trial_arms=[],  # Case studies typically single-arm
+                confidence=data.get('confidence', 0.5),
+                notes=data.get('notes', '')
+            )
+        except Exception as e:
+            logger.error(f"Stage 1 parsing failed: {e}")
+            return DataSectionIdentification(
+                baseline_tables=[],
+                efficacy_tables=[],
+                safety_tables=[],
+                trial_arms=[],
+                confidence=0.0,
+                notes=f"Parsing failed: {str(e)}"
+            )
+
+    def _stage2_extract_efficacy(
+        self,
+        paper: Dict[str, Any],
+        sections: DataSectionIdentification,
+        standard_endpoints: List[str],
+        indication: str,
+        drug_name: str
+    ) -> List[EfficacyEndpoint]:
+        """
+        Stage 2: Extract efficacy endpoints with standard endpoint matching.
+        """
+        paper_content = paper.get('content', '')[:40000]
+
+        # Format standard endpoints for prompt
+        std_endpoints_text = ""
+        if standard_endpoints:
+            std_endpoints_text = f"""
+STANDARD ENDPOINTS for {indication} (prioritize these):
+{chr(10).join(f'- {ep}' for ep in standard_endpoints[:20])}
+"""
+
+        prompt = f"""Extract ALL efficacy endpoints from this case study.
+
+Drug: {drug_name}
+Indication: {indication}
+{std_endpoints_text}
+
+Tables identified as containing efficacy data: {', '.join(sections.efficacy_tables) or 'None identified'}
+
+Paper content:
+{paper_content}
+
+For EACH efficacy outcome, extract:
+{{
+    "endpoint_name": "Name of endpoint (e.g., 'Complete response', 'EASI-75')",
+    "endpoint_category": "Primary/Secondary/Exploratory",
+    "timepoint": "When measured (e.g., 'Week 12', 'Month 6')",
+    "timepoint_weeks": 12,  // Normalized to weeks
+    "responders_n": 8,  // Number who achieved endpoint
+    "n_evaluated": 10,  // Total evaluated
+    "responders_pct": 80.0,  // Percentage
+    "mean_value": null,  // For continuous endpoints
+    "change_from_baseline": null,  // Change from baseline
+    "pct_change_from_baseline": null,  // Percent change
+    "stat_sig": true,  // If statistical significance mentioned
+    "p_value": "p<0.001",  // P-value if reported
+    "is_standard_endpoint": true,  // True if matches standard endpoint list
+    "source_table": "Table 2"  // Where data was found
+}}
+
+Return JSON array of all endpoints found:
+[
+    {{...endpoint 1...}},
+    {{...endpoint 2...}}
+]
+
+IMPORTANT:
+- Extract EVERY efficacy outcome mentioned
+- Mark is_standard_endpoint=true if it matches the standard endpoints list
+- Include both responder analyses AND continuous outcomes
+- Use null for missing values"""
+
+        response = self._call_claude_with_thinking(prompt, THINKING_BUDGET_EFFICACY)
+        text = self._extract_text_response(response)
+
+        try:
+            json_str = self._extract_json_from_text(text)
+            data = json.loads(json_str)
+
+            # Handle wrapped response
+            if isinstance(data, dict) and "endpoints" in data:
+                data = data["endpoints"]
+
+            endpoints = []
+            for item in data:
+                try:
+                    # Ensure required fields
+                    if not item.get('endpoint_name'):
+                        continue
+                    if not item.get('timepoint'):
+                        item['timepoint'] = 'Not specified'
+                    endpoint = EfficacyEndpoint(**item)
+                    endpoints.append(endpoint)
+                except Exception as e:
+                    logger.warning(f"Failed to parse efficacy endpoint: {e}")
+                    continue
+
+            return endpoints
+
+        except Exception as e:
+            logger.error(f"Stage 2 efficacy parsing failed: {e}")
+            return []
+
+    def _stage3_extract_safety(
+        self,
+        paper: Dict[str, Any],
+        sections: DataSectionIdentification,
+        drug_name: str
+    ) -> List[SafetyEndpoint]:
+        """
+        Stage 3: Extract safety endpoints.
+        """
+        paper_content = paper.get('content', '')[:40000]
+
+        prompt = f"""Extract ALL safety/adverse event data from this case study.
+
+Drug: {drug_name}
+Tables identified as containing safety data: {', '.join(sections.safety_tables) or 'None identified'}
+
+Paper content:
+{paper_content}
+
+For EACH adverse event or safety finding, extract:
+{{
+    "event_category": "TEAE/SAE/AE leading to discontinuation/Death",
+    "event_name": "Name of event (e.g., 'Nasopharyngitis', 'Injection site reaction')",
+    "severity": "Mild/Moderate/Severe/Grade 3+",
+    "n_events": 3,  // Number of events
+    "n_patients": 2,  // Number of patients with event
+    "incidence_pct": 20.0,  // Percentage of patients
+    "timepoint": "Through Week 12",  // When measured
+    "source_table": "Table 3"  // Where data was found
+}}
+
+Return JSON array of all safety events found:
+[
+    {{...event 1...}},
+    {{...event 2...}}
+]
+
+IMPORTANT:
+- Extract ALL adverse events mentioned
+- Include both individual events AND summary categories (e.g., "Any TEAE")
+- Include discontinuations due to adverse events
+- Use null for missing values"""
+
+        response = self._call_claude(prompt)
+        text = self._extract_text_response(response)
+
+        try:
+            json_str = self._extract_json_from_text(text)
+            data = json.loads(json_str)
+
+            # Handle wrapped response
+            if isinstance(data, dict) and "endpoints" in data:
+                data = data["endpoints"]
+
+            endpoints = []
+            for item in data:
+                try:
+                    # Ensure required fields
+                    if not item.get('event_name'):
+                        continue
+                    if not item.get('event_category'):
+                        item['event_category'] = 'Adverse Event'
+                    endpoint = SafetyEndpoint(**item)
+                    endpoints.append(endpoint)
+                except Exception as e:
+                    logger.warning(f"Failed to parse safety endpoint: {e}")
+                    continue
+
+            return endpoints
+
+        except Exception as e:
+            logger.error(f"Stage 3 safety parsing failed: {e}")
+            return []
+
+    def _call_claude_with_thinking(
+        self,
+        prompt: str,
+        thinking_budget: int = 4000
+    ) -> Any:
+        """Call Claude with extended thinking."""
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens + thinking_budget,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": thinking_budget
+                },
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Claude API call failed: {e}")
+            raise
+
+    def _call_claude(self, prompt: str) -> Any:
+        """Call Claude without extended thinking."""
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Claude API call failed: {e}")
+            raise
+
+    def _extract_text_response(self, response: Any) -> str:
+        """Extract text from Claude response."""
+        for block in response.content:
+            if hasattr(block, 'text'):
+                return block.text
+        return ""
+
+    def _extract_json_from_text(self, text: str) -> str:
+        """Extract JSON from text that might have markdown formatting."""
+        text = re.sub(r'```json\s*', '', text)
+        text = re.sub(r'```\s*', '', text)
+
+        # Find JSON array or object
+        start_bracket = text.find('[')
+        start_brace = text.find('{')
+
+        if start_bracket == -1 and start_brace == -1:
+            return text
+
+        # Use whichever comes first
+        if start_bracket == -1:
+            start = start_brace
+            open_char, close_char = '{', '}'
+        elif start_brace == -1:
+            start = start_bracket
+            open_char, close_char = '[', ']'
+        else:
+            if start_bracket < start_brace:
+                start = start_bracket
+                open_char, close_char = '[', ']'
+            else:
+                start = start_brace
+                open_char, close_char = '{', '}'
+
+        # Find matching closing bracket/brace
+        count = 0
+        for i in range(start, len(text)):
+            if text[i] == open_char:
+                count += 1
+            elif text[i] == close_char:
+                count -= 1
+                if count == 0:
+                    return text[start:i+1]
+
+        return text[start:]
 
 
 class OffLabelCaseStudyAgent:
@@ -80,6 +533,7 @@ class OffLabelCaseStudyAgent:
         """
         self.client = Anthropic(api_key=anthropic_api_key)
         self.db = OffLabelDatabase(database_url)
+        self.database_url = database_url
         self.pubmed = PubMedAPI(email=pubmed_email)
         self.web_search = WebSearchTool(api_key=tavily_api_key) if tavily_api_key else None
         self.ct_api = ClinicalTrialsAPI()
@@ -92,6 +546,14 @@ class OffLabelCaseStudyAgent:
         self.paper_service = PaperExtractionService(
             client=self.client,
             model=self.model
+        )
+
+        # Initialize multi-stage data extractor for enhanced clinical data extraction
+        self.data_extractor = CaseStudyDataExtractor(
+            client=self.client,
+            model=self.model,
+            max_tokens=self.max_tokens,
+            database_url=database_url
         )
     
     # =====================================================
@@ -683,6 +1145,9 @@ If not relevant (review article, preclinical, mechanism only), return relevance_
         """
         Extract structured data from case study.
 
+        Uses multi-stage extraction for full-text papers (>2000 chars) and
+        single-pass extraction for abstract-only papers.
+
         Args:
             paper: Paper metadata and content
             drug_name: Drug name
@@ -701,13 +1166,56 @@ If not relevant (review article, preclinical, mechanism only), return relevance_
             logger.warning(f"No content available for {paper.get('pmid')}")
             return None
 
-        # Extract with extended thinking
+        # Determine extraction method based on content length
+        # Full-text papers (>2000 chars) use multi-stage extraction
+        # Abstract-only papers use single-pass extraction
+        is_full_text = len(paper_content) > 2000
+
+        # Extract with extended thinking (single-pass for basic data)
         extraction = self._extract_with_thinking(
             paper, paper_content, drug_name, drug_info, classification
         )
 
         if not extraction:
             return None
+
+        # For full-text papers, run multi-stage extraction for detailed clinical data
+        if is_full_text:
+            logger.info("Running multi-stage extraction for full-text paper")
+            try:
+                # Prepare paper dict with content for multi-stage extractor
+                paper_for_extraction = {
+                    'content': paper_content,
+                    'tables': paper.get('tables', []),
+                    'pmid': paper.get('pmid'),
+                    'title': paper.get('title')
+                }
+
+                # Run multi-stage extraction
+                multi_stage_result = self.data_extractor.extract_multi_stage(
+                    paper=paper_for_extraction,
+                    drug_name=drug_name,
+                    indication=classification.indication or extraction.indication_treated,
+                    n_patients=classification.n_patients
+                )
+
+                # Add detailed endpoints to extraction
+                extraction.detailed_efficacy_endpoints = multi_stage_result.get('efficacy_endpoints', [])
+                extraction.detailed_safety_endpoints = multi_stage_result.get('safety_endpoints', [])
+                extraction.standard_endpoints_matched = multi_stage_result.get('standard_endpoints_matched', [])
+                extraction.extraction_method = "multi_stage"
+                extraction.extraction_stages_completed = multi_stage_result.get('stages_completed', [])
+
+                logger.info(f"Multi-stage extraction added {len(extraction.detailed_efficacy_endpoints)} efficacy, "
+                           f"{len(extraction.detailed_safety_endpoints)} safety endpoints")
+
+            except Exception as e:
+                logger.error(f"Multi-stage extraction failed, using single-pass only: {e}")
+                extraction.extraction_method = "single_pass"
+                extraction.extraction_notes = f"Multi-stage extraction failed: {str(e)}"
+        else:
+            logger.info("Using single-pass extraction for abstract-only paper")
+            extraction.extraction_method = "single_pass"
 
         # Validate extraction
         validation = self._validate_extraction(extraction)
@@ -2277,3 +2785,165 @@ Provide a concise comparative summary (3-5 sentences) addressing:
             else:
                 return "Low - Multiple approved therapies available"
 
+    # =====================================================
+    # EXCEL EXPORT
+    # =====================================================
+
+    def export_to_excel(
+        self,
+        case_studies: List[OffLabelCaseStudy],
+        drug_name: str,
+        output_path: Optional[str] = None
+    ) -> str:
+        """
+        Export case study results to Excel with multiple sheets.
+
+        Sheets:
+        - Summary: Overview of drug and analysis
+        - Case Studies: All extracted case studies
+        - Efficacy: Detailed efficacy endpoints (from multi-stage extraction)
+        - Safety: Detailed safety endpoints (from multi-stage extraction)
+
+        Args:
+            case_studies: List of extracted case studies
+            drug_name: Drug name for the analysis
+            output_path: Optional output path (default: data/exports/{drug}_{timestamp}.xlsx)
+
+        Returns:
+            Path to the exported Excel file
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            logger.error("pandas required for Excel export. Install with: pip install pandas openpyxl")
+            raise
+
+        # Generate output path if not provided
+        if not output_path:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_dir = Path("data/exports")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = str(output_dir / f"{drug_name.lower().replace(' ', '_')}_case_studies_{timestamp}.xlsx")
+
+        logger.info(f"Exporting {len(case_studies)} case studies to {output_path}")
+
+        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+            # Sheet 1: Summary
+            summary_data = {
+                'Drug Name': [drug_name],
+                'Total Case Studies': [len(case_studies)],
+                'Total Patients': [sum(cs.n_patients or 0 for cs in case_studies)],
+                'Indications Found': [len(set(cs.indication_treated for cs in case_studies if cs.indication_treated))],
+                'Multi-Stage Extractions': [sum(1 for cs in case_studies if cs.extraction_method == 'multi_stage')],
+                'Single-Pass Extractions': [sum(1 for cs in case_studies if cs.extraction_method == 'single_pass')],
+                'Export Date': [datetime.now().strftime("%Y-%m-%d %H:%M")]
+            }
+            pd.DataFrame(summary_data).to_excel(writer, sheet_name='Summary', index=False)
+
+            # Sheet 2: Case Studies
+            case_study_data = []
+            for cs in case_studies:
+                case_study_data.append({
+                    'PMID': cs.pmid,
+                    'Title': cs.title,
+                    'Year': cs.year,
+                    'Journal': cs.journal,
+                    'Indication': cs.indication_treated,
+                    'Study Type': cs.study_type,
+                    'N Patients': cs.n_patients,
+                    'Dosing': cs.dosing_regimen,
+                    'Duration': cs.treatment_duration,
+                    'Response Rate': cs.response_rate,
+                    'Responders N': cs.responders_n,
+                    'Responders %': cs.responders_pct,
+                    'Time to Response': cs.time_to_response,
+                    'Duration of Response': cs.duration_of_response,
+                    'Efficacy Signal': cs.efficacy_signal,
+                    'Safety Profile': cs.safety_profile,
+                    'Development Potential': cs.development_potential,
+                    'Evidence Grade': cs.evidence_grade,
+                    'Extraction Confidence': cs.extraction_confidence,
+                    'Extraction Method': cs.extraction_method,
+                    'Key Findings': cs.key_findings
+                })
+
+            if case_study_data:
+                pd.DataFrame(case_study_data).to_excel(writer, sheet_name='Case Studies', index=False)
+
+            # Sheet 3: Efficacy Endpoints (from multi-stage extraction)
+            efficacy_data = []
+            for cs in case_studies:
+                for ep in cs.detailed_efficacy_endpoints:
+                    efficacy_data.append({
+                        'PMID': cs.pmid,
+                        'Indication': cs.indication_treated,
+                        'Study Type': cs.study_type,
+                        'N Patients': cs.n_patients,
+                        'Endpoint Name': ep.endpoint_name,
+                        'Endpoint Category': ep.endpoint_category,
+                        'Is Standard Endpoint': ep.is_standard_endpoint,
+                        'Timepoint': ep.timepoint,
+                        'Timepoint (Weeks)': ep.timepoint_weeks,
+                        'Responders N': ep.responders_n,
+                        'N Evaluated': ep.n_evaluated,
+                        'Responders %': ep.responders_pct,
+                        'Mean Value': ep.mean_value,
+                        'Change from Baseline': ep.change_from_baseline,
+                        '% Change from Baseline': ep.pct_change_from_baseline,
+                        'Statistically Significant': ep.stat_sig,
+                        'P-Value': ep.p_value,
+                        'Confidence Interval': ep.confidence_interval,
+                        'Source Table': ep.source_table
+                    })
+
+            if efficacy_data:
+                pd.DataFrame(efficacy_data).to_excel(writer, sheet_name='Efficacy Endpoints', index=False)
+            else:
+                # Create empty sheet with headers
+                pd.DataFrame(columns=['PMID', 'Indication', 'Endpoint Name', 'Timepoint', 'Responders %']).to_excel(
+                    writer, sheet_name='Efficacy Endpoints', index=False
+                )
+
+            # Sheet 4: Safety Endpoints (from multi-stage extraction)
+            safety_data = []
+            for cs in case_studies:
+                for se in cs.detailed_safety_endpoints:
+                    safety_data.append({
+                        'PMID': cs.pmid,
+                        'Indication': cs.indication_treated,
+                        'Study Type': cs.study_type,
+                        'N Patients': cs.n_patients,
+                        'Event Category': se.event_category,
+                        'Event Name': se.event_name,
+                        'Severity': se.severity,
+                        'N Events': se.n_events,
+                        'N Patients with Event': se.n_patients,
+                        'Incidence %': se.incidence_pct,
+                        'Cohort': se.cohort,
+                        'Timepoint': se.timepoint,
+                        'Source Table': se.source_table
+                    })
+
+            if safety_data:
+                pd.DataFrame(safety_data).to_excel(writer, sheet_name='Safety Endpoints', index=False)
+            else:
+                # Create empty sheet with headers
+                pd.DataFrame(columns=['PMID', 'Indication', 'Event Name', 'Severity', 'Incidence %']).to_excel(
+                    writer, sheet_name='Safety Endpoints', index=False
+                )
+
+            # Sheet 5: Standard Endpoints Matched
+            std_endpoints_data = []
+            for cs in case_studies:
+                for ep_name in cs.standard_endpoints_matched:
+                    std_endpoints_data.append({
+                        'PMID': cs.pmid,
+                        'Indication': cs.indication_treated,
+                        'Standard Endpoint': ep_name
+                    })
+
+            if std_endpoints_data:
+                pd.DataFrame(std_endpoints_data).to_excel(writer, sheet_name='Standard Endpoints', index=False)
+
+        logger.info(f"Excel export complete: {output_path}")
+        return output_path

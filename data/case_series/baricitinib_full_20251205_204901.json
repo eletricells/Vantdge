@@ -1,0 +1,3907 @@
+{
+  "drug_name": "baricitinib",
+  "generic_name": "baricitinib",
+  "mechanism": "Janus Kinase Inhibitor",
+  "target": null,
+  "approved_indications": [
+    "adults with severe alopecia areata",
+    "covid-19 in certain hospitalized adults",
+    "adults with moderately-to-severely active rheumatoid arthritis",
+    "moderately-to-severely active rheumatoid arthritis"
+  ],
+  "opportunities": [
+    {
+      "extraction": {
+        "source": {
+          "pmid": "39666590",
+          "doi": "10.12659/AJCR.945068",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39666590/",
+          "title": "Alopecia Areata Following the Use of Belimumab in a Patient with Systemic Lupus Erythematosus and Arthritis Who Responded Well to Baricitinib: A Case Report.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Systemic lupus erythematosus with alopecia areata and arthritis",
+        "disease_normalized": "Systemic Lupus Erythematosus",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "hydroxychloroquine",
+            "azathioprine",
+            "belimumab",
+            "methotrexate",
+            "mycophenolate mofetil",
+            "systemic and local steroids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "54-year-old Saudi female with SLE presenting with alopecia areata, arthritis, and fatigue"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "ongoing since treatment initiation, followed until March 2024",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "1 month",
+          "duration_of_response": "sustained response maintained until March 2024",
+          "effect_size_description": "nearly complete hair regrowth from alopecia universalis and complete resolution of arthritis",
+          "primary_endpoint": "hair regrowth and arthritis improvement",
+          "endpoint_result": "significant improvement in alopecia universalis with nearly complete hair regrowth and resolution of joint symptoms",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib 4 mg daily resulted in significant improvement in both alopecia universalis and lupus-related arthritis within one month of treatment. The patient achieved nearly complete hair regrowth and complete resolution of joint symptoms, allowing for successful steroid tapering."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No adverse events were reported with baricitinib treatment. The patient tolerated the medication well throughout the treatment period.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "approximately 3+ years",
+        "key_findings": "Baricitinib demonstrated efficacy in treating both belimumab-induced alopecia universalis and lupus arthritis in a patient with SLE who had failed multiple conventional treatments.",
+        "extraction_timestamp": "2025-12-05T21:01:16.950499",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Systemic Lupus Erythematosus",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.8,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 1
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "36204670",
+          "doi": "10.3389/fped.2022.962585",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/36204670/",
+          "title": "Short-term effectiveness of baricitinib in children with refractory and/or severe juvenile dermatomyositis.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "juvenile dermatomyositis",
+        "disease_normalized": "Juvenile Dermatomyositis",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 20,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "corticosteroids",
+            "azathioprine",
+            "methotrexate",
+            "mycophenolate mofetil",
+            "cyclosporine",
+            "tacrolimus",
+            "cyclophosphamide",
+            "leflunomide",
+            "IVIg"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "children with refractory and/or severe juvenile dermatomyositis, mean age 7.8 \u00b1 4.0 years, women-to-men ratio 3:1"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "0.05 [0.04, 0.09] mg/kg/day",
+          "frequency": null,
+          "duration": "12-24 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "18/20 (90%)",
+          "responders_n": 18,
+          "responders_pct": 90.0,
+          "time_to_response": "significant improvement by week 12",
+          "duration_of_response": "maintained through 24 weeks",
+          "effect_size_description": "large effect with 95% of patients showing skin rash improvement and significant muscle strength gains",
+          "primary_endpoint": "skin disease activity score (skin-DAS) reduction and PRINTO remission criteria",
+          "endpoint_result": "skin-DAS decreased from 6.0 to 1.0 at week 24 (p < 0.05); 75% achieved complete response and 15% partial response",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib demonstrated significant efficacy in refractory/severe juvenile dermatomyositis with 95% of patients showing skin improvement and 90% achieving complete or partial response. CMAS scores increased significantly and corticosteroid doses were reduced by 49% at 24 weeks."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No serious side effects were observed during the study period. The treatment was well tolerated in all patients.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "24 weeks",
+        "key_findings": "Baricitinib combined with traditional immunosuppressants was highly effective in refractory/severe juvenile dermatomyositis with 90% response rate and enabled significant corticosteroid dose reduction without serious adverse events.",
+        "extraction_timestamp": "2025-12-05T21:03:03.042219",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Juvenile Dermatomyositis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.8,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 8.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 8.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 2
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "39541169",
+          "doi": "10.1172/JCI179436",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39541169/",
+          "title": "Rapid response of lichen planus to baricitinib associated with suppression of cytotoxic CXCL13+CD8+ T cells.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Cutaneous lichen planus",
+        "disease_normalized": "Lichen Planus",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 12,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "topical steroids",
+            "oral steroids",
+            "intramuscular steroids",
+            "methotrexate",
+            "topical calcineurin inhibitors"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "12 patients with cutaneous lichen planus (mean age 63.6 years, 91.7% female, 75% White), with refractory disease and mean disease duration of 26.5 months"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg daily for 16 weeks, with dose escalation to 4 mg daily for additional 12 weeks in 5 patients",
+          "frequency": null,
+          "duration": "16 weeks (with optional 12-week dose escalation)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "10/12 (83.3%)",
+          "responders_n": 10,
+          "responders_pct": 83.3,
+          "time_to_response": "As early as week 1 in 37.5% of patients, 100% by week 12",
+          "duration_of_response": "Sustained at week 20 (4 weeks off therapy) with all patients demonstrating continued response",
+          "effect_size_description": "Large effect size with 83.3% response rate, 50% achieving complete clearance (PGA 0) and 50% almost clear (PGA 1)",
+          "primary_endpoint": "Treatment response defined as physician global assessment (PGA) scores of 0-3 with 50% or greater score reduction",
+          "endpoint_result": "83.3% of patients achieved treatment response at week 16",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib demonstrated rapid and sustained efficacy in cutaneous lichen planus with 83.3% response rate at 16 weeks. Significant improvements were seen in lesion counts, body surface area affected, pruritus, pain, and quality of life measures. Response was sustained 4 weeks after treatment discontinuation."
+        },
+        "safety": {
+          "adverse_events": [
+            "mild neutropenia"
+          ],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Treatment was well-tolerated with 12 total adverse events, mostly mild to moderate. Only one mild adverse event (neutropenia) was deemed probably related to study drug. No adverse events led to discontinuation of baricitinib.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "20 weeks (4 weeks post-treatment)",
+        "key_findings": "Baricitinib showed rapid efficacy in refractory cutaneous lichen planus with molecular evidence of suppression of cytotoxic CXCL13+CD8+ T cells and IFN signature. Treatment was well-tolerated with sustained responses off therapy.",
+        "extraction_timestamp": "2025-12-05T20:59:22.221273",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Lichen Planus",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 6.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.7,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 3
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "33984091",
+          "doi": "10.14740/jmc3629",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/33984091/",
+          "title": "A Novel Report on the Compassionate Use of Baricitinib in Treating a Pediatric Patient With Severe Symptoms of COVID-19 Infection.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "COVID-19 in pediatric patient",
+        "disease_normalized": "COVID-19",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "hydroxychloroquine",
+            "azithromycin"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "17-year-old obese female with severe COVID-19 symptoms and acute hypoxic respiratory failure"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "5 days",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "24 hours after first dose",
+          "duration_of_response": "Sustained through discharge on day 8",
+          "effect_size_description": "Dramatic improvement from severe respiratory distress requiring CPAP to ambient air within 3 days",
+          "primary_endpoint": "Clinical improvement and oxygen requirement reduction",
+          "endpoint_result": "Marked clinical improvement by day 3, weaned from CPAP to ambient air by day 6",
+          "durability_signal": null,
+          "efficacy_summary": "Patient showed rapid clinical improvement within 24 hours of baricitinib initiation, with resolution of respiratory distress and weaning from CPAP to ambient air by day 6. Inflammatory markers (CRP, ESR, ferritin) decreased significantly and chest X-ray opacities resolved markedly."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No adverse events or safety concerns were reported during the 5-day treatment course. Patient tolerated baricitinib well with no discontinuations.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "Through discharge on day 8",
+        "key_findings": "Baricitinib showed rapid efficacy in treating severe COVID-19 in a pediatric patient, with dramatic clinical improvement and resolution of inflammatory markers within days of initiation.",
+        "extraction_timestamp": "2025-12-05T21:01:59.297431",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "COVID-19",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 5.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.4,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 10.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 4
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "39247640",
+          "doi": "10.3389/fmed.2024.1439338",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39247640/",
+          "title": "Efficacy and safety of Janus kinase inhibitors in non-infectious inflammatory ocular diseases: a prospective cohort study from the international AIDA network registries.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Non-infectious inflammatory ocular diseases",
+        "disease_normalized": "Uveitis",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 4,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "adalimumab",
+            "golimumab",
+            "infliximab",
+            "etanercept",
+            "certolizumab",
+            "tocilizumab",
+            "methotrexate",
+            "azathioprine",
+            "cyclosporine A",
+            "sulfasalazine",
+            "systemic glucocorticoids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "4 adult patients with non-infectious inflammatory ocular diseases (anterior sclerouveitis with RA, panuveitis with VKH syndrome, posterior uveitis idiopathic, anterior uveitis with ANA-positive JIA)"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2-4 mg/day",
+          "frequency": null,
+          "duration": "9.5 \u00b1 4.8 months (3-17 months)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "4/4 (100%)",
+          "responders_n": 4,
+          "responders_pct": 100.0,
+          "time_to_response": null,
+          "duration_of_response": "9.5 \u00b1 4.8 months average treatment duration",
+          "effect_size_description": "4.37-fold reduction in ocular flare incidence rate compared to pre-treatment period",
+          "primary_endpoint": "frequency of ocular inflammatory relapses",
+          "endpoint_result": "complete ocular disease control in all 4 patients at last assessment",
+          "durability_signal": null,
+          "efficacy_summary": "All 4 baricitinib-treated patients achieved complete ocular disease control. The overall study showed significant reduction in ocular flare incidence from 125 to 28.6 episodes/1000 person-months."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": 1,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "poor compliance"
+          ],
+          "safety_summary": "One patient discontinued baricitinib due to poor compliance after a 12-month relapse-free period. No adverse events were specifically reported for the baricitinib subgroup.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "9.5 \u00b1 4.8 months",
+        "key_findings": "Baricitinib achieved complete ocular disease control in all 4 patients with refractory non-infectious inflammatory ocular diseases.",
+        "extraction_timestamp": "2025-12-05T21:02:12.993724",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Uveitis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 9.5,
+        "evidence_quality": 6.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.4,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 10.0,
+          "followup_duration": 7.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 7.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 5
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "35096866",
+          "doi": "10.3389/fmed.2021.764067",
+          "url": "https://www.semanticscholar.org/paper/8eb489dd88a10d89629139d8d8798aae6258d47c",
+          "title": "Effectiveness of Baricitinib in Refractory Seronegative Rheumatoid Arthritis and Uveitis: A Case Report",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "Uveitis",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "steroids",
+            "methotrexate",
+            "salazosulfapyridine",
+            "adalimumab",
+            "infliximab"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "35-year-old man with seronegative rheumatoid arthritis and bilateral severe non-granulomatous panuveitis"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "8 mg/day",
+          "frequency": null,
+          "duration": "2 years and 7 months",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "3 months",
+          "duration_of_response": "2 years and 7 months with no relapse",
+          "effect_size_description": "Complete resolution of uveitis manifestations with sustained remission",
+          "primary_endpoint": "Uveitis inflammatory activity improvement",
+          "endpoint_result": "Complete resolution of vitreous opacity, serous retinal detachment, and anterior chamber cells",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib achieved complete resolution of refractory uveitis manifestations including vitreous opacity, serous retinal detachment, and anterior chamber cells within 3 months. The response was sustained for over 2 years with no relapse of uveitis and maintained visual acuity of 20/20 in both eyes."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No serious side effects of oral baricitinib were observed or reported during the 2 years and 7 months treatment period. The patient tolerated the medication well with no safety concerns leading to discontinuation.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "2 years and 7 months",
+        "key_findings": "Baricitinib was highly effective in treating refractory uveitis associated with seronegative rheumatoid arthritis when conventional DMARDs and TNF inhibitors failed, with sustained remission and excellent safety profile.",
+        "extraction_timestamp": "2025-12-05T21:04:48.176842",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Uveitis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 4.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.2,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 6
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "36419482",
+          "doi": "10.1177/1759720X221137126",
+          "url": "https://www.semanticscholar.org/paper/869f10eec990650fa66b182fc661f1113c3dd59b",
+          "title": "Baricitinib in severe and refractory peripheral ulcerative keratitis: a case report and literature review",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "peripheral ulcerative keratitis",
+        "disease_normalized": "Peripheral Ulcerative Keratitis",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "methotrexate",
+            "leflunomide",
+            "certolizumab pegol",
+            "adalimumab",
+            "tocilizumab"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "85-year-old woman with rheumatoid arthritis and secondary Sj\u00f6gren's syndrome"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg/day",
+          "frequency": null,
+          "duration": "18 months",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "very rapid",
+          "duration_of_response": "persistent at 18 months",
+          "effect_size_description": "very rapid and persistent favorable response to eye and joint symptoms",
+          "primary_endpoint": "eye and joint symptom response",
+          "endpoint_result": "very rapid and persistent favorable response",
+          "durability_signal": null,
+          "efficacy_summary": "Patient showed very rapid and persistent favorable response to both eye and joint symptoms. No signs of disease reactivation were observed after 18 months of treatment."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Patient had not presented serious side effects after 18 months of treatment. Treatment was well tolerated without significant adverse events.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "18 months",
+        "key_findings": "Baricitinib showed rapid and sustained efficacy in severe refractory peripheral ulcerative keratitis with excellent safety profile over 18 months.",
+        "extraction_timestamp": "2025-12-05T21:07:39.086050",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Peripheral Ulcerative Keratitis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 4.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.2,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 7
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "40115257",
+          "doi": "10.3389/fphar.2025.1509404",
+          "url": "https://www.semanticscholar.org/paper/f652d9aee27e16ab02f39c9e99a4ee0e3777430d",
+          "title": "Case report: Effectiveness of Janus kinase inhibitors in the management of isolated noninfectious uveitis: a case series",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "isolated noninfectious uveitis",
+        "disease_normalized": "Uveitis",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 3,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "methylprednisolone",
+            "mycophenolate mofetil",
+            "adalimumab",
+            "tacrolimus",
+            "methotrexate",
+            "cyclosporine"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "3 patients (1 female, 2 males, ages 28-59) with isolated noninfectious uveitis (anterior, intermediate, and posterior uveitis)"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "mean follow-up 31.6 months (range 16-55 months)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "3/3 (100%)",
+          "responders_n": 3,
+          "responders_pct": 100.0,
+          "time_to_response": "mean 6.3 months (range 4-9 months)",
+          "duration_of_response": ">1 year in all patients",
+          "effect_size_description": "complete remission in all patients with improved visual acuity",
+          "primary_endpoint": "remission of uveitis",
+          "endpoint_result": "all 3 patients achieved remission lasting >1 year",
+          "durability_signal": null,
+          "efficacy_summary": "All three patients with refractory isolated noninfectious uveitis achieved complete remission after baricitinib treatment, with sustained response lasting over 1 year. Mean best corrected visual acuity improved from 0.4 to 0.6 after treatment."
+        },
+        "safety": {
+          "adverse_events": [
+            "transient elevation in liver transaminases"
+          ],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No significant side effects were observed in any patients throughout the follow-up period. Only one patient experienced a slight temporary increase in liver transaminase levels.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "mean 31.6 months (range 16-55 months)",
+        "key_findings": "First report documenting successful use of baricitinib in isolated noninfectious uveitis, with all patients achieving sustained remission after failing multiple conventional treatments.",
+        "extraction_timestamp": "2025-12-05T21:03:31.155195",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Uveitis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 3.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.0,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 2.0,
+          "followup_duration": 7.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 7.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 8
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38463557",
+          "doi": "10.2147/CCID.S446468",
+          "url": "https://www.semanticscholar.org/paper/3042dd9238d395b004db932402833376fb860849",
+          "title": "Successful Treatment of Refractory Synovitis, Acne, Pustulosis, Hyperostosis, and Osteitis (SAPHO) Syndrome with Baricitinib, a Janus Kinase Inhibitor",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "SAPHO syndrome (Synovitis, Acne, Pustulosis, Hyperostosis, and Osteitis)",
+        "disease_normalized": "SAPHO Syndrome",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "NSAIDs",
+            "corticosteroids",
+            "DMARDs",
+            "adalimumab",
+            "acitretin capsules"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "32-year-old Chinese woman with refractory SAPHO syndrome with osteoarticular pain and skin pustulosis"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg twice daily, then reduced to half dose",
+          "frequency": null,
+          "duration": "2 weeks at full dose, then 3 months at reduced dose",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "2 weeks",
+          "duration_of_response": "at least 3 months with no recurrence",
+          "effect_size_description": "VAS pain score decreased from 9 to 2, complete skin lesion resolution",
+          "primary_endpoint": "improvement in skin lesions and osteoarticular pain",
+          "endpoint_result": "complete disappearance of skin lesions and significant relief of osteoarticular pain",
+          "durability_signal": null,
+          "efficacy_summary": "Complete resolution of skin lesions and dramatic improvement in joint pain within 2 weeks of treatment. Laboratory markers normalized and patient remained asymptomatic during 3-month follow-up."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No adverse effects were observed during treatment or follow-up period. Patient tolerated dose reduction well.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "3 months",
+        "key_findings": "Baricitinib achieved rapid and complete response in refractory SAPHO syndrome where multiple conventional and biologic treatments had failed.",
+        "extraction_timestamp": "2025-12-05T21:04:08.133862",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "SAPHO Syndrome",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 2.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 7.8,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 9
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "35510170",
+          "doi": "10.1177/1759720X221093211",
+          "url": "https://www.semanticscholar.org/paper/c93d597cfaaf21fd7c0497c8b384d8f0ffc6d476",
+          "title": "Clinical and immunological study of Tofacitinib and Baricitinib in refractory Blau syndrome: case report and literature review",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "Blau syndrome",
+        "disease_normalized": "Blau Syndrome",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "acetylsalicylic acid",
+            "methotrexate",
+            "methylprednisolone",
+            "etanercept",
+            "anakinra",
+            "abatacept",
+            "adalimumab",
+            "tofacitinib"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "25-year-old woman with refractory Blau syndrome with granulomatous dermatitis, arthritis, and uveitis"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "at least 4 months",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "maintained from initiation",
+          "duration_of_response": "ongoing at 4 months",
+          "effect_size_description": "maintained disease control with adequate safety profile",
+          "primary_endpoint": "clinical control of cutaneous, ocular, and joint manifestations",
+          "endpoint_result": "maintained adequate control of disease activity",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib successfully maintained disease control after tofacitinib discontinuation. Patient experienced stable cutaneous, ocular, and joint manifestations throughout treatment."
+        },
+        "safety": {
+          "adverse_events": [
+            "lymphopenia"
+          ],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Baricitinib showed an adequate safety profile. Lymphopenia was observed at month 4 (800 cells/\u00b5l) but was less severe than with tofacitinib.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "4 months",
+        "key_findings": "First reported successful use of baricitinib in Blau syndrome, maintaining disease control with better safety profile than tofacitinib.",
+        "extraction_timestamp": "2025-12-05T21:06:25.237776",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Blau Syndrome",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 2.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 7.8,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 10
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "39841460",
+          "doi": "10.1001/jamadermatol.2024.5737",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39841460/",
+          "title": "Combination of Baricitinib and Phototherapy in Adults With Active Vitiligo: A Randomized Clinical Trial.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "vitiligo",
+        "disease_normalized": "Vitiligo",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 49,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "adults with active and extensive vitiligo disease, the most severe form of vitiligo"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": null,
+          "frequency": null,
+          "duration": "36 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "35.6 percentage point difference in VASI score reduction compared to placebo",
+          "primary_endpoint": "Vitiligo Area Scoring Index (VASI) score reduction",
+          "endpoint_result": "mean change in total VASI score at week 36 was -44.8% for baricitinib group vs -9.2% for placebo group",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib combined with narrowband UV-B phototherapy demonstrated significant efficacy in severe active vitiligo. The treatment provided rapid and clinically meaningful repigmentation with a 44.8% reduction in VASI scores compared to 9.2% with placebo."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Safety outcomes were not detailed in the provided abstract.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "36 weeks",
+        "key_findings": "Baricitinib combined with phototherapy reduced disease activity and provided rapid, clinically meaningful repigmentation in adults with severe, active vitiligo.",
+        "extraction_timestamp": "2025-12-05T20:58:48.070998",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Vitiligo",
+        "epidemiology": {
+          "us_prevalence_estimate": "0.76% to 1.11% of the U.S. population",
+          "us_incidence_estimate": "22.6 per 100,000 person-years",
+          "global_prevalence": null,
+          "patient_population_size": 2350000,
+          "prevalence_source": "PMC - NIH",
+          "prevalence_source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8600454/",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Opzelura (ruxolitinib)",
+              "drug_class": "JAK inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": "1L",
+              "notes": "FDA approved July 2022 for nonsegmental vitiligo in patients 12+ years, first FDA-approved pharmacologic treatment for vitiligo repigmentation"
+            }
+          ],
+          "approved_drug_names": [
+            "Opzelura (ruxolitinib)"
+          ],
+          "num_approved_drugs": 1,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": "Opzelura represents the first-line FDA-approved pharmacologic treatment for nonsegmental vitiligo, applied topically twice daily to affected areas. Treatment typically requires more than 24 weeks for satisfactory patient response.",
+          "unmet_need": true,
+          "unmet_need_description": "Until 2022, vitiligo had no FDA-approved pharmacologic treatments, representing a significant unmet medical need. While Opzelura provides the first approved option, additional therapeutic alternatives are still needed.",
+          "competitive_landscape": "Opzelura currently stands alone as the only FDA-approved branded innovative treatment for vitiligo, having gained approval in July 2022. Other JAK inhibitors like oral tofacitinib are being investigated but remain off-label for vitiligo treatment.",
+          "soc_source": "FDA drug approval announcement and Medscape treatment guidelines"
+        },
+        "market_size_estimate": "$58.8B",
+        "market_size_usd": 58750000000.0,
+        "growth_rate": "5-8% CAGR (high unmet need)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 7.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 9.0,
+        "overall_priority": 7.5,
+        "clinical_breakdown": {
+          "response_rate": 9.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 9.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 8.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 8.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 7.0,
+          "market_size": 10.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 7.0,
+        "market_size_score": 10.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 11
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "36389811",
+          "doi": "10.3389/fimmu.2022.1008392",
+          "url": "https://www.semanticscholar.org/paper/23791402d1f9cc42cfe6cadf0283618cb0b22093",
+          "title": "Baricitinib is potentially effective in the treatment of refractory livedoid vasculopathy",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "livedoid vasculopathy",
+        "disease_normalized": "Livedoid Vasculopathy",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 8,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "not specified"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "patients with refractory livedoid vasculopathy"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg/day",
+          "frequency": null,
+          "duration": "not specified",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "6/8 (75%)",
+          "responders_n": 6,
+          "responders_pct": 75.0,
+          "time_to_response": "3 to 13 weeks, with a mean remission time of 7.75 \u00b1 3.45 weeks",
+          "duration_of_response": "not specified",
+          "effect_size_description": "significant clinical score reduction with 80% improvement",
+          "primary_endpoint": "clinical score reduction",
+          "endpoint_result": "mean clinical scores reduced from 7.0 \u00b1 1.6 to 1.4 \u00b1 1.2 (P <0.01)",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib showed significant improvement in livedoid vasculopathy with mean clinical scores decreasing from 7.0 to 1.4. Six out of eight patients achieved remission (clinical score 0 or 2) with improvement in erythema, ulceration, and pain in all patients."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No adverse events were reported in any of the eight patients during the study period. The treatment was well-tolerated with no discontinuations due to safety concerns.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "not specified",
+        "key_findings": "Baricitinib 2mg daily achieved remission in 75% of patients with refractory livedoid vasculopathy with excellent safety profile and no adverse events reported.",
+        "extraction_timestamp": "2025-12-05T21:04:33.801464",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Livedoid Vasculopathy",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 9.0,
+        "evidence_quality": 3.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 7.5,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 4.0,
+          "publication_venue": 2.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 4.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 12
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "41239432",
+          "doi": "10.1186/s13075-025-03675-9",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41239432/",
+          "title": "Baricitinib could improve the prognosis of anti-MDA5 antibody positive dermatomyositis associated interstitial lung disease.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Anti-MDA5 antibody positive dermatomyositis associated interstitial lung disease",
+        "disease_normalized": "Dermatomyositis",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 39,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "glucocorticoids",
+            "calcineurin inhibitors",
+            "mycophenolate mofetil",
+            "cyclophosphamide",
+            "intravenous immunoglobulin"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "39 patients with anti-MDA5 positive dermatomyositis-associated interstitial lung disease, 71.8% female, mean age 47.6\u00b111.5 years, median disease duration 4.5 months before baricitinib treatment"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "not specified",
+          "frequency": null,
+          "duration": "more than one month minimum",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "31/39 (79.5%)",
+          "responders_n": 31,
+          "responders_pct": 79.5,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "HRCT score decreased from 115 to 97.5, FVC improved from 76.44% to 90.73%, ferritin decreased from 739.9 to 56.3 ng/ml, LDH decreased from 313 to 233 U/L",
+          "primary_endpoint": "clinical improvement including skin manifestations and respiratory symptoms",
+          "endpoint_result": "31 patients (79.5%) had clinical improvement",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib treatment resulted in significant improvements in skin manifestations (Gottron's sign, heliotrope rash), respiratory symptoms, lung function (FVC improvement), and radiological findings (HRCT score reduction). Laboratory markers including ferritin and LDH decreased significantly, and lymphocyte counts increased substantially."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Safety data not explicitly reported in the study. No specific adverse events or safety concerns mentioned in the available text.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "6 months for survival analysis",
+        "key_findings": "Baricitinib showed 79.5% clinical response rate and superior 6-month survival (87.2% vs 70%) compared to controls, with first-line use showing even better survival advantage (84.6% vs 52.9%).",
+        "extraction_timestamp": "2025-12-05T21:00:33.343838",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Dermatomyositis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 6.5,
+        "evidence_quality": 8.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 7.4,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 8.0,
+          "publication_venue": 10.0,
+          "followup_duration": 7.0
+        },
+        "sample_size_score": 8.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 7.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 13
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38260663",
+          "doi": "10.1101/2024.01.09.24300946",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38260663/",
+          "title": "Oral Baricitinib in the Treatment of Cutaneous Lichen Planus.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Cutaneous lichen planus",
+        "disease_normalized": "Lichen Planus",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 12,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Patients with cutaneous lichen planus"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg daily",
+          "frequency": null,
+          "duration": "16 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "10/12 (83.3%)",
+          "responders_n": 10,
+          "responders_pct": 83.3,
+          "time_to_response": "early and sustained",
+          "duration_of_response": null,
+          "effect_size_description": "High response rate with early onset",
+          "primary_endpoint": "Clinical response rate",
+          "endpoint_result": "83.3% of patients responsive at week 16",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib demonstrated high efficacy with 83.3% response rate at 16 weeks. Clinical response was early and sustained throughout the treatment period."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Safety outcomes were not reported in the available abstract and full text summary.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "16 weeks",
+        "key_findings": "JAK inhibition demonstrated efficacy in cutaneous lichen planus with rapid decrease in interferon signature within 2 weeks of treatment.",
+        "extraction_timestamp": "2025-12-05T21:00:44.437218",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Lichen Planus",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 7.5,
+        "evidence_quality": 6.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 7.4,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 14
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "40705211",
+          "doi": "10.1007/s13555-025-01477-0",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/40705211/",
+          "title": "JAK Inhibitors in Atopic Dermatitis: Does Weight Matter? A Real-World, Nationwide Retrospective Study: IL-AD (Italian Landscape Atopic Dermatitis).",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "atopic dermatitis",
+        "disease_normalized": "Atopic Dermatitis",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 26,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "cyclosporine",
+            "dupilumab",
+            "systemic corticosteroids",
+            "phototherapy"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Adult patients with moderate-to-severe atopic dermatitis, part of larger 388 patient cohort studying JAK inhibitors"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg or 4 mg daily",
+          "frequency": null,
+          "duration": "up to 104 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": "4 weeks",
+          "duration_of_response": "sustained through 104 weeks",
+          "effect_size_description": "Median EASI reduced from 24 to 4 at week 4, continued improvement to 0-1 at later timepoints",
+          "primary_endpoint": "EASI score reduction",
+          "endpoint_result": "Significant improvement in EASI scores across timepoints",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib demonstrated significant efficacy in treating moderate-to-severe atopic dermatitis with rapid onset at 4 weeks. Clinical improvements were sustained through 104 weeks of follow-up with minimal BMI-related differences in response."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Safety data not specifically reported for baricitinib subgroup in this analysis focused on BMI effects on efficacy outcomes.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "104 weeks",
+        "key_findings": "Baricitinib showed consistent efficacy in atopic dermatitis regardless of BMI, with rapid symptom control and sustained long-term response.",
+        "extraction_timestamp": "2025-12-05T21:03:16.626489",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Atopic Dermatitis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 7.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 7.3,
+        "clinical_breakdown": {
+          "response_rate": 9.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 9.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 8.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 8.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 15
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "37304255",
+          "doi": "10.3389/fimmu.2023.1187584",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/37304255/",
+          "title": "Clinical experience and safety of Janus kinase inhibitors in giant cell arteritis: a retrospective case series from Sweden.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Giant Cell Arteritis",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 15,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "corticosteroids",
+            "tocilizumab",
+            "methotrexate",
+            "infliximab"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "15 GCA patients (9 women, mean age 70.1 years, range 61-80) with inadequate response to corticosteroids"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "baricitinib 2-4 mg daily (mean 3.86 mg), tofacitinib 10 mg daily",
+          "frequency": null,
+          "duration": "mean 19 months (range 6-38 months)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "11/15 (73%)",
+          "responders_n": 11,
+          "responders_pct": 73.0,
+          "time_to_response": "3 months",
+          "duration_of_response": "sustained through mean 19 months follow-up",
+          "effect_size_description": "significant reduction in inflammatory markers and steroid-sparing effect",
+          "primary_endpoint": "CRP reduction",
+          "endpoint_result": "significant CRP reduction at 3 months (p=0.02) and 6 months (p=0.02)",
+          "durability_signal": null,
+          "efficacy_summary": "JAK inhibitors demonstrated significant reductions in CRP at 3 and 6 months with concurrent prednisolone dose reductions. No GCA relapses were observed during treatment, and 73% of patients achieved therapeutic benefit at 6 months."
+        },
+        "safety": {
+          "adverse_events": [
+            "bacteremia",
+            "aspergillus infection"
+          ],
+          "serious_adverse_events": [
+            "bacteremia (Enterococcus faecalis)",
+            "infection (Aspergillus Fumigatus)"
+          ],
+          "sae_count": 2,
+          "sae_percentage": 13.3,
+          "discontinuations_n": 3,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "sustained remission"
+          ],
+          "safety_summary": "Two patients experienced serious infections but JAK inhibitor therapy was retained or reintroduced after recovery. No malignancies, gastrointestinal perforations, or significant changes in blood counts or liver enzymes were observed.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "mean 19 months",
+        "key_findings": "JAK inhibitors showed promising efficacy in GCA with significant inflammatory marker reduction and steroid-sparing effects, with acceptable safety profile despite two serious infections.",
+        "extraction_timestamp": "2025-12-05T20:59:37.416810",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Giant Cell Arteritis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 6.0,
+        "evidence_quality": 8.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 7.2,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 4.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 4.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 16
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "37010773",
+          "doi": "10.1007/s40268-023-00417-7",
+          "url": "https://www.semanticscholar.org/paper/8552fa1bffd375e41208d1b21c50d6d9460b75f3",
+          "title": "Efficacy of Baricitinib in Patients with Refractory Adult-Onset Still\u2019s Disease",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "Adult-onset Still's disease (AOSD)",
+        "disease_normalized": "Adult-onset Still's Disease (AOSD)",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 7,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "glucocorticoids",
+            "conventional synthetic DMARDs",
+            "NSAIDs",
+            "tocilizumab"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "7 female patients with refractory AOSD, median age 31 years, median disease duration 11 months before baricitinib initiation"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg once daily",
+          "frequency": null,
+          "duration": "2-18 months follow-up",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "6/7 (85.7%)",
+          "responders_n": 6,
+          "responders_pct": 85.7,
+          "time_to_response": "1 month for symptom improvement, 3 months for complete remission",
+          "duration_of_response": "sustained through follow-up period",
+          "effect_size_description": "71.4% fever improvement, 40% rash improvement, 80% sore throat improvement, 66.7% myalgia improvement at 1 month",
+          "primary_endpoint": "systemic score reduction and clinical symptom improvement",
+          "endpoint_result": "significant systemic score reduction at 3 months (p=0.0216), 6 months (p=0.0007), and last follow-up (p=0.0007)",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib showed rapid and sustained clinical improvement in 6 of 7 patients with refractory AOSD. Five patients remained symptom-free at last follow-up with significant reductions in inflammatory markers and corticosteroid requirements."
+        },
+        "safety": {
+          "adverse_events": [
+            "abnormal lipid parameters",
+            "leukopenia"
+          ],
+          "serious_adverse_events": [
+            "progressive macrophage activation syndrome"
+          ],
+          "sae_count": 1,
+          "sae_percentage": 14.3,
+          "discontinuations_n": 1,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "progressive macrophage activation syndrome"
+          ],
+          "safety_summary": "Treatment was generally well tolerated with only mild lipid abnormalities in most patients. One patient discontinued due to progressive MAS requiring alternative therapy.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "2-18 months",
+        "key_findings": "Baricitinib demonstrated rapid and durable clinical improvement in refractory AOSD patients with significant corticosteroid-sparing effects and acceptable safety profile.",
+        "extraction_timestamp": "2025-12-05T21:04:21.918758",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Adult-onset Still's Disease (AOSD)",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 7.0,
+        "evidence_quality": 5.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.9,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 4.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 4.0,
+        "evidence_breakdown": {
+          "sample_size": 4.0,
+          "publication_venue": 2.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 4.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 17
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "33001140",
+          "doi": "10.1001/jamadermatol.2020.3260",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/33001140/",
+          "title": "Efficacy and Safety of Baricitinib Combined With Topical Corticosteroids for Treatment of Moderate to Severe Atopic Dermatitis: A Randomized Clinical Trial.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "atopic dermatitis",
+        "disease_normalized": "Atopic Dermatitis",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 329,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "topical corticosteroids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "adults with moderate to severe atopic dermatitis with inadequate response to topical corticosteroids, mean age 33.8 years, 66% male"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg or 4 mg daily",
+          "frequency": null,
+          "duration": "16 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "31/111 (31%) for 4 mg group",
+          "responders_n": 31,
+          "responders_pct": 31.0,
+          "time_to_response": "16 weeks",
+          "duration_of_response": null,
+          "effect_size_description": "doubling of response rate compared to placebo for 4 mg dose",
+          "primary_endpoint": "proportion of patients achieving vIGA-AD score of 0 or 1 with \u22652-point improvement from baseline at week 16",
+          "endpoint_result": "31% with 4 mg baricitinib + TCS vs 24% with 2 mg baricitinib + TCS vs 15% with placebo + TCS",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib 4 mg combined with topical corticosteroids showed superior efficacy compared to placebo, with 31% of patients achieving clear or almost clear skin versus 15% with placebo. The combination therapy also demonstrated improvements in itch, skin pain, and sleep quality measures."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": 20,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "The study reported an acceptable safety profile for baricitinib in combination with topical corticosteroids. 94% of patients completed the 16-week study with low discontinuation rates.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "16 weeks",
+        "key_findings": "First phase 3 trial demonstrating efficacy of JAK inhibition combined with topical corticosteroids for moderate to severe atopic dermatitis, providing additional therapeutic option for patients.",
+        "extraction_timestamp": "2025-12-05T20:59:04.390869",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Atopic Dermatitis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 5.5,
+        "evidence_quality": 7.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.8,
+        "clinical_breakdown": {
+          "response_rate": 4.0,
+          "safety_profile": 7.0
+        },
+        "response_rate_score": 4.0,
+        "safety_profile_score": 7.0,
+        "evidence_breakdown": {
+          "sample_size": 10.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 10.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 18
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38519108",
+          "doi": "10.1136/rmdopen-2023-003985",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38519108/",
+          "title": "Baricitinib for refractory Takayasu arteritis: a prospective cohort study in a tertiary referral centre.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Takayasu arteritis (refractory)",
+        "disease_normalized": "Takayasu Arteritis",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 10,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "glucocorticoids",
+            "methotrexate",
+            "leflunomide",
+            "mycophenolate mofetil",
+            "tacrolimus",
+            "cyclophosphamide",
+            "tocilizumab",
+            "secukinumab",
+            "TNF inhibitors",
+            "tofacitinib"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "10 patients with refractory Takayasu arteritis, median age 28 years, 9 female/1 male, median disease duration 50 months"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "average follow-up of 15.3 months (range 4-31 months)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "6/10 (60%) at 6 months, 4/10 (40%) maintained response",
+          "responders_n": 6,
+          "responders_pct": 60.0,
+          "time_to_response": "6 months",
+          "duration_of_response": "4/10 (40%) maintained overall treatment response during follow-up",
+          "effect_size_description": "60% response rate at 6 months, 40% sustained response, 80% able to taper or maintain glucocorticoid dose",
+          "primary_endpoint": "overall treatment response rate at 6 months",
+          "endpoint_result": "60% overall treatment response rate at 6 months",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib 4 mg daily achieved overall treatment response in 60% of patients with refractory Takayasu arteritis at 6 months. During follow-up, 40% maintained response and 80% were able to taper or maintain glucocorticoid doses, with two patients discontinuing glucocorticoids completely."
+        },
+        "safety": {
+          "adverse_events": [
+            "liver dysfunction"
+          ],
+          "serious_adverse_events": [
+            "liver dysfunction"
+          ],
+          "sae_count": 1,
+          "sae_percentage": 10.0,
+          "discontinuations_n": 1,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "liver dysfunction"
+          ],
+          "safety_summary": "Baricitinib was well tolerated with no severe adverse events reported. One patient (10%) discontinued treatment due to liver dysfunction, but overall safety profile was acceptable.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "average 15.3 months (range 4-31 months)",
+        "key_findings": "Baricitinib 4 mg daily demonstrated efficacy in 60% of patients with refractory Takayasu arteritis and was well tolerated with minimal adverse events.",
+        "extraction_timestamp": "2025-12-05T21:01:00.095691",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Takayasu Arteritis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 6.0,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.8,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 4.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 4.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 19
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "40059465",
+          "doi": "10.2340/actadv.v105.41504",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/40059465/",
+          "title": "Long-term Outcomes of New Systemic Agents in Atopic Dermatitis: Drug Survival Analyses and Treatment Patterns in Daily Practice.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "atopic dermatitis",
+        "disease_normalized": "Atopic Dermatitis",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 62,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "cyclosporine A",
+            "methotrexate",
+            "azathioprine",
+            "mycophenolic acid",
+            "systemic steroids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Adult patients with moderate-to-severe atopic dermatitis, median age 42 years, 97.6% had previously received traditional systemic immunosuppressants"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2-4 mg daily",
+          "frequency": null,
+          "duration": "median 4 months when discontinued",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "Poor drug survival with lowest survival rate among all treatments studied",
+          "primary_endpoint": "drug survival at 18 months",
+          "endpoint_result": "20.4% drug survival at 18 months",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib showed the lowest 18-month drug survival rate at 20.4% among all treatments studied. The drug had poor durability with 71.0% of patients discontinuing treatment."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": 44,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "ineffectiveness",
+            "adverse events"
+          ],
+          "safety_summary": "Of the 44 patients who discontinued baricitinib, 37 (59.7%) discontinued due to ineffectiveness and 11 (17.7%) due to adverse events. Specific adverse events were not detailed in this study.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Fail",
+        "efficacy_signal": "Weak",
+        "comparator_baseline": null,
+        "follow_up_duration": "median 6.5 months for continued treatment",
+        "key_findings": "Baricitinib demonstrated the poorest drug survival among new systemic agents for atopic dermatitis, with only 20.4% of patients remaining on treatment at 18 months.",
+        "extraction_timestamp": "2025-12-05T21:00:18.549335",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Atopic Dermatitis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 5.0,
+        "evidence_quality": 8.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.7,
+        "clinical_breakdown": {
+          "response_rate": 3.0,
+          "safety_profile": 7.0
+        },
+        "response_rate_score": 3.0,
+        "safety_profile_score": 7.0,
+        "evidence_breakdown": {
+          "sample_size": 10.0,
+          "publication_venue": 10.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 10.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 20
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "29134648",
+          "doi": "10.1002/cpt.936",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/29134648/",
+          "title": "Pharmacokinetics, Pharmacodynamics, and Proposed Dosing of the Oral JAK1 and JAK2 Inhibitor Baricitinib in Pediatric and Young Adult CANDLE and SAVI Patients.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "CANDLE and SAVI (Mendelian interferonopathies)",
+        "disease_normalized": "Type I Interferonopathies",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 18,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Pediatric and young adult patients with CANDLE and SAVI (Mendelian interferonopathies)"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "0.1 to 17 mg per day (weight-based, up to 4 times daily)",
+          "frequency": null,
+          "duration": null,
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "Mean AUC was 1.83-fold higher than adult RA patients receiving 4mg once-daily",
+          "primary_endpoint": "interferon (IFN) biomarker reduction",
+          "endpoint_result": "dose-dependent decreases in interferon biomarkers",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib demonstrated dose-dependent decreases in interferon biomarkers, confirming in vivo effect on type-1 IFN signaling. The pharmacokinetic profile supported therapeutic efficacy in patients with rare interferonopathies."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No specific adverse events or safety outcomes were reported in this pharmacokinetic and pharmacodynamic study.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": null,
+        "key_findings": "Baricitinib showed dose-dependent reduction in interferon biomarkers in CANDLE and SAVI patients, with shorter half-life in patients <40kg requiring more frequent dosing.",
+        "extraction_timestamp": "2025-12-05T21:01:46.717817",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Type I Interferonopathies",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 5.5,
+        "evidence_quality": 7.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.6,
+        "clinical_breakdown": {
+          "response_rate": 6.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 6.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 21
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38653530",
+          "doi": "10.1136/ard-2023-225463",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38653530/",
+          "title": "Disease flares with baricitinib dose reductions and development of flare criteria in patients with CANDLE/PRAAS.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "CANDLE/PRAAS (Chronic Atypical Neutrophilic Dermatosis with Lipodystrophy and Elevated Temperature/Proteasome-Associated Autoinflammatory Syndrome)",
+        "disease_normalized": "Type I Interferonopathies",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 10,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Patients with genetically confirmed CANDLE/PRAAS, mean age 11.5 years (range 2.3-19.6)"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "Higher exposure than rheumatoid arthritis dosing",
+          "frequency": null,
+          "duration": "Mean 6.3 years (\u00b12.3 years)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "5/10 (50%)",
+          "responders_n": 5,
+          "responders_pct": 50.0,
+          "time_to_response": null,
+          "duration_of_response": "Lasting clinical remission achieved in responders",
+          "effect_size_description": "50% of patients achieved lasting clinical remission with normalization of interferon response gene signature",
+          "primary_endpoint": "Disease flare rates with dose reductions",
+          "endpoint_result": "50% (7/14) dose reductions resulted in disease flares; all dose reductions >25% triggered flares",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib at higher than RA doses achieved lasting clinical remission in 50% of CANDLE/PRAAS patients with normalization of interferon signatures. Disease flares occurred in 50% of dose reductions, with all reductions >25% triggering flares."
+        },
+        "safety": {
+          "adverse_events": [
+            "BK viral reactivation in urine",
+            "cytopenias"
+          ],
+          "serious_adverse_events": [
+            "BK viraemia",
+            "BK nephropathy",
+            "azotemia",
+            "macrophage activation syndrome"
+          ],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": 1,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "BK nephropathy with elevated creatinine"
+          ],
+          "safety_summary": "Higher baricitinib exposure required for CANDLE/PRAAS led to BK viral reactivation, cytopenias, and serious complications including BK nephropathy. Close monitoring of BK viral load was required with attempts to minimize drug exposure.",
+          "safety_profile": "Concerning"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "Mean 6.3 years",
+        "key_findings": "Baricitinib achieved remission in 50% of CANDLE/PRAAS patients but required higher doses than approved indications, leading to significant safety concerns including BK viral complications.",
+        "extraction_timestamp": "2025-12-05T21:01:34.549096",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Type I Interferonopathies",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 4.5,
+        "evidence_quality": 8.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.5,
+        "clinical_breakdown": {
+          "response_rate": 6.0,
+          "safety_profile": 3.0
+        },
+        "response_rate_score": 6.0,
+        "safety_profile_score": 3.0,
+        "evidence_breakdown": {
+          "sample_size": 6.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 6.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 22
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "36947281",
+          "doi": "10.1007/s10067-023-06579-8",
+          "url": "https://www.semanticscholar.org/paper/9ed354ac0cf9ef934cf8e0d73077623f24991e7a",
+          "title": "A case of hemophagocytic lymphohistiocytosis with a significant response to baricitinib: a first report with review of literature",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "Hemophagocytic lymphohistiocytosis (HLH)",
+        "disease_normalized": "Hemophagocytic Lymphohistiocytosis",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Patient with hemophagocytic lymphohistiocytosis"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": null,
+          "frequency": null,
+          "duration": null,
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "Significant response",
+          "primary_endpoint": "Clinical response to treatment",
+          "endpoint_result": "Significant response",
+          "durability_signal": null,
+          "efficacy_summary": "Single patient with HLH showed a significant response to baricitinib treatment. This represents the first reported case of baricitinib use in HLH."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No safety information provided in the available text.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": null,
+        "key_findings": "First reported case of baricitinib showing significant response in HLH, supporting the rationale for JAK inhibition in hyperinflammatory syndromes.",
+        "extraction_timestamp": "2025-12-05T21:03:56.704084",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Hemophagocytic Lymphohistiocytosis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 7.5,
+        "evidence_quality": 2.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.5,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 23
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "40772496",
+          "doi": "10.2340/actadv.v105.43464",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/40772496/",
+          "title": "Drug Survival and Predictors of Systemic Treatment Outcome in Atopic Dermatitis: Data From a Nationwide Swedish Cohort.",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "atopic dermatitis",
+        "disease_normalized": "Atopic Dermatitis",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": 30,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "conventional immunomodulators"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Swedish patients with atopic dermatitis receiving systemic treatment, median age 28 years, 50% male"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": null,
+          "frequency": null,
+          "duration": "up to 2 years follow-up",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "Poor drug survival compared to other treatments",
+          "primary_endpoint": "2-year drug survival rate",
+          "endpoint_result": "14.2% drug survival at 2 years",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib showed poor drug survival in atopic dermatitis with only 14.2% of patients continuing treatment at 2 years. The drug had significantly higher discontinuation rates compared to methotrexate (HR 1.96, 95% CI 1.27-3.03)."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "lack of efficacy",
+            "side effects",
+            "other causes"
+          ],
+          "safety_summary": "Safety profile not specifically detailed for baricitinib, but discontinuations due to side effects were among the reasons for treatment cessation across all treatments studied.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Fail",
+        "efficacy_signal": "Weak",
+        "comparator_baseline": null,
+        "follow_up_duration": "2 years",
+        "key_findings": "Baricitinib demonstrated poor drug survival in atopic dermatitis with significantly higher discontinuation rates than methotrexate, suggesting limited effectiveness in this indication.",
+        "extraction_timestamp": "2025-12-05T21:02:43.814827",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Atopic Dermatitis",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 4.0,
+        "evidence_quality": 9.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 6.4,
+        "clinical_breakdown": {
+          "response_rate": 3.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 3.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 8.0,
+          "publication_venue": 10.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 8.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 24
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "32669454",
+          "doi": "10.1136/rmdopen-2020-001246",
+          "url": "https://www.semanticscholar.org/paper/b8c4ffbf3c1761bff7ad4f5fdec37b9d1347d713",
+          "title": "Mixed results with baricitinib in biological-resistant adult-onset Still\u2019s disease and undifferentiated systemic autoinflammatory disease",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "Adult-onset Still's disease (AOSD) and undifferentiated systemic autoinflammatory disease",
+        "disease_normalized": "Adult-onset Still's Disease (AOSD)",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 3,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "prednisolone",
+            "methotrexate",
+            "ciclosporin",
+            "anakinra",
+            "tocilizumab",
+            "sarilumab",
+            "rituximab",
+            "infliximab"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "2 patients with biological-resistant AOSD meeting Yamaguchi criteria, 1 patient with AOSD-like autoinflammatory disease in context of myelodysplastic syndrome"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "variable (9-15 months follow-up)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "2/3 (67%)",
+          "responders_n": 2,
+          "responders_pct": 67.0,
+          "time_to_response": "8\u00b12 weeks",
+          "duration_of_response": "9-15 months",
+          "effect_size_description": "Complete clinical and biochemical remission in responders with normalization of CRP and ESR",
+          "primary_endpoint": "clinical and biochemical remission",
+          "endpoint_result": "clinical and biochemical remission achieved in 2/3 patients",
+          "durability_signal": null,
+          "efficacy_summary": "Two of three patients achieved complete clinical and biochemical remission. Patient 1 remained in remission on baricitinib monotherapy for 15 months, while Patient 3 achieved remission for 9 months. Patient 2 showed no improvement and baricitinib was discontinued after 9 months."
+        },
+        "safety": {
+          "adverse_events": [
+            "Pneumocystis jirovecii pneumonia"
+          ],
+          "serious_adverse_events": [
+            "Pneumocystis jirovecii pneumonia"
+          ],
+          "sae_count": 1,
+          "sae_percentage": 33.0,
+          "discontinuations_n": 1,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "lack of efficacy"
+          ],
+          "safety_summary": "One patient developed Pneumocystis jirovecii pneumonia at 7 months, which was the first reported case of this opportunistic infection with baricitinib use. The infection responded to treatment and the patient continued prophylaxis.",
+          "safety_profile": "Concerning"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "9-15 months",
+        "key_findings": "Baricitinib showed mixed results in biological-resistant AOSD with 2/3 patients achieving remission, but was associated with the first reported case of Pneumocystis jirovecii infection.",
+        "extraction_timestamp": "2025-12-05T21:05:14.767874",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Adult-onset Still's Disease (AOSD)",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 5.0,
+        "evidence_quality": 4.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 5.8,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 2.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 2.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 2.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 25
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "37877023",
+          "doi": "10.3389/fmed.2023.1253795",
+          "url": "https://www.semanticscholar.org/paper/03bf722fb89644135cad9b4bd84f3c9c461b5758",
+          "title": "Case report: Dupilumab therapy for alopecia areata in a 4-year-old patient resistant to baricitinib",
+          "authors": "LC, YW, MZ, JZ, XT, ML",
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "alopecia universalis in pediatric patient",
+        "disease_normalized": "Alopecia Areata",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "topical corticosteroids",
+            "baricitinib"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "4-year-old patient with alopecia universalis for 3 years, with allergic rhinitis, resistant to baricitinib"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg once daily",
+          "frequency": null,
+          "duration": "6 months",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "0/1 (0%)",
+          "responders_n": 0,
+          "responders_pct": 0.0,
+          "time_to_response": "no response observed",
+          "duration_of_response": null,
+          "effect_size_description": "no effect - complete treatment failure",
+          "primary_endpoint": "hair regrowth/SALT score improvement",
+          "endpoint_result": "no improvement in SALT score (remained 0)",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib showed no efficacy in this 4-year-old patient with alopecia universalis. After 6 months of treatment, SALT score remained 0 with no hair regrowth in scalp, eyebrows, or eyelashes."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": 1,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "lack of efficacy"
+          ],
+          "safety_summary": "No adverse events were reported during the 6 months of baricitinib treatment. Treatment was discontinued due to lack of efficacy rather than safety concerns.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Fail",
+        "efficacy_signal": "None",
+        "comparator_baseline": null,
+        "follow_up_duration": "6 months",
+        "key_findings": "Baricitinib was completely ineffective in a pediatric patient with alopecia universalis, leading to successful switch to dupilumab therapy.",
+        "extraction_timestamp": "2025-12-05T21:04:59.697028",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Alopecia Areata",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 5.5,
+        "evidence_quality": 3.3,
+        "market_opportunity": 8.3,
+        "overall_priority": 5.7,
+        "clinical_breakdown": {
+          "response_rate": 2.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 2.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 7.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 7.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 26
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "37087470",
+          "doi": "10.1186/s12969-023-00817-8",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/37087470/",
+          "title": "Efficacy and safety of baricitinib in Japanese patients with autoinflammatory type I interferonopathies (NNS/CANDLE, SAVI, And AGS).",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Peer-reviewed journal",
+          "is_open_access": false
+        },
+        "disease": "Autoinflammatory type I interferonopathies (NNS/CANDLE, SAVI, AGS)",
+        "disease_normalized": "Type I Interferonopathies",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 9,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "disease-modifying antirheumatic drugs",
+            "interleukin-1-blocking agents",
+            "corticosteroids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "9 Japanese patients (5 with NNS, 3 with SAVI, 1 with AGS); 55.6% female, mean age 26 years, mean corticosteroid use 0.2 mg/kg"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "Weight and eGFR-based dosing with dose escalation during 8-week adjustment period",
+          "frequency": null,
+          "duration": "52 weeks total (12-24 week primary treatment + maintenance period)",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": "Sustained through maintenance period",
+          "effect_size_description": "Modest improvement in symptom scores for NNS/CANDLE and SAVI patients",
+          "primary_endpoint": "Change in mean daily diary score (DDS) from baseline to end of primary treatment period",
+          "endpoint_result": "DDS decreased by 0.22 in NNS/CANDLE patients, 0.21 in SAVI patients, increased by 0.07 in AGS patient",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib showed efficacy in reducing daily symptom scores in patients with NNS/CANDLE and SAVI, with improvements maintained through the maintenance period. Corticosteroid use was reduced in some patients, and physician global assessment scores improved across all disease types."
+        },
+        "safety": {
+          "adverse_events": [
+            "BK polyomavirus detection",
+            "increased blood creatine phosphokinase",
+            "anemia",
+            "upper respiratory tract infection"
+          ],
+          "serious_adverse_events": [
+            "intracranial hemorrhage"
+          ],
+          "sae_count": 3,
+          "sae_percentage": 33.3,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "All patients experienced at least one adverse event, with BK polyomavirus detection being most common (33.3%). Three patients had serious adverse events, with one death from intracranial hemorrhage deemed unrelated to study drug.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "52 weeks",
+        "key_findings": "Baricitinib demonstrated potential therapeutic benefit for rare interferonopathies NNS/CANDLE and SAVI with acceptable safety profile in this vulnerable population.",
+        "extraction_timestamp": "2025-12-05T20:59:56.619223",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Type I Interferonopathies",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 4.0,
+        "evidence_quality": 5.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 5.5,
+        "clinical_breakdown": {
+          "response_rate": 6.0,
+          "safety_profile": 2.0
+        },
+        "response_rate_score": 6.0,
+        "safety_profile_score": 2.0,
+        "evidence_breakdown": {
+          "sample_size": 4.0,
+          "publication_venue": 10.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 4.0,
+        "publication_venue_score": 10.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 27
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38524384",
+          "doi": "10.1177/2050313X241235444",
+          "url": "https://www.semanticscholar.org/paper/dbf0762f2d658612639aac768df49760f5d34730",
+          "title": "Use of Baricitinib in a patient with treatment-resistant pyoderma gangrenosum",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "pyoderma gangrenosum",
+        "disease_normalized": "Pyoderma Gangrenosum",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "oral corticosteroids",
+            "intralesional corticosteroids",
+            "minocycline",
+            "systemic corticosteroids",
+            "colchicine",
+            "intravenous immunoglobulin"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "78-year-old female with treatment-resistant pyoderma gangrenosum and metastatic high-grade serous carcinoma of the ovary"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": "baricitinib",
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "12 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": "during 12 weeks of therapy",
+          "duration_of_response": "axilla and elbow ulcers remained healed at 13 weeks follow-up, lower extremity ulcer recurred 4 weeks after discontinuation",
+          "effect_size_description": "complete resolution of 2/3 ulcers, significant size reduction in 1/3 ulcers",
+          "primary_endpoint": "ulcer healing and size reduction",
+          "endpoint_result": "right lower extremity ulcer decreased in size, right axilla and right elbow ulcers resolved completely",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib 4 mg daily for 12 weeks resulted in complete healing of axillary and elbow ulcers and significant improvement in lower extremity ulcer. However, the lower extremity ulcer recurred 4 weeks after discontinuation while axillary and elbow ulcers remained healed at 13 weeks follow-up."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [
+            "methicillin-sensitive Staphylococcus aureus right knee native joint septic arthritis"
+          ],
+          "sae_count": 1,
+          "sae_percentage": 100.0,
+          "discontinuations_n": 1,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "patient and oncology team discretion to resume paclitaxel for cancer treatment"
+          ],
+          "safety_summary": "The patient developed septic arthritis after discontinuing baricitinib, though temporal relationship to drug exposure is unclear. No other adverse events were reported during the 12-week treatment period.",
+          "safety_profile": "Acceptable"
+        },
+        "outcome_result": "Mixed",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": "13 weeks after discontinuation",
+        "key_findings": "Baricitinib showed promising efficacy in treatment-resistant pyoderma gangrenosum with sustained healing of some ulcers even after discontinuation.",
+        "extraction_timestamp": "2025-12-05T21:03:45.074866",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Pyoderma Gangrenosum",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": null,
+          "prevalence_source": null,
+          "prevalence_source_url": null,
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 0,
+          "pipeline_therapies": [],
+          "pipeline_details": null,
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": null,
+          "unmet_need": false,
+          "unmet_need_description": null,
+          "competitive_landscape": null,
+          "soc_source": null
+        },
+        "market_size_estimate": null,
+        "market_size_usd": null,
+        "growth_rate": "3-5% CAGR (estimated)",
+        "tam_usd": null,
+        "tam_estimate": null,
+        "tam_rationale": null
+      },
+      "scores": {
+        "clinical_signal": 5.5,
+        "evidence_quality": 2.0,
+        "market_opportunity": 8.3,
+        "overall_priority": 5.3,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 1.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 1.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 5.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 5.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 28
+    }
+  ],
+  "analysis_date": "2025-12-05T21:10:39.635178",
+  "search_queries_used": [],
+  "papers_screened": 59,
+  "papers_extracted": 29,
+  "total_input_tokens": 242942,
+  "total_output_tokens": 38572,
+  "estimated_cost_usd": 0.0
+}

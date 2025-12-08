@@ -1,0 +1,257 @@
+
+================================================================================
+ CASE STUDY ANALYSIS - COMPREHENSIVE TEST (ALL 5 TABS)
+================================================================================
+  Drug: BARICITINIB
+  Started: 2025-12-05 21:40:05.268418
+  Output will be saved to: test_outputs\workflow_test_20251205_214005.txt
+
+Initializing agent...
+Agent ready.
+
+
+================================================================================
+ TAB 1: DRUG INFO FOR 'BARICITINIB'
+================================================================================
+
+  Drug Name:    baricitinib
+  Generic Name: None
+  Mechanism:    Janus Kinase Inhibitor
+  Manufacturer: N/A
+
+  Approved Indications (4):
+    1. adults with severe alopecia areata
+    2. covid-19 in certain hospitalized adults
+    3. adults with moderately-to-severely active rheumatoid arthritis
+    4. moderately-to-severely active rheumatoid arthritis
+
+--- Validation ---
+  FAIL: Missing generic_name
+  PASS: mechanism concise: 'Janus Kinase Inhibitor'
+  PASS: Found 4 indications
+
+================================================================================
+ TAB 2: CASE SERIES SEARCH FOR 'BARICITINIB'
+================================================================================
+
+  Drug: baricitinib
+  Exclude: ['adults with severe alopecia areata', 'covid-19 in certain hospitalized adults', 'adults with moderately-to-severely active rheumatoid arthritis']...
+
+Searching... (may take 1-2 mins)
+
+--- Results: 48 papers ---
+  Full text (PMC): 0
+  LLM verified: 48
+
+  Diseases (40):
+    - atopic dermatitis: 4
+    - adult-onset Still's disease: 3
+    - systemic lupus erythematosus: 2
+    - Takayasu arteritis: 2
+    - juvenile dermatomyositis: 2
+    - rheumatoid arthritis with interstitial lung disease: 1
+    - isolated non-infectious uveitis: 1
+    - juvenile idiopathic arthritis: 1
+    - cutaneous polyarteritis nodosa: 1
+    - pyoderma gangrenosum: 1
+    - inflammatory cutaneous diseases: 1
+    - hemophagocytic lymphohistiocytosis: 1
+    - vascular Behçet's disease: 1
+    - SAPHO syndrome: 1
+    - immune thrombocytopenia: 1
+
+--- Sample Papers ---
+
+  1. Baricitinib decreases anti-dsDNA in patients with systemic lupus eryth...
+     PMID: 35578304 | Disease: systemic lupus erythematosus
+     Full text: False
+     Why: Phase II trial with specific patient outcomes data for SLE patients treated with...
+
+  2. AB0330 EXPERIENCE IN THE CURRENT PRACTICE WITH BARICITINIB IN PATIENTS...
+     PMID: None | Disease: rheumatoid arthritis with interstitial lung disease
+     Full text: False
+     Why: Retrospective study of 17 RA patients with interstitial lung disease treated wit...
+
+  3. Case report: Effectiveness of Janus kinase inhibitors in the managemen...
+     PMID: 40115257 | Disease: isolated non-infectious uveitis
+     Full text: False
+     Why: Case series with 3 patients with isolated non-infectious uveitis treated with JA...
+
+  4. Baricitinib for juvenile idiopathic arthritis: a monocentric case seri...
+     PMID: 36754594 | Disease: juvenile idiopathic arthritis
+     Full text: False
+     Why: Case series with 4 patients with juvenile idiopathic arthritis treated with bari...
+
+  5. Successful treatment of cutaneous polyarteritis nodosa with baricitini...
+     PMID: None | Disease: cutaneous polyarteritis nodosa
+     Full text: False
+     Why: Case report of 1 patient with cutaneous polyarteritis nodosa treated with barici...
+
+--- Validation ---
+  PASS: Found 48 papers
+  WARN: 3 potentially irrelevant papers
+    - A case of hemophagocytic lymphohistiocytosis with ...
+    - Clinical and immunological study of Tofacitinib an...
+    - Baricitinib in severe and refractory peripheral ul...
+
+================================================================================
+ TAB 3: DATA EXTRACTION (WITH PMC FULL TEXT)
+================================================================================
+  WARN: No papers with PMC full text, using abstracts only
+
+  Extracting from 10 papers with PMC full text...
+  (This may take several minutes)
+
+  1. [Abstract only] Baricitinib decreases anti-dsDNA in patients with syste...
+     PASS: Disease=Systemic Lupus Erythematosus, N=None, Response=None%
+     Efficacy: Baricitinib 2mg and 4mg demonstrated significant and sustained reductions in ant...
+     Safety: Safety outcomes were not reported in this analysis, which focused specifically o...
+
+  2. [Abstract only] AB0330 EXPERIENCE IN THE CURRENT PRACTICE WITH BARICITI...
+     WARN: No data extracted
+
+  3. [Abstract only] Case report: Effectiveness of Janus kinase inhibitors i...
+     PASS: Disease=isolated noninfectious uveitis, N=3, Response=100.0%
+     Efficacy: All three patients with refractory isolated non-infectious uveitis achieved comp...
+     Safety: No significant side effects were observed in any of the patients throughout the ...
+
+  4. [Abstract only] Baricitinib for juvenile idiopathic arthritis: a monoce...
+     PASS: Disease=Juvenile Idiopathic Arthritis (JIA), N=4, Response=75.0%
+     Efficacy: Baricitinib achieved clinical remission in 3 of 4 pediatric JIA patients who had...
+     Safety: No adverse events occurred during the observation period in all patients. The sa...
+
+  5. [Abstract only] Successful treatment of cutaneous polyarteritis nodosa ...
+     PASS: Disease=cutaneous polyarteritis nodosa, N=1, Response=100.0%
+     Efficacy: The patient experienced complete healing of ulcers, resolution of subcutaneous n...
+     Safety: No severe adverse reactions were observed during the treatment period. The patie...
+
+  6. [Abstract only] Use of Baricitinib in a patient with treatment-resistan...
+     PASS: Disease=pyoderma gangrenosum, N=1, Response=None%
+     Efficacy: Patient with treatment-resistant pyoderma gangrenosum was treated with baricitin...
+     Safety: Safety outcomes are not reported in the abstract....
+
+  7. [Abstract only] P05 The role of JAK inhibitors in difficult-to-treat ad...
+     PASS: Disease=Adult-onset Still's Disease (AOSD), N=3, Response=100.0%
+     Efficacy: All three patients showed substantial clinical improvement with baricitinib/tofa...
+     Safety: No adverse events were reported with JAK inhibitor treatment in this case series...
+
+  8. [Abstract only] Off-label use of Baricitinib improves moderate and seve...
+     PASS: Disease=moderate and severe atopic dermatitis, N=None, Response=None%
+     Efficacy: Baricitinib improved immune hyperresponsiveness and clinical symptoms in moderat...
+     Safety: No safety outcomes were reported in this study....
+
+  9. [Abstract only] Off-Label Use of Janus Kinase Inhibitors in Inflammator...
+     WARN: No data extracted
+
+  10. [Abstract only] A case of hemophagocytic lymphohistiocytosis with a sig...
+     WARN: No data extracted
+
+--- Validation ---
+  Successful: 7/10
+
+================================================================================
+ TAB 4: SCORING & PRIORITIZATION
+================================================================================
+
+  Scoring 7 extractions...
+
+  Standardizing disease names...
+  Standardized 4 disease names
+  Unique diseases after standardization: 7
+
+  Fetching market intelligence for each disease...
+  (This requires web search for epidemiology & standard of care)
+  Market data fetched for 7/7 diseases
+
+--- Scored Opportunities ---
+
+  1. Systemic Lupus Erythematosus
+     Clinical:  7.0/10 (50% weight)
+     Evidence:  2.7/10 (25% weight)
+     Market:    8.7/10 (25% weight)
+     TOTAL:     6.3/10
+
+  2. isolated noninfectious uveitis
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  3.7/10 (25% weight)
+     Market:    9.0/10 (25% weight)
+     TOTAL:     8.2/10
+
+  3. Juvenile Idiopathic Arthritis (JIA)
+     Clinical:  9.0/10 (50% weight)
+     Evidence:  4.7/10 (25% weight)
+     Market:    7.7/10 (25% weight)
+     TOTAL:     7.6/10
+
+  4. cutaneous polyarteritis nodosa
+     Clinical:  10.0/10 (50% weight)
+     Evidence:  4.3/10 (25% weight)
+     Market:    9.3/10 (25% weight)
+     TOTAL:     8.4/10
+
+  5. pyoderma gangrenosum
+     Clinical:  5.0/10 (50% weight)
+     Evidence:  2.7/10 (25% weight)
+     Market:    9.3/10 (25% weight)
+     TOTAL:     5.5/10
+
+  6. Adult-onset Still's Disease (AOSD)
+     Clinical:  9.5/10 (50% weight)
+     Evidence:  4.7/10 (25% weight)
+     Market:    8.3/10 (25% weight)
+     TOTAL:     8.0/10
+
+  7. moderate and severe atopic dermatitis
+     Clinical:  5.5/10 (50% weight)
+     Evidence:  3.3/10 (25% weight)
+     Market:    7.7/10 (25% weight)
+     TOTAL:     5.5/10
+
+--- Validation ---
+  Scored: 7/7
+
+================================================================================
+ TAB 5: FULL ANALYSIS SUMMARY
+================================================================================
+
+  Drug: baricitinib
+  Mechanism: Janus Kinase Inhibitor
+  Approved Indications: 4
+  Papers Found: 48
+  Papers with PMC Full Text: 0
+  Extractions: 7
+
+--- Top Off-Label Indications ---
+    atopic dermatitis: 4 papers
+    adult-onset Still's disease: 3 papers
+    systemic lupus erythematosus: 2 papers
+    Takayasu arteritis: 2 papers
+    juvenile dermatomyositis: 2 papers
+    rheumatoid arthritis with interstitial lung disease: 1 papers
+    isolated non-infectious uveitis: 1 papers
+    juvenile idiopathic arthritis: 1 papers
+    cutaneous polyarteritis nodosa: 1 papers
+    pyoderma gangrenosum: 1 papers
+
+--- Validation ---
+  PASS: Full pipeline executed
+
+================================================================================
+ FINAL SUMMARY
+================================================================================
+  Tab 1 Drug Info:   PASS
+  Tab 2 Search:      PASS (48 papers)
+  Tab 3 Extraction:  PASS (7 successful)
+  Tab 4 Scoring:     PASS (7 scored)
+  Tab 5 Analysis:    PASS
+
+  Total API Tokens: 214,169
+  Completed: 2025-12-05 22:02:14.118409
+
+  JSON data saved to: test_outputs\workflow_data_20251205_214005.json
+
+================================================================================
+ GENERATING FINAL REPORT
+================================================================================
+  Excel report: data\case_series\baricitinib_report_20251205_214005.xlsx
+  Full JSON: data\case_series\baricitinib_full_20251205_214005.json

@@ -1,0 +1,74 @@
+Evaluate these papers for relevance to off-label drug repurposing research for {{ drug_name }}.
+
+APPROVED INDICATIONS TO EXCLUDE: {{ exclude_indications }}
+
+For each paper, determine if it contains ORIGINAL CLINICAL DATA that would be useful for evaluating off-label efficacy.
+
+For EACH paper, systematically evaluate these criteria:
+
+INCLUSION CRITERIA (all must be YES to include):
+1. PATIENT COUNT: Does it mention a specific number of patients treated?
+   - YES: "n=5", "15 patients received", "a 42-year-old woman"
+   - NO: "patients were treated", no specific count mentioned
+
+2. CLINICAL OUTCOMES: Does it report efficacy/outcome data?
+   - YES: Response rates, remission, improvement scores, disease activity changes
+   - NO: Only describes treatment protocol, only pharmacokinetics
+
+3. OFF-LABEL USE: Is this about a non-approved indication?
+   - YES: Disease is NOT in the approved indications list
+   - NO: Disease is an approved indication ({{ exclude_indications }})
+
+4. ORIGINAL DATA: Is this original patient data (not a review)?
+   - YES: Case report, case series, retrospective study, cohort study
+   - NO: Review article, meta-analysis, guidelines, editorial
+
+DECISION: Include ONLY if criteria 1-4 are ALL answered YES.
+
+For each paper, provide your reasoning in the "reason" field, referencing which criteria were met or failed.
+
+INCLUDE papers that have ALL of the above:
+- Case reports or case series with patient outcomes
+- Retrospective observational studies with efficacy data
+- Prospective cohort studies with treatment outcomes
+- Compassionate use / expanded access reports with results
+- Real-world evidence with response rates
+- Studies labeled "experience with" or "treated with" that report outcomes
+- Single-center or multi-center case series
+- **INVESTIGATOR-SPONSORED RCTs** - Academic/independent randomized trials conducted by researchers at universities or medical centers (NOT funded by drug manufacturer)
+- **Pilot studies or feasibility trials** from academic institutions
+
+EXCLUDE these paper types (even if they have patient data):
+- **MANUFACTURER-SPONSORED RCTs** - Industry-funded trials, especially those with formal trial names (e.g., BEACON, BREVITY, RA-BEAM, etc.)
+- **Pivotal trials or registration trials** - Studies designed for regulatory approval (FDA/EMA submission)
+- **Phase 2b or Phase 3 trials with commercial sponsors** - Large-scale trials funded by pharmaceutical companies
+- **Industry-funded post-marketing studies** - Phase 4 trials sponsored by manufacturers
+- Reviews, guidelines, consensus statements, position papers
+- Basic science / mechanistic studies without patients treated
+- Pharmacokinetics/pharmacodynamics studies without clinical efficacy
+- Drug monitoring / analytical method papers
+- Studies ONLY about approved indications: {{ exclude_indications }}
+- Safety-only studies without efficacy outcomes
+- Clinical trial protocols (not results)
+- Letters/editorials without original patient data
+- In vitro or animal studies only
+
+KEY DISTINCTION: We want to INCLUDE investigator-initiated/academic research (even if randomized) but EXCLUDE manufacturer-sponsored commercial trials.
+Signs of manufacturer-sponsored trials: formal trial acronyms (all caps names like BEACON, BREVITY), "sponsored by [pharma company]", large Phase 3 sample sizes (>200 patients), multiple international sites.
+Signs of investigator-sponsored trials: single academic center, "investigator-initiated", smaller sample sizes, no formal trial name, funded by grants/foundations.
+
+{{ papers_text }}
+
+Return ONLY a JSON object with this exact format:
+{
+    "evaluations": [
+        {"paper_index": 1, "include": true, "reason": "Case series with 15 patients showing 80% response rate in dermatomyositis", "disease": "dermatomyositis", "patient_count": 15},
+        {"paper_index": 2, "include": false, "reason": "Review article summarizing literature, no original patient data", "disease": null, "patient_count": null},
+        ...
+    ]
+}
+
+Evaluate ALL {{ batch_size }} papers. Be thorough but strict - only include papers with actual patient treatment data.
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

@@ -1,0 +1,68 @@
+Extract ALL safety data from this case report/series about {{ drug_name }}.
+
+DRUG: {{ drug_name }}
+IDENTIFIED SAFETY TABLES: {{ safety_tables }}
+
+PAPER CONTENT:
+{{ paper_content }}
+
+Extract EVERY adverse event and safety outcome mentioned:
+- Any adverse events (AEs)
+- Serious adverse events (SAEs)
+- Adverse events of special interest
+- Laboratory abnormalities
+- Treatment discontinuations
+- Dose modifications
+
+For each safety event, extract:
+{
+    "event_name": "name of the adverse event",
+    "event_category": "AE" or "SAE" or "AESI" or "Discontinuation" or "Lab abnormality",
+    "category_soc": "Infections | Malignancies | Cardiovascular | Thromboembolic | Hepatotoxicity | Cytopenias | GI Perforation | Hypersensitivity | Neurological | Pulmonary | Renal | Death | Metabolic",
+    "infection_type": "Bacterial | Viral | Fungal | Mycobacterial | Opportunistic | Herpes Zoster" or null (only for infections),
+    "malignancy_type": "Hematologic | Solid Tumor | NMSC" or null (only for malignancies),
+    "cv_type": "MACE | Heart Failure | Arrhythmia" or null (only for cardiovascular),
+    "thromboembolic_type": "VTE | DVT | PE | Arterial" or null (only for thromboembolic),
+    "is_class_effect": true/false (is this a known effect for this drug class?),
+    "severity_grade": "Grade 1-5 or Mild/Moderate/Severe" or null,
+    "patients_affected_n": number of patients or null,
+    "patients_affected_pct": percentage or null,
+    "events_total": total event count or null,
+    "relatedness": "Related" or "Possibly related" or "Unrelated" or null,
+    "outcome": "Resolved" or "Ongoing" or "Fatal" or null,
+    "action_taken": "Dose reduced" or "Discontinued" or "None" or null,
+    "notes": "additional context"
+}
+
+CATEGORY CLASSIFICATION GUIDE (category_soc):
+- Infections: Any infection including URI, UTI, pneumonia, sepsis, opportunistic infections, TB, herpes zoster
+- Malignancies: Any cancer diagnosis, lymphoma, leukemia, solid tumors, NMSC
+- Cardiovascular: MI, stroke, cardiovascular death, heart failure, arrhythmias
+- Thromboembolic: DVT, PE, arterial thrombosis, portal vein thrombosis
+- Hepatotoxicity: Elevated transaminases, hepatitis, liver failure, drug-induced liver injury
+- Cytopenias: Anemia, neutropenia, thrombocytopenia, pancytopenia, lymphopenia
+- GI Perforation: Bowel perforation, GI perforation (especially relevant for JAK inhibitors)
+- Hypersensitivity: Anaphylaxis, angioedema, severe allergic reactions, drug hypersensitivity
+- Neurological: Headache, neuropathy, demyelination, seizures
+- Pulmonary: ILD, pneumonitis, respiratory failure (non-infectious)
+- Renal: AKI, creatinine elevation, renal failure
+- Death: Any death, include cause if known
+- Metabolic: Lipid changes, CPK elevation, weight gain
+
+KNOWN CLASS EFFECTS (for is_class_effect):
+- JAK inhibitors: Herpes zoster, VTE, MACE, malignancies, cytopenias, lipid elevations
+- IL-1 inhibitors: Injection site reactions, infections
+- Anti-CD20: Infusion reactions, infections, hypogammaglobulinemia
+- TNF inhibitors: Infections, TB reactivation, demyelination, heart failure
+
+Return JSON array of ALL safety events found:
+[
+    {event 1},
+    {event 2},
+    ...
+]
+
+Include ALL adverse events mentioned.
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

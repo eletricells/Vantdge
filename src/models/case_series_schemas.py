@@ -49,6 +49,16 @@ class SafetyProfile(str, Enum):
     UNKNOWN = "Unknown"
 
 
+class ExtractionConfidence(BaseModel):
+    """Confidence assessment for extraction quality"""
+    disease_certainty: str = Field("Medium", description="High/Medium/Low - certainty about disease identification")
+    n_patients_certainty: str = Field("Medium", description="High/Medium/Low - certainty about patient count")
+    efficacy_data_quality: str = Field("Partial", description="Complete/Partial/Sparse - quality of efficacy data")
+    safety_data_quality: str = Field("Partial", description="Complete/Partial/Sparse - quality of safety data")
+    data_source: str = Field("Abstract only", description="Abstract only/Full text/Tables available")
+    limiting_factors: List[str] = Field(default_factory=list, description="List of issues limiting extraction quality")
+
+
 class DevelopmentPotential(str, Enum):
     """Development potential assessment"""
     HIGH = "High"
@@ -126,33 +136,107 @@ class SafetyOutcome(BaseModel):
     safety_profile: SafetyProfile = Field(SafetyProfile.UNKNOWN, description="Overall safety assessment")
 
 
+class DetailedEfficacyEndpoint(BaseModel):
+    """Detailed efficacy endpoint from multi-stage extraction"""
+    endpoint_name: str = Field(..., description="Name of the endpoint")
+    endpoint_category: str = Field("Other", description="Primary/Secondary/Exploratory")
+    timepoint: Optional[str] = Field(None, description="Measurement timepoint")
+    measurement_type: Optional[str] = Field(None, description="Responder/Change from baseline/Absolute")
+    value: Optional[float] = Field(None, description="Numerical value")
+    unit: Optional[str] = Field(None, description="Unit of measurement")
+    total_n: Optional[int] = Field(None, description="Total number of patients evaluated")
+    responders_n: Optional[int] = Field(None, description="Number of responders")
+    responders_pct: Optional[float] = Field(None, description="Percentage of responders")
+    baseline_value: Optional[float] = Field(None, description="Baseline value")
+    final_value: Optional[float] = Field(None, description="Final/post-treatment value")
+    change_from_baseline: Optional[float] = Field(None, description="Change from baseline")
+    change_pct: Optional[float] = Field(None, description="Percentage change")
+    p_value: Optional[str] = Field(None, description="P-value if reported")
+    confidence_interval: Optional[str] = Field(None, description="95% CI if reported")
+    statistical_significance: Optional[bool] = Field(None, description="Whether statistically significant")
+    notes: Optional[str] = Field(None, description="Additional notes")
+
+    # New fields from prompt improvements
+    organ_domain: Optional[str] = Field(None, description="Organ domain: Musculoskeletal/Mucocutaneous/Renal/Neurological/Hematological/Cardiopulmonary/Immunological/Systemic/Gastrointestinal/Ocular/Constitutional")
+    is_validated_instrument: Optional[bool] = Field(None, description="Whether this is a validated clinical instrument")
+    instrument_quality_tier: Optional[int] = Field(None, description="Quality tier: 1=gold standard, 2=validated PRO, 3=investigator-assessed")
+
+    @property
+    def is_primary(self) -> bool:
+        """Derived property: True if endpoint_category is 'Primary'"""
+        return self.endpoint_category.lower() == 'primary' if self.endpoint_category else False
+
+
+class DetailedSafetyEndpoint(BaseModel):
+    """Detailed safety endpoint from multi-stage extraction"""
+    event_name: str = Field(..., description="Name of the adverse event")
+    event_category: str = Field("AE", description="AE/SAE/AESI/Discontinuation")
+    severity_grade: Optional[str] = Field(None, description="Severity grade if reported")
+    patients_affected_n: Optional[int] = Field(None, description="Number of patients affected")
+    patients_affected_pct: Optional[float] = Field(None, description="Percentage of patients affected")
+    events_total: Optional[int] = Field(None, description="Total number of events")
+    relatedness: Optional[str] = Field(None, description="Related/Possibly related/Unrelated")
+    outcome: Optional[str] = Field(None, description="Resolved/Ongoing/Fatal")
+    action_taken: Optional[str] = Field(None, description="Dose reduced/Discontinued/None")
+    notes: Optional[str] = Field(None, description="Additional notes")
+
+    # New fields from prompt improvements - MedDRA-aligned categories
+    category_soc: Optional[str] = Field(None, description="System Organ Class: Infections/Malignancies/Cardiovascular/Thromboembolic/Hepatotoxicity/Cytopenias/GI Perforation/Hypersensitivity/Neurological/Pulmonary/Renal/Death/Metabolic")
+    infection_type: Optional[str] = Field(None, description="For infections: Bacterial/Viral/Fungal/Mycobacterial/Opportunistic/Herpes Zoster")
+    malignancy_type: Optional[str] = Field(None, description="For malignancies: Hematologic/Solid Tumor/NMSC")
+    cv_type: Optional[str] = Field(None, description="For cardiovascular: MACE/Heart Failure/Arrhythmia")
+    thromboembolic_type: Optional[str] = Field(None, description="For thromboembolic: VTE/DVT/PE/Arterial")
+    is_class_effect: Optional[bool] = Field(None, description="Whether this is a known effect for this drug class")
+
+
 class CaseSeriesExtraction(BaseModel):
     """Complete extraction from a case series/report"""
     # Source info
     source: CaseSeriesSource
-    
+
     # Disease/indication
     disease: str = Field(..., description="Disease/condition treated")
     disease_normalized: Optional[str] = Field(None, description="Normalized disease name")
     is_off_label: bool = Field(True, description="Whether use is off-label")
-    
+    is_relevant: bool = Field(True, description="Whether paper is relevant for drug repurposing (set by LLM during extraction)")
+
     # Clinical data
     evidence_level: EvidenceLevel = Field(EvidenceLevel.CASE_REPORT)
     patient_population: PatientPopulation
     treatment: TreatmentDetails
     efficacy: EfficacyOutcome
     safety: SafetyOutcome
-    
+
     # Overall assessment
     outcome_result: OutcomeResult = Field(OutcomeResult.UNKNOWN)
     efficacy_signal: EfficacySignal = Field(EfficacySignal.UNKNOWN)
     comparator_baseline: Optional[str] = Field(None, description="What was compared to")
     follow_up_duration: Optional[str] = Field(None, description="Duration of follow-up")
     key_findings: Optional[str] = Field(None, description="1-2 sentence key findings")
-    
-    # Metadata
+
+    # Multi-stage extraction detailed data
+    detailed_efficacy_endpoints: List[DetailedEfficacyEndpoint] = Field(
+        default_factory=list,
+        description="Detailed efficacy endpoints from multi-stage extraction"
+    )
+    detailed_safety_endpoints: List[DetailedSafetyEndpoint] = Field(
+        default_factory=list,
+        description="Detailed safety endpoints from multi-stage extraction"
+    )
+
+    # Extraction metadata
     extraction_timestamp: datetime = Field(default_factory=datetime.now)
-    extraction_confidence: float = Field(0.5, description="Confidence in extraction (0-1)")
+    extraction_confidence: float = Field(0.5, description="Confidence in extraction (0-1) - DEPRECATED, use extraction_confidence_detail")
+    extraction_confidence_detail: Optional[ExtractionConfidence] = Field(None, description="Detailed confidence assessment from main_extraction prompt")
+    extraction_method: str = Field("single_pass", description="single_pass or multi_stage")
+    extraction_stages_completed: List[str] = Field(
+        default_factory=list,
+        description="List of extraction stages completed"
+    )
+    data_sections_identified: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Sections identified in Stage 1 (tables, figures, etc.)"
+    )
 
 
 # ============================================================
@@ -168,6 +252,13 @@ class EpidemiologyData(BaseModel):
     prevalence_source: Optional[str] = Field(None, description="Source of prevalence data")
     prevalence_source_url: Optional[str] = Field(None, description="URL for prevalence source")
     trend: Optional[str] = Field(None, description="Trend (increasing, stable, decreasing)")
+
+    # New fields from prompt improvements
+    source_quality: Optional[str] = Field(None, description="Primary/Secondary/Estimate - quality of data source")
+    data_year: Optional[int] = Field(None, description="Year the prevalence data is from")
+    geographic_scope: Optional[str] = Field(None, description="US/Global/Regional - geographic scope of data")
+    confidence: Optional[str] = Field(None, description="High/Medium/Low - confidence in estimate")
+    notes: Optional[str] = Field(None, description="Caveats about the estimate")
 
 
 class StandardOfCareTreatment(BaseModel):
@@ -244,7 +335,13 @@ class OpportunityScores(BaseModel):
     """
     Scoring for a repurposing opportunity.
 
-    Weights: Clinical 50%, Evidence 25%, Market 25%
+    Enhanced scoring v2 with quality-weighted efficacy:
+    - Clinical Signal (50%): response rate (quality-weighted, 40%), safety (40%), organ domain (20%)
+    - Evidence Quality (25%): sample size (35%), venue (25%), durability (25%), completeness (15%)
+    - Market Opportunity (25%): competitors (33%), market size (33%), unmet need (33%)
+
+    Note: endpoint_quality_score is deprecated - quality is now baked into response_rate_score
+    via multi-endpoint quality weighting.
     """
     # Dimension scores (1-10 each)
     clinical_signal: float = Field(5.0, description="Clinical signal score (1-10, 50% weight)")
@@ -252,16 +349,19 @@ class OpportunityScores(BaseModel):
     market_opportunity: float = Field(5.0, description="Market opportunity score (1-10, 25% weight)")
     overall_priority: float = Field(5.0, description="Weighted overall priority (1-10)")
 
-    # Clinical breakdown (response rate + safety profile, averaged)
-    clinical_breakdown: Optional[Dict[str, Any]] = Field(None, description="Clinical score breakdown")
-    response_rate_score: float = Field(5.0, description="Response rate score (1-10)")
-    safety_profile_score: float = Field(5.0, description="Safety profile score based on SAE % (1-10)")
+    # Clinical breakdown (v2: quality-weighted efficacy, no separate endpoint_quality)
+    clinical_breakdown: Optional[Dict[str, Any]] = Field(None, description="Clinical score breakdown with efficacy_endpoint_count, efficacy_concordance")
+    response_rate_score: float = Field(5.0, description="Response rate score with quality weighting (1-10)")
+    safety_profile_score: float = Field(5.0, description="Safety profile score based on SAE % and signal categories (1-10)")
+    endpoint_quality_score: Optional[float] = Field(None, description="DEPRECATED: Now baked into response_rate_score via quality weighting")
+    organ_domain_score: float = Field(5.0, description="Organ domain breadth score (1-10)")
 
-    # Evidence breakdown (sample size + venue + followup, averaged)
+    # Evidence breakdown (enhanced with extraction completeness)
     evidence_breakdown: Optional[Dict[str, Any]] = Field(None, description="Evidence score breakdown")
     sample_size_score: float = Field(5.0, description="Sample size score (1-10)")
     publication_venue_score: float = Field(5.0, description="Publication venue score (1-10)")
-    followup_duration_score: float = Field(5.0, description="Follow-up duration score (1-10)")
+    followup_duration_score: float = Field(5.0, description="Follow-up duration/durability score (1-10)")
+    extraction_completeness_score: float = Field(5.0, description="Data extraction completeness score (1-10)")
 
     # Market breakdown (competitors + market size + unmet need, averaged)
     market_breakdown: Optional[Dict[str, Any]] = Field(None, description="Market score breakdown")

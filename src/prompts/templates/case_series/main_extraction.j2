@@ -1,0 +1,88 @@
+You are analyzing a medical case report/series for drug repurposing opportunities.
+
+Drug: {{ drug_name }}
+Mechanism: {{ mechanism }}
+Approved Indications: {{ approved_indications }}
+
+Paper:
+Title: {{ paper_title }}
+{{ content_label }}: {{ content }}
+
+Extract structured data about this case report/series. Focus on:
+1. What disease/condition was treated (OFF-LABEL use)?
+2. How many patients were treated?
+3. What were the efficacy outcomes?
+4. What were the safety outcomes?
+
+Return ONLY valid JSON in this format:
+{
+    "disease": "specific disease name treated",
+    "is_relevant": true or false (is this actually about off-label use of {{ drug_name }}?),
+    "evidence_level": "Case Report" or "Case Series" or "Retrospective Study",
+    "n_patients": number,
+    "patient_description": "brief description of patient characteristics",
+    "prior_treatments_failed": ["treatment1", "treatment2"],
+    "dose": "dose used",
+    "route": "oral/IV/etc",
+    "duration": "treatment duration",
+    "primary_endpoint": "the main efficacy endpoint measured (e.g., 'CDASI score reduction', 'remission rate', 'CRP reduction')",
+    "endpoint_result": "result on primary endpoint (e.g., '50% reduction in CDASI', 'complete remission in 3/5 patients')",
+    "response_rate": "X/N (Y%)" or null,
+    "responders_n": number or null,
+    "responders_pct": percentage or null,
+    "time_to_response": "time description" or null,
+    "duration_of_response": "how long the response lasted" or null,
+    "effect_size_description": "description of effect size",
+    "efficacy_summary": "2-3 sentence efficacy summary",
+    "adverse_events": ["AE1", "AE2"] or [],
+    "serious_adverse_events": ["SAE1", "SAE2"] or [],
+    "sae_count": number of patients with serious adverse events or null,
+    "sae_percentage": percentage of patients with SAEs or null,
+    "discontinuations_n": number of discontinuations or null,
+    "discontinuation_reasons": ["reason1", "reason2"] or [],
+    "safety_summary": "2-3 sentence safety summary",
+    "outcome_result": "Success" or "Fail" or "Mixed",
+    "efficacy_signal": "Strong" or "Moderate" or "Weak" or "None",
+    "safety_profile": "Favorable" or "Acceptable" or "Concerning" or "Unknown",
+    "follow_up_duration": "duration" or null,
+    "key_findings": "1-2 sentence key findings",
+    "year": publication year or null,
+    "journal": "journal name" or null,
+    "authors": "author list" or null,
+    "extraction_confidence": {
+        "disease_certainty": "High" or "Medium" or "Low",
+        "n_patients_certainty": "High" or "Medium" or "Low",
+        "efficacy_data_quality": "Complete" or "Partial" or "Sparse",
+        "safety_data_quality": "Complete" or "Partial" or "Sparse",
+        "data_source": "Abstract only" or "Full text" or "Tables available",
+        "limiting_factors": ["list any issues, e.g., 'response rate not explicitly stated', 'safety not reported'"]
+    }
+}
+
+EXTRACTION CONFIDENCE SCORING GUIDE:
+- disease_certainty:
+  * High: Disease explicitly named, clearly the focus of treatment
+  * Medium: Disease inferable but not explicitly stated, or multiple conditions treated
+  * Low: Unclear which condition was treated, vague descriptions
+
+- n_patients_certainty:
+  * High: Exact number stated (e.g., "n=15 patients", "a case series of 8 patients")
+  * Medium: Range given or approximate (e.g., "approximately 20", "15-20 patients")
+  * Low: Not stated or unclear (e.g., "several patients", "a few cases")
+
+- efficacy_data_quality:
+  * Complete: Primary endpoint with quantitative results, response rates, statistical measures
+  * Partial: Some outcomes reported but missing key data (e.g., no denominators, no timepoints)
+  * Sparse: Only qualitative descriptions ("improved", "responded well")
+
+- safety_data_quality:
+  * Complete: Systematic AE reporting with counts/percentages
+  * Partial: Some AEs mentioned but not systematically collected
+  * Sparse: Safety not reported or only "well tolerated" statement
+
+CRITICAL:
+- Set is_relevant=false if this is NOT about off-label use
+- Set is_relevant=false if the disease is one of the approved indications
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

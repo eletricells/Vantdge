@@ -1,0 +1,26 @@
+Classify these papers by both the disease being studied AND the specific drug used.
+These papers are about drugs with the mechanism: {{ mechanism }}
+
+Papers:
+{% for paper in papers %}
+{{ loop.index }}. Title: {{ paper.title }}
+{% if paper.abstract %}   Abstract: {{ paper.abstract[:300] }}...{% endif %}
+{% endfor %}
+
+Return ONLY valid JSON mapping paper number to disease and drug:
+{
+    "classifications": [
+        {"paper_num": 1, "disease": "exact disease name", "drug": "drug name"},
+        {"paper_num": 2, "disease": "exact disease name", "drug": "drug name"},
+        ...
+    ]
+}
+
+Rules:
+- Use standardized disease names (e.g., "Vitiligo", "Alopecia Areata", "Rheumatoid Arthritis")
+- Use standardized drug names (generic name preferred, e.g., "baricitinib", "tofacitinib")
+- If a paper covers multiple diseases, choose the PRIMARY one
+- If disease or drug is unclear, use "Unknown"
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

@@ -33,6 +33,7 @@ from typing import List, Optional, Dict, Any, Tuple, Set
 from anthropic import Anthropic
 from pydantic import ValidationError
 
+from src.reports.case_series_report_generator import CaseSeriesReportGenerator
 from src.models.case_series_schemas import (
     CaseSeriesExtraction,
     CaseSeriesSource,
@@ -53,6 +54,8 @@ from src.models.case_series_schemas import (
     RepurposingOpportunity,
     DrugAnalysisResult,
     MechanismAnalysisResult,
+    DetailedEfficacyEndpoint,
+    DetailedSafetyEndpoint,
 )
 from src.tools.pubmed import PubMedAPI
 from src.tools.web_search import WebSearchTool
@@ -60,8 +63,399 @@ from src.tools.drug_database import DrugDatabase
 from src.tools.dailymed import DailyMedAPI
 from src.tools.semantic_scholar import SemanticScholarAPI
 from src.tools.case_series_database import CaseSeriesDatabase
+from src.prompts import get_prompt_manager, PromptManager
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# MULTI-STAGE EXTRACTION CONSTANTS
+# =============================================================================
+THINKING_BUDGET_SECTIONS = 3000  # Stage 1: Section identification
+THINKING_BUDGET_EFFICACY = 4000  # Stage 2: Efficacy extraction
+THINKING_BUDGET_SAFETY = 2000    # Stage 3: Safety extraction
+MIN_FULLTEXT_LENGTH = 2000       # Minimum chars to use multi-stage
+
+
+# =============================================================================
+# EFFICACY SCORING HELPER FUNCTIONS (v2)
+# =============================================================================
+
+def _response_pct_to_score(pct: float) -> float:
+    """
+    Convert response percentage to 1-10 score.
+
+    10 tiers for granularity:
+    >=90%: 10, >=80%: 9, >=70%: 8, >=60%: 7, >=50%: 6,
+    >=40%: 5, >=30%: 4, >=20%: 3, >=10%: 2, <10%: 1
+    """
+    if pct >= 90:
+        return 10.0
+    elif pct >= 80:
+        return 9.0
+    elif pct >= 70:
+        return 8.0
+    elif pct >= 60:
+        return 7.0
+    elif pct >= 50:
+        return 6.0
+    elif pct >= 40:
+        return 5.0
+    elif pct >= 30:
+        return 4.0
+    elif pct >= 20:
+        return 3.0
+    elif pct >= 10:
+        return 2.0
+    else:
+        return 1.0
+
+
+def _percent_change_to_score(effective_change: float) -> float:
+    """
+    Convert percent improvement to 1-10 score.
+
+    effective_change is positive when improvement occurs
+    (already adjusted for direction by caller).
+
+    >=60% improvement: 10, >=50%: 9, >=40%: 8, >=30%: 7,
+    >=20%: 6, >=10%: 5, 0-10%: 4, worsening: 2-3
+    """
+    if effective_change >= 60:
+        return 10.0
+    elif effective_change >= 50:
+        return 9.0
+    elif effective_change >= 40:
+        return 8.0
+    elif effective_change >= 30:
+        return 7.0
+    elif effective_change >= 20:
+        return 6.0
+    elif effective_change >= 10:
+        return 5.0
+    elif effective_change >= 0:
+        return 4.0
+    elif effective_change >= -10:
+        return 3.0
+    else:
+        return 2.0
+
+
+def _is_decrease_good(endpoint_name: str) -> bool:
+    """
+    Determine if a decrease in endpoint value indicates improvement.
+
+    Most disease activity scores: decrease = improvement
+    Quality of life / response rates: increase = improvement
+    """
+    endpoint_lower = endpoint_name.lower()
+
+    # Endpoints where INCREASE is good (return False = decrease is NOT good)
+    increase_good_patterns = [
+        # Response rates
+        'acr20', 'acr50', 'acr70', 'acr90',
+        'pasi50', 'pasi75', 'pasi90', 'pasi100',
+        'easi50', 'easi75', 'easi90',
+        'salt50', 'salt75', 'salt90',
+        'response', 'responder', 'remission',
+        # Quality of life
+        'quality of life', 'qol',
+        'sf-36', 'sf36',
+        'eq-5d', 'eq5d',
+        'facit', 'well-being', 'wellbeing',
+        # Function
+        'function', 'improvement',
+        # Clear/almost clear assessments
+        'iga 0', 'iga 1', 'clear', 'almost clear',
+        # Hair regrowth
+        'regrowth', 'hair growth',
+    ]
+
+    for pattern in increase_good_patterns:
+        if pattern in endpoint_lower:
+            return False  # Increase is good, so decrease is NOT good
+
+    # Default: most clinical scores decrease = improvement
+    # (DAS28, SLEDAI, PASI score, SALT score, pain VAS, disease activity, etc.)
+    return True
+
+
+def _calculate_evidence_confidence_case_series(
+    n_studies: int,
+    total_patients: int,
+    consistency: str,
+    extractions: List[Any]
+) -> str:
+    """
+    Calculate overall confidence in aggregated evidence.
+
+    Calibrated for case series literature where:
+    - 20+ patients is substantial
+    - 10+ patients is reasonable
+    - <5 patients is very limited
+
+    Levels:
+    - Moderate: 3+ studies, 20+ patients, consistent results, some full text
+    - Low-Moderate: 3+ studies, 20+ patients, consistent results
+    - Low: 2+ studies, 10+ patients
+    - Very Low: Everything else
+    """
+    # Count high-quality extractions (multi-stage with full text)
+    high_quality = sum(
+        1 for ext in extractions
+        if getattr(ext, 'extraction_method', '') == 'multi_stage'
+    )
+
+    if n_studies >= 3 and total_patients >= 20 and consistency in ['High', 'Moderate']:
+        if high_quality >= 2:
+            return 'Moderate'
+        return 'Low-Moderate'
+    elif n_studies >= 2 and total_patients >= 10:
+        return 'Low'
+    elif n_studies >= 1 and total_patients >= 3:
+        return 'Very Low'
+    else:
+        return 'Very Low'
+
+
+class CaseSeriesDataExtractor:
+    """
+    Multi-stage clinical data extractor for case series/reports.
+
+    Implements a 3-stage extraction pipeline:
+    - Stage 1: Section identification (find tables, figures, results sections)
+    - Stage 2: Efficacy extraction (detailed endpoint extraction with extended thinking)
+    - Stage 3: Safety extraction (adverse events, discontinuations)
+
+    Uses extended thinking for complex table interpretation.
+    """
+
+    def __init__(self, client: Anthropic, model: str = "claude-sonnet-4-20250514", prompts: Optional[PromptManager] = None):
+        self.client = client
+        self.model = model
+        self._prompts = prompts or get_prompt_manager()
+        self.stages_completed = []
+        self.extraction_metrics = {
+            'input_tokens': 0,
+            'output_tokens': 0,
+            'thinking_tokens': 0
+        }
+
+    def extract_multi_stage(
+        self,
+        paper_content: str,
+        drug_name: str,
+        drug_info: Dict[str, Any],
+        paper_metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Run multi-stage extraction on full-text paper content.
+
+        Args:
+            paper_content: Full text of the paper
+            drug_name: Name of the drug
+            drug_info: Drug information dict
+            paper_metadata: Paper metadata (title, pmid, etc.)
+
+        Returns:
+            Dict with extraction results including detailed endpoints
+        """
+        self.stages_completed = []
+        results = {
+            'sections_identified': None,
+            'detailed_efficacy_endpoints': [],
+            'detailed_safety_endpoints': [],
+            'extraction_method': 'multi_stage',
+            'stages_completed': []
+        }
+
+        # Stage 1: Section identification
+        logger.info("Multi-stage extraction - Stage 1: Section identification")
+        sections = self._stage1_identify_sections(paper_content, drug_name, paper_metadata)
+        results['sections_identified'] = sections
+        self.stages_completed.append('section_identification')
+
+        # Stage 2: Efficacy extraction
+        logger.info("Multi-stage extraction - Stage 2: Efficacy extraction")
+        efficacy_endpoints = self._stage2_extract_efficacy(
+            paper_content, drug_name, drug_info, sections
+        )
+        results['detailed_efficacy_endpoints'] = efficacy_endpoints
+        self.stages_completed.append('efficacy_extraction')
+
+        # Stage 3: Safety extraction
+        logger.info("Multi-stage extraction - Stage 3: Safety extraction")
+        safety_endpoints = self._stage3_extract_safety(
+            paper_content, drug_name, sections
+        )
+        results['detailed_safety_endpoints'] = safety_endpoints
+        self.stages_completed.append('safety_extraction')
+
+        results['stages_completed'] = self.stages_completed.copy()
+        return results
+
+    def _stage1_identify_sections(
+        self,
+        paper_content: str,
+        drug_name: str,
+        paper_metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Stage 1: Identify data-containing sections."""
+
+        prompt = self._prompts.render(
+            "case_series/stage1_sections",
+            drug_name=drug_name,
+            paper_title=paper_metadata.get('title', 'Unknown'),
+            paper_content=paper_content[:30000]
+        )
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=THINKING_BUDGET_SECTIONS + 2000,  # Must be > thinking budget
+                temperature=1,  # Required for extended thinking
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET_SECTIONS
+                },
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            self._track_tokens(response)
+            text = self._extract_text_response(response)
+            return self._parse_json(text, default={
+                'baseline_tables': [],
+                'efficacy_tables': [],
+                'safety_tables': [],
+                'efficacy_figures': [],
+                'results_sections': [],
+                'notes': 'Failed to parse sections'
+            })
+
+        except Exception as e:
+            logger.error(f"Stage 1 error: {e}")
+            return {'error': str(e)}
+
+    def _stage2_extract_efficacy(
+        self,
+        paper_content: str,
+        drug_name: str,
+        drug_info: Dict[str, Any],
+        sections: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Stage 2: Extract detailed efficacy endpoints."""
+
+        tables_info = ", ".join(sections.get('efficacy_tables', [])) or "None identified"
+
+        prompt = self._prompts.render(
+            "case_series/stage2_efficacy",
+            drug_name=drug_name,
+            mechanism=drug_info.get('mechanism', 'Unknown'),
+            efficacy_tables=tables_info,
+            paper_content=paper_content[:35000]
+        )
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=THINKING_BUDGET_EFFICACY + 8000,  # Must be > thinking budget
+                temperature=1,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET_EFFICACY
+                },
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            self._track_tokens(response)
+            text = self._extract_text_response(response)
+            endpoints = self._parse_json(text, default=[])
+
+            # Convert to DetailedEfficacyEndpoint objects
+            validated = []
+            for ep in endpoints:
+                if isinstance(ep, dict) and ep.get('endpoint_name'):
+                    validated.append(ep)
+
+            return validated
+
+        except Exception as e:
+            logger.error(f"Stage 2 error: {e}")
+            return []
+
+    def _stage3_extract_safety(
+        self,
+        paper_content: str,
+        drug_name: str,
+        sections: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Stage 3: Extract detailed safety endpoints."""
+
+        tables_info = ", ".join(sections.get('safety_tables', [])) or "None identified"
+
+        prompt = self._prompts.render(
+            "case_series/stage3_safety",
+            drug_name=drug_name,
+            safety_tables=tables_info,
+            paper_content=paper_content[:30000]
+        )
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=THINKING_BUDGET_SAFETY + 4000,  # Must be > thinking budget
+                temperature=1,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET_SAFETY
+                },
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            self._track_tokens(response)
+            text = self._extract_text_response(response)
+            events = self._parse_json(text, default=[])
+
+            # Validate events
+            validated = []
+            for ev in events:
+                if isinstance(ev, dict) and ev.get('event_name'):
+                    validated.append(ev)
+
+            return validated
+
+        except Exception as e:
+            logger.error(f"Stage 3 error: {e}")
+            return []
+
+    def _track_tokens(self, response) -> None:
+        """Track token usage from response."""
+        if hasattr(response, 'usage'):
+            self.extraction_metrics['input_tokens'] += response.usage.input_tokens
+            self.extraction_metrics['output_tokens'] += response.usage.output_tokens
+            # Check for thinking tokens in extended thinking responses
+            if hasattr(response.usage, 'cache_creation_input_tokens'):
+                pass  # Cache tokens handled separately
+
+    def _extract_text_response(self, response) -> str:
+        """Extract text from response, handling extended thinking format."""
+        for block in response.content:
+            if hasattr(block, 'text'):
+                return block.text
+        return ""
+
+    def _parse_json(self, text: str, default: Any = None) -> Any:
+        """Parse JSON from response text."""
+        # Clean markdown code blocks
+        if '```json' in text:
+            text = text.split('```json')[1].split('```')[0]
+        elif '```' in text:
+            text = text.split('```')[1].split('```')[0]
+
+        try:
+            return json.loads(text.strip())
+        except json.JSONDecodeError as e:
+            logger.warning(f"JSON parse error: {e}")
+            return default if default is not None else {}
 
 
 class DrugRepurposingCaseSeriesAgent:
@@ -102,6 +496,9 @@ class DrugRepurposingCaseSeriesAgent:
         self.client = Anthropic(api_key=anthropic_api_key)
         self.model = "claude-sonnet-4-20250514"
         self.max_tokens = 16000
+
+        # Initialize PromptManager for centralized prompt templates
+        self._prompts = get_prompt_manager()
 
         # Initialize tools
         self.pubmed = PubMedAPI(
@@ -157,6 +554,11 @@ class DrugRepurposingCaseSeriesAgent:
             'market_intel_from_cache': 0,
             'tokens_saved_by_cache': 0
         }
+
+        # Clinical scoring reference data (loaded from database on first use)
+        self._organ_domains: Optional[Dict[str, List[str]]] = None
+        self._safety_categories: Optional[Dict[str, Dict[str, Any]]] = None
+        self._scoring_weights: Optional[Dict[str, float]] = None
 
         # Output directory
         self.output_dir = Path(output_dir)
@@ -237,7 +639,8 @@ class DrugRepurposingCaseSeriesAgent:
                 drug_name,
                 approved_indications,
                 max_papers=max_papers,
-                include_web_search=include_web_search
+                include_web_search=include_web_search,
+                generic_name=drug_info.get("generic_name")
             )
             logger.info(f"Found {len(papers)} potential case series/reports")
 
@@ -248,21 +651,30 @@ class DrugRepurposingCaseSeriesAgent:
             # Step 3: Extract structured data from each paper
             opportunities = []
             extraction_ids = {}  # Map extraction to database ID
+            total_extractions = 0
             for i, paper in enumerate(papers, 1):
                 logger.info(f"Extracting data from paper {i}/{len(papers)}: {paper.get('title', 'Unknown')[:50]}...")
                 try:
                     extraction = self._extract_case_series_data(drug_name, drug_info, paper)
                     if extraction:
-                        opportunity = RepurposingOpportunity(extraction=extraction)
-                        opportunities.append(opportunity)
+                        total_extractions += 1
 
-                        # Save extraction to database
+                        # Save ALL extractions to database (even irrelevant ones for auditing)
                         if self.cs_db and self._current_run_id:
                             ext_id = self.cs_db.save_extraction(
                                 self._current_run_id, extraction, drug_name
                             )
+                            logger.info(f"  Saved extraction to database (ID: {ext_id}, relevant: {extraction.is_relevant})")
+
+                        # Only add relevant extractions to opportunities
+                        if extraction.is_relevant:
+                            opportunity = RepurposingOpportunity(extraction=extraction)
+                            opportunities.append(opportunity)
                             if ext_id:
                                 extraction_ids[id(opportunity)] = ext_id
+                        else:
+                            logger.info(f"  Skipping irrelevant extraction for opportunities list")
+
                 except Exception as e:
                     logger.error(f"Error extracting paper {i}: {e}")
                     continue
@@ -271,17 +683,22 @@ class DrugRepurposingCaseSeriesAgent:
                 if i < len(papers):
                     time.sleep(0.5)
 
-            logger.info(f"Successfully extracted {len(opportunities)} case series")
+            logger.info(f"Successfully extracted {total_extractions} papers ({len(opportunities)} relevant opportunities)")
 
-            # Update run stats
+            # Update run stats (papers_extracted = total extractions, not just relevant)
             if self.cs_db and self._current_run_id:
-                self.cs_db.update_run_stats(self._current_run_id, papers_extracted=len(opportunities))
+                self.cs_db.update_run_stats(self._current_run_id, papers_extracted=total_extractions)
 
-            # Step 4: Enrich with market intelligence
+            # Step 4: Standardize disease names
+            if opportunities:
+                logger.info("Standardizing disease names...")
+                opportunities = self.standardize_disease_names(opportunities)
+
+            # Step 5: Enrich with market intelligence
             if enrich_market_data and opportunities:
                 opportunities = self._enrich_with_market_data(opportunities)
 
-            # Step 5: Score and rank opportunities
+            # Step 6: Score and rank opportunities
             opportunities = self._score_opportunities(opportunities)
             opportunities.sort(key=lambda x: x.scores.overall_priority, reverse=True)
 
@@ -748,20 +1165,11 @@ class DrugRepurposingCaseSeriesAgent:
             return {"approved_indications": []}
 
         # Use Claude to extract drug info
-        prompt = f"""Extract drug information from these search results for {drug_name}.
-
-Search Results:
-{json.dumps(results, indent=2)[:8000]}
-
-Return ONLY valid JSON:
-{{
-    "generic_name": "generic name or null",
-    "mechanism": "mechanism of action or null",
-    "target": "molecular target or null",
-    "approved_indications": ["indication 1", "indication 2", ...]
-}}
-
-Be comprehensive with indications. Return ONLY the JSON, nothing else."""
+        prompt = self._prompts.render(
+            "case_series/extract_drug_info",
+            drug_name=drug_name,
+            search_results=results[:8000]
+        )
 
         try:
             response = self.client.messages.create(
@@ -812,15 +1220,11 @@ Be comprehensive with indications. Return ONLY the JSON, nothing else."""
             )
 
             if results:
-                prompt = f"""Extract FDA-approved drug names with this mechanism: {mechanism}
-
-Search Results:
-{json.dumps(results, indent=2)[:6000]}
-
-Return ONLY a JSON array of generic drug names:
-["drug1", "drug2", ...]
-
-Return ONLY the JSON array, nothing else."""
+                prompt = self._prompts.render(
+                    "case_series/extract_drugs_by_mechanism",
+                    mechanism=mechanism,
+                    search_results=results[:6000]
+                )
 
                 try:
                     response = self.client.messages.create(
@@ -850,7 +1254,8 @@ Return ONLY the JSON array, nothing else."""
         include_semantic_scholar: bool = True,
         include_citation_mining: bool = True,
         use_llm_filtering: bool = True,
-        parallel_search: bool = True
+        parallel_search: bool = True,
+        generic_name: str = None
     ) -> List[Dict[str, Any]]:
         """
         Comprehensive search for case series and case reports.
@@ -867,6 +1272,7 @@ Return ONLY the JSON array, nothing else."""
 
         Args:
             parallel_search: If True, run search layers concurrently (faster but uses more resources)
+            generic_name: Generic name of the drug (if different from brand name)
         """
         all_papers = []
 
@@ -876,18 +1282,19 @@ Return ONLY the JSON array, nothing else."""
                 drug_name,
                 include_web_search,
                 include_semantic_scholar,
-                include_citation_mining
+                include_citation_mining,
+                generic_name
             )
         else:
             # Sequential search (original behavior)
             seen_ids = set()
-            all_papers.extend(self._search_pubmed_enhanced(drug_name, seen_ids))
+            all_papers.extend(self._search_pubmed_enhanced(drug_name, seen_ids, generic_name))
 
             if include_semantic_scholar:
-                all_papers.extend(self._search_semantic_scholar(drug_name, seen_ids))
+                all_papers.extend(self._search_semantic_scholar(drug_name, seen_ids, generic_name))
 
             if include_citation_mining:
-                all_papers.extend(self._mine_review_citations(drug_name, seen_ids))
+                all_papers.extend(self._mine_review_citations(drug_name, seen_ids, generic_name))
 
             if include_web_search and self.web_search:
                 all_papers.extend(self._search_web(drug_name, seen_ids))
@@ -923,7 +1330,8 @@ Return ONLY the JSON array, nothing else."""
         drug_name: str,
         include_web_search: bool,
         include_semantic_scholar: bool,
-        include_citation_mining: bool
+        include_citation_mining: bool,
+        generic_name: str = None
     ) -> List[Dict[str, Any]]:
         """
         Run all search layers in parallel for speed optimization.
@@ -937,15 +1345,15 @@ Return ONLY the JSON array, nothing else."""
         # Each returns (source_name, papers_list)
         def pubmed_search():
             seen = set()
-            return ("PubMed", self._search_pubmed_enhanced(drug_name, seen))
+            return ("PubMed", self._search_pubmed_enhanced(drug_name, seen, generic_name))
 
         def semantic_search():
             seen = set()
-            return ("Semantic Scholar", self._search_semantic_scholar(drug_name, seen))
+            return ("Semantic Scholar", self._search_semantic_scholar(drug_name, seen, generic_name))
 
         def citation_search():
             seen = set()
-            return ("Citation Mining", self._mine_review_citations(drug_name, seen))
+            return ("Citation Mining", self._mine_review_citations(drug_name, seen, generic_name))
 
         def web_search():
             seen = set()
@@ -1029,18 +1437,33 @@ Return ONLY the JSON array, nothing else."""
     def _search_pubmed_enhanced(
         self,
         drug_name: str,
-        seen_ids: Set[str]
+        seen_ids: Set[str],
+        generic_name: str = None
     ) -> List[Dict[str, Any]]:
         """
         Enhanced PubMed search with precision-preserving query expansion.
 
         Uses clinical data indicators to find papers with patient outcomes
         even if they don't use "case report" terminology.
+
+        Searches for BOTH brand name and generic name to maximize recall.
         """
         papers = []
 
-        # Exclusion terms - filter out obvious non-clinical papers
-        exclusion_terms = 'NOT ("Review"[Publication Type] OR "Systematic Review"[Publication Type] OR "Meta-Analysis"[Publication Type] OR "Guideline"[Publication Type] OR "Editorial"[Publication Type])'
+        # Build drug name search term (brand name OR generic name)
+        # This ensures we find papers indexed under either name
+        if generic_name and generic_name.lower() != drug_name.lower():
+            drug_search_term = f'("{drug_name}"[Title/Abstract] OR "{generic_name}"[Title/Abstract])'
+            logger.info(f"Searching for both brand name '{drug_name}' and generic name '{generic_name}'")
+        else:
+            drug_search_term = f'"{drug_name}"[Title/Abstract]'
+            logger.info(f"Searching for drug name '{drug_name}' only")
+
+        # Exclusion terms - filter out non-clinical papers
+        # NOTE: We allow RCTs through at search level - LLM filtering will distinguish
+        # investigator-sponsored vs manufacturer-sponsored trials later
+        # Only exclude Phase III (pivotal/registration trials) at search level
+        exclusion_terms = 'NOT ("Review"[Publication Type] OR "Systematic Review"[Publication Type] OR "Meta-Analysis"[Publication Type] OR "Guideline"[Publication Type] OR "Editorial"[Publication Type] OR "Clinical Trial, Phase III"[Publication Type])'
 
         # Clinical data indicators - terms suggesting patient-level data
         clinical_indicators = '("patients treated" OR "treated with" OR "received treatment" OR "treatment response" OR "clinical response" OR "our experience" OR "retrospective" OR "case series" OR "case report")'
@@ -1051,24 +1474,24 @@ Return ONLY the JSON array, nothing else."""
         # Build enhanced query set
         pubmed_queries = [
             # Original case report search (proven effective)
-            f'"{drug_name}"[Title/Abstract] AND {clinical_pub_types} {exclusion_terms}',
+            f'{drug_search_term} AND {clinical_pub_types} {exclusion_terms}',
 
             # Clinical indicator search (finds case series without "case" in title)
-            f'"{drug_name}"[Title/Abstract] AND {clinical_indicators} {exclusion_terms}',
+            f'{drug_search_term} AND {clinical_indicators} {exclusion_terms}',
 
             # Off-label searches (keep these)
-            f'"{drug_name}"[Title/Abstract] AND ("off-label" OR "off label") {exclusion_terms}',
-            f'"{drug_name}"[Title/Abstract] AND ("expanded access" OR "compassionate use") {exclusion_terms}',
-            f'"{drug_name}"[Title/Abstract] AND "repurpos"[Title/Abstract] {exclusion_terms}',
+            f'{drug_search_term} AND ("off-label" OR "off label") {exclusion_terms}',
+            f'{drug_search_term} AND ("expanded access" OR "compassionate use") {exclusion_terms}',
+            f'{drug_search_term} AND "repurpos"[Title/Abstract] {exclusion_terms}',
 
             # Pediatric/juvenile with clinical data (NEW - catches JDM)
-            f'"{drug_name}"[Title/Abstract] AND (pediatric OR juvenile OR children) AND (treated OR response OR outcome OR patients) {exclusion_terms}',
+            f'{drug_search_term} AND (pediatric OR juvenile OR children) AND (treated OR response OR outcome OR patients) {exclusion_terms}',
 
             # Common autoimmune conditions with clinical data (NEW)
-            f'"{drug_name}"[Title/Abstract] AND (dermatomyositis OR myositis OR lupus OR vasculitis) AND (patients OR treated OR response) {exclusion_terms}',
+            f'{drug_search_term} AND (dermatomyositis OR myositis OR lupus OR vasculitis) AND (patients OR treated OR response) {exclusion_terms}',
 
             # Retrospective/cohort studies (NEW - often contain case data)
-            f'"{drug_name}"[Title/Abstract] AND (retrospective OR "cohort study" OR observational) AND (efficacy OR outcome OR response) {exclusion_terms}',
+            f'{drug_search_term} AND (retrospective OR "cohort study" OR observational) AND (efficacy OR outcome OR response) {exclusion_terms}',
         ]
 
         papers_per_query = 40  # Get reasonable number per query
@@ -1102,22 +1525,32 @@ Return ONLY the JSON array, nothing else."""
     def _search_semantic_scholar(
         self,
         drug_name: str,
-        seen_ids: Set[str]
+        seen_ids: Set[str],
+        generic_name: str = None
     ) -> List[Dict[str, Any]]:
         """
         Search Semantic Scholar for papers using semantic relevance ranking.
 
         Better at finding relevant papers that use different terminology.
+        Searches for both brand name and generic name if available.
         """
         papers = []
 
+        # Build list of drug names to search
+        drug_names = [drug_name]
+        if generic_name and generic_name.lower() != drug_name.lower():
+            drug_names.append(generic_name)
+            logger.info(f"Semantic Scholar: searching for both '{drug_name}' and '{generic_name}'")
+
         # Semantic search queries (neural embedding based, not keyword)
         # 3 queries for balanced coverage and speed
-        ss_queries = [
-            f"{drug_name} case report case series treatment outcomes patients",
-            f"{drug_name} off-label compassionate use clinical efficacy",
-            f"{drug_name} refractory resistant disease treatment response",
-        ]
+        ss_queries = []
+        for name in drug_names:
+            ss_queries.extend([
+                f"{name} case report case series treatment outcomes patients",
+                f"{name} off-label compassionate use clinical efficacy",
+                f"{name} refractory resistant disease treatment response",
+            ])
 
         for query in ss_queries:
             try:
@@ -1166,61 +1599,71 @@ Return ONLY the JSON array, nothing else."""
     def _mine_review_citations(
         self,
         drug_name: str,
-        seen_ids: Set[str]
+        seen_ids: Set[str],
+        generic_name: str = None
     ) -> List[Dict[str, Any]]:
         """
         Citation snowballing strategy: find review articles and extract their references.
 
         Reviews aggregate all case studies in a field - mining their references
         gives comprehensive coverage even for papers that don't match our queries.
+        Searches for both brand name and generic name if available.
         """
         papers = []
 
-        try:
-            logger.info(f"Mining citations from review articles for {drug_name}...")
+        # Build list of drug names to search
+        drug_names = [drug_name]
+        if generic_name and generic_name.lower() != drug_name.lower():
+            drug_names.append(generic_name)
+            logger.info(f"Citation mining: searching for both '{drug_name}' and '{generic_name}'")
 
-            # Get references from review articles (3 reviews x 50 refs for balanced coverage)
-            review_refs = self.semantic_scholar.mine_review_references(
-                drug_name,
-                disease_area=None,  # Search broadly
-                max_reviews=3,
-                max_refs_per_review=50
-            )
-            self.search_count += 1
+        for name in drug_names:
+            try:
+                logger.info(f"Mining citations from review articles for {name}...")
 
-            for paper in review_refs:
-                # Get identifiers for deduplication
-                external_ids = paper.get("externalIds") or {}
-                pmid = external_ids.get("PubMed")
-                doi = external_ids.get("DOI")
-                s2_id = paper.get("paperId")
+                # Get references from review articles (3 reviews x 50 refs for balanced coverage)
+                review_refs = self.semantic_scholar.mine_review_references(
+                    name,
+                    disease_area=None,  # Search broadly
+                    max_reviews=3,
+                    max_refs_per_review=50
+                )
+                self.search_count += 1
 
-                # Check if we've seen this paper
-                if pmid and pmid in seen_ids:
-                    continue
-                if doi and doi in seen_ids:
-                    continue
-                if s2_id and s2_id in seen_ids:
-                    continue
+                for paper in review_refs:
+                    # Get identifiers for deduplication
+                    external_ids = paper.get("externalIds") or {}
+                    pmid = external_ids.get("PubMed")
+                    doi = external_ids.get("DOI")
+                    s2_id = paper.get("paperId")
 
-                # Mark as seen
-                if pmid:
-                    seen_ids.add(pmid)
-                if doi:
-                    seen_ids.add(doi)
-                if s2_id:
-                    seen_ids.add(s2_id)
+                    # Check if we've seen this paper
+                    if pmid and pmid in seen_ids:
+                        continue
+                    if doi and doi in seen_ids:
+                        continue
+                    if s2_id and s2_id in seen_ids:
+                        continue
 
-                # Format for our pipeline
-                formatted = self.semantic_scholar.format_paper_for_case_series(paper)
-                formatted['source'] = 'Citation Mining'
-                papers.append(formatted)
+                    # Mark as seen
+                    if pmid:
+                        seen_ids.add(pmid)
+                    if doi:
+                        seen_ids.add(doi)
+                    if s2_id:
+                        seen_ids.add(s2_id)
 
-            logger.info(f"Citation mining: {len(papers)} papers from review references")
+                    # Format for our pipeline
+                    formatted = self.semantic_scholar.format_paper_for_case_series(paper)
+                    formatted['source'] = 'Citation Mining'
+                    papers.append(formatted)
 
-        except Exception as e:
-            logger.error(f"Citation mining error: {e}")
+                logger.info(f"Citation mining for {name}: {len(review_refs)} papers from review references")
 
+            except Exception as e:
+                logger.error(f"Citation mining error for {name}: {e}")
+
+        logger.info(f"Citation mining total: {len(papers)} papers")
         return papers
 
     def _search_web(
@@ -1285,6 +1728,8 @@ Return ONLY the JSON array, nothing else."""
         - Basic science / mechanistic studies without patients
         - PK/PD studies without efficacy outcomes
         - Approved indication studies
+
+        Also caches all papers to database for future runs.
         """
         if not papers:
             return []
@@ -1292,12 +1737,39 @@ Return ONLY the JSON array, nothing else."""
         # Build exclusion list for prompt
         exclude_str = ", ".join(exclude_indications) if exclude_indications else "None specified"
 
+        # Check cache for papers that have already been filtered
+        papers_to_filter = []
+        filtered_papers = []
+        cache_hits = 0
+
+        for paper in papers:
+            pmid = paper.get('pmid')
+            if pmid and self.cs_db:
+                cached = self.cs_db.check_paper_relevance(pmid, drug_name)
+                if cached:
+                    # Use cached relevance assessment
+                    cache_hits += 1
+                    if cached.get('is_relevant'):
+                        paper['llm_relevance_reason'] = cached.get('relevance_reason', '')
+                        paper['extracted_disease'] = cached.get('extracted_disease')
+                        filtered_papers.append(paper)
+                    continue
+
+            # Need to filter this paper
+            papers_to_filter.append(paper)
+
+        if cache_hits > 0:
+            logger.info(f"  Using cached relevance for {cache_hits} papers")
+
+        if not papers_to_filter:
+            logger.info(f"  All papers found in cache")
+            return filtered_papers
+
         # Process in batches to reduce API calls
         batch_size = 10
-        filtered_papers = []
 
-        for i in range(0, len(papers), batch_size):
-            batch = papers[i:i + batch_size]
+        for i in range(0, len(papers_to_filter), batch_size):
+            batch = papers_to_filter[i:i + batch_size]
 
             # Build batch prompt
             papers_text = ""
@@ -1307,48 +1779,13 @@ Return ONLY the JSON array, nothing else."""
                 abstract = abstract[:1500]  # Limit abstract length
                 papers_text += f"\n---PAPER {idx}---\nTitle: {title}\nAbstract: {abstract}\n"
 
-            prompt = f"""Evaluate these papers for relevance to off-label drug repurposing research for {drug_name}.
-
-APPROVED INDICATIONS TO EXCLUDE: {exclude_str}
-
-For each paper, determine if it contains ORIGINAL CLINICAL DATA that would be useful for evaluating off-label efficacy.
-
-STRICT REQUIREMENTS - To be INCLUDED, a paper MUST contain:
-1. A specific number of patients treated (e.g., "n=5 patients", "15 patients received", "a 12-year-old girl")
-2. Clinical outcome data (response rate, improvement, remission, disease activity scores)
-3. Treatment details (drug name with dose or duration mentioned)
-
-INCLUDE papers that have ALL of the above:
-- Case reports or case series with patient outcomes
-- Retrospective or prospective studies with efficacy data
-- Cohort studies with treatment outcomes
-- Compassionate use / expanded access reports with results
-- Real-world evidence with response rates
-- Studies labeled "experience with" or "treated with" that report outcomes
-
-EXCLUDE papers that are:
-- Reviews, guidelines, consensus statements, position papers (even if they cite patient data)
-- Basic science / mechanistic studies without patients treated
-- Pharmacokinetics/pharmacodynamics studies without clinical efficacy
-- Drug monitoring / analytical method papers
-- Studies ONLY about approved indications: {exclude_str}
-- Safety-only studies without efficacy outcomes
-- Clinical trial protocols (not results)
-- Letters/editorials without original patient data
-- In vitro or animal studies only
-
-{papers_text}
-
-Return ONLY a JSON object with this exact format:
-{{
-    "evaluations": [
-        {{"paper_index": 1, "include": true, "reason": "Case series with 15 patients showing 80% response rate in dermatomyositis", "disease": "dermatomyositis", "patient_count": 15}},
-        {{"paper_index": 2, "include": false, "reason": "Review article summarizing literature, no original patient data", "disease": null, "patient_count": null}},
-        ...
-    ]
-}}
-
-Evaluate ALL {len(batch)} papers. Be thorough but strict - only include papers with actual patient treatment data. Return ONLY the JSON, no other text."""
+            prompt = self._prompts.render(
+                "case_series/filter_papers",
+                drug_name=drug_name,
+                exclude_indications=exclude_str,
+                papers_text=papers_text,
+                batch_size=len(batch)
+            )
 
             try:
                 response = self.client.messages.create(
@@ -1373,14 +1810,37 @@ Evaluate ALL {len(batch)} papers. Be thorough but strict - only include papers w
                 result = json.loads(result_text)
                 evaluations = result.get('evaluations', [])
 
-                # Filter papers based on evaluation
+                # Filter papers based on evaluation AND save to database
                 for eval_item in evaluations:
                     paper_idx = eval_item.get('paper_index', 0) - 1
-                    if 0 <= paper_idx < len(batch) and eval_item.get('include', False):
+                    if 0 <= paper_idx < len(batch):
                         paper = batch[paper_idx]
-                        paper['llm_relevance_reason'] = eval_item.get('reason', '')
-                        paper['extracted_disease'] = eval_item.get('disease')
-                        filtered_papers.append(paper)
+                        is_relevant = eval_item.get('include', False)
+                        relevance_reason = eval_item.get('reason', '')
+                        extracted_disease = eval_item.get('disease')
+
+                        # Save paper to database (regardless of relevance)
+                        if self.cs_db and paper.get('pmid'):
+                            self.cs_db.save_paper(
+                                pmid=paper['pmid'],
+                                drug_name=drug_name,
+                                title=paper.get('title', ''),
+                                abstract=paper.get('abstract'),
+                                year=paper.get('year'),
+                                is_relevant=is_relevant,
+                                relevance_score=1.0 if is_relevant else 0.0,
+                                relevance_reason=relevance_reason,
+                                extracted_disease=extracted_disease,
+                                source=paper.get('source'),
+                                journal=paper.get('journal'),
+                                authors=paper.get('authors')
+                            )
+
+                        # Add to filtered list if relevant
+                        if is_relevant:
+                            paper['llm_relevance_reason'] = relevance_reason
+                            paper['extracted_disease'] = extracted_disease
+                            filtered_papers.append(paper)
 
                 logger.info(f"  Batch {i//batch_size + 1}: {len([e for e in evaluations if e.get('include')])} of {len(batch)} papers relevant")
 
@@ -1440,7 +1900,13 @@ Evaluate ALL {len(batch)} papers. Be thorough but strict - only include papers w
             'fill the unmet medical need', 'main results',
             'artificial intelligence-predicted', 'ai-predicted',
             'cost-effectiveness', 'economic analysis',
-            'registry data', 'claims database', 'insurance claims'
+            'registry data', 'claims database', 'insurance claims',
+            # Manufacturer-sponsored trials indicators (we allow investigator-sponsored trials)
+            # NOTE: We do NOT exclude all RCTs - only clear manufacturer/pivotal trial indicators
+            'pivotal trial', 'pivotal study', 'registration trial',
+            'industry-sponsored', 'manufacturer-sponsored',
+            'phase 3 trial', 'phase iii trial', 'phase 3 study', 'phase iii study',
+            # Large commercial trial names are often all-caps acronyms
         ]
 
         # If title contains exclude terms, filter it out
@@ -1633,20 +2099,13 @@ Evaluate ALL {len(batch)} papers. Be thorough but strict - only include papers w
         approved_indications = drug_info.get('approved_indications', [])
         approved_str = ", ".join(approved_indications) if approved_indications else "Unknown"
 
-        prompt = f"""Extract the disease/indication being treated in this paper.
-
-Drug: {drug_name}
-Approved Indications (exclude these): {approved_str}
-
-Title: {title}
-Abstract: {abstract}
-
-Return ONLY the disease/indication name in a simple format (e.g., "vitiligo", "alopecia areata", "chronic graft-versus-host disease").
-If multiple diseases are mentioned, return the PRIMARY one being treated.
-If this is about an APPROVED indication, return "APPROVED_INDICATION".
-If you cannot determine the disease, return "UNKNOWN".
-
-Disease:"""
+        prompt = self._prompts.render(
+            "case_series/extract_disease",
+            drug_name=drug_name,
+            approved_indications=approved_str,
+            title=title,
+            abstract=abstract
+        )
 
         try:
             response = self.client.messages.create(
@@ -1741,6 +2200,10 @@ Disease:"""
     ) -> Optional[CaseSeriesExtraction]:
         """Extract structured data from a case series/report using Claude.
 
+        Uses multi-stage extraction for full-text papers (>2000 chars) to get
+        detailed efficacy and safety endpoints. Falls back to single-pass for
+        abstract-only papers.
+
         Args:
             drug_name: Name of the drug
             drug_info: Drug information dict
@@ -1776,9 +2239,9 @@ Disease:"""
                     )
                     if parsed and parsed.get('content'):
                         full_text_content = parsed.get('content')
-                        # Limit to 15000 chars to stay within token limits
-                        if len(full_text_content) > 15000:
-                            full_text_content = full_text_content[:15000] + "\n\n[... content truncated ...]"
+                        # Limit to 40000 chars for multi-stage extraction
+                        if len(full_text_content) > 40000:
+                            full_text_content = full_text_content[:40000] + "\n\n[... content truncated ...]"
                         logger.info(f"Successfully fetched {len(full_text_content)} chars of full text")
             except Exception as e:
                 logger.warning(f"Failed to fetch PMC full text: {e}")
@@ -1790,12 +2253,40 @@ Disease:"""
             logger.warning(f"Skipping paper with insufficient content: {title[:50]}")
             return None
 
+        # Determine extraction method based on content length
+        use_multi_stage = (
+            full_text_content is not None and
+            len(full_text_content) >= MIN_FULLTEXT_LENGTH
+        )
+
         # Update paper dict with full text for prompt generation
         paper_with_content = paper.copy()
         if full_text_content:
             paper_with_content['full_text'] = full_text_content
             paper_with_content['has_full_text_content'] = True
 
+        # Multi-stage detailed extraction for full-text papers
+        multi_stage_results = None
+        if use_multi_stage:
+            logger.info(f"Using MULTI-STAGE extraction for full-text paper ({len(full_text_content)} chars)")
+            try:
+                extractor = CaseSeriesDataExtractor(self.client, self.model)
+                multi_stage_results = extractor.extract_multi_stage(
+                    paper_content=full_text_content,
+                    drug_name=drug_name,
+                    drug_info=drug_info,
+                    paper_metadata=paper
+                )
+                logger.info(f"Multi-stage extraction complete. Stages: {multi_stage_results.get('stages_completed', [])}")
+                logger.info(f"  - Efficacy endpoints: {len(multi_stage_results.get('detailed_efficacy_endpoints', []))}")
+                logger.info(f"  - Safety endpoints: {len(multi_stage_results.get('detailed_safety_endpoints', []))}")
+            except Exception as e:
+                logger.error(f"Multi-stage extraction failed: {e}. Falling back to single-pass.")
+                multi_stage_results = None
+        else:
+            logger.info(f"Using single-pass extraction (content length: {len(content_for_extraction)} chars)")
+
+        # Single-pass extraction (always run for basic data)
         prompt = self._get_extraction_prompt(drug_name, drug_info, paper_with_content)
 
         try:
@@ -1813,6 +2304,11 @@ Disease:"""
 
             # Build extraction object
             extraction = self._build_extraction_from_data(data, paper, drug_name, drug_info)
+
+            # Enrich with multi-stage results if available
+            if extraction and multi_stage_results:
+                extraction = self._enrich_with_multi_stage(extraction, multi_stage_results)
+
             return extraction
 
         except json.JSONDecodeError as e:
@@ -1824,6 +2320,44 @@ Disease:"""
         except Exception as e:
             logger.error(f"Extraction error: {e}")
             return None
+
+    def _enrich_with_multi_stage(
+        self,
+        extraction: CaseSeriesExtraction,
+        multi_stage_results: Dict[str, Any]
+    ) -> CaseSeriesExtraction:
+        """Enrich extraction with multi-stage detailed endpoints."""
+
+        # Convert detailed efficacy endpoints
+        detailed_efficacy = []
+        for ep in multi_stage_results.get('detailed_efficacy_endpoints', []):
+            try:
+                detailed_efficacy.append(DetailedEfficacyEndpoint(**ep))
+            except Exception as e:
+                logger.warning(f"Failed to parse efficacy endpoint: {e}")
+
+        # Convert detailed safety endpoints
+        detailed_safety = []
+        for ep in multi_stage_results.get('detailed_safety_endpoints', []):
+            try:
+                detailed_safety.append(DetailedSafetyEndpoint(**ep))
+            except Exception as e:
+                logger.warning(f"Failed to parse safety endpoint: {e}")
+
+        # Update extraction with multi-stage data
+        extraction.detailed_efficacy_endpoints = detailed_efficacy
+        extraction.detailed_safety_endpoints = detailed_safety
+        extraction.extraction_method = 'multi_stage'
+        extraction.extraction_stages_completed = multi_stage_results.get('stages_completed', [])
+        extraction.data_sections_identified = multi_stage_results.get('sections_identified')
+
+        # Boost confidence if multi-stage extraction succeeded
+        if detailed_efficacy or detailed_safety:
+            extraction.extraction_confidence = min(extraction.extraction_confidence + 0.1, 1.0)
+
+        logger.info(f"Enriched extraction with {len(detailed_efficacy)} efficacy and {len(detailed_safety)} safety endpoints")
+
+        return extraction
 
     def _get_extraction_prompt(
         self,
@@ -1845,63 +2379,15 @@ Disease:"""
             content = (content or 'N/A')[:4000]  # Limit abstract to 4000 chars
             content_label = "Abstract"
 
-        return f"""You are analyzing a medical case report/series for drug repurposing opportunities.
-
-Drug: {drug_name}
-Mechanism: {drug_info.get('mechanism', 'Unknown')}
-Approved Indications: {approved_str}
-
-Paper:
-Title: {paper.get('title', 'N/A')}
-{content_label}: {content}
-
-Extract structured data about this case report/series. Focus on:
-1. What disease/condition was treated (OFF-LABEL use)?
-2. How many patients were treated?
-3. What were the efficacy outcomes?
-4. What were the safety outcomes?
-
-Return ONLY valid JSON in this format:
-{{
-    "disease": "specific disease name treated",
-    "is_relevant": true or false (is this actually about off-label use of {drug_name}?),
-    "evidence_level": "Case Report" or "Case Series" or "Retrospective Study",
-    "n_patients": number,
-    "patient_description": "brief description of patient characteristics",
-    "prior_treatments_failed": ["treatment1", "treatment2"],
-    "dose": "dose used",
-    "route": "oral/IV/etc",
-    "duration": "treatment duration",
-    "primary_endpoint": "the main efficacy endpoint measured (e.g., 'CDASI score reduction', 'remission rate', 'CRP reduction')",
-    "endpoint_result": "result on primary endpoint (e.g., '50% reduction in CDASI', 'complete remission in 3/5 patients')",
-    "response_rate": "X/N (Y%)" or null,
-    "responders_n": number or null,
-    "responders_pct": percentage or null,
-    "time_to_response": "time description" or null,
-    "duration_of_response": "how long the response lasted" or null,
-    "effect_size_description": "description of effect size",
-    "efficacy_summary": "2-3 sentence efficacy summary",
-    "adverse_events": ["AE1", "AE2"] or [],
-    "serious_adverse_events": ["SAE1", "SAE2"] or [],
-    "sae_count": number of patients with serious adverse events or null,
-    "sae_percentage": percentage of patients with SAEs or null,
-    "discontinuations_n": number of discontinuations or null,
-    "discontinuation_reasons": ["reason1", "reason2"] or [],
-    "safety_summary": "2-3 sentence safety summary",
-    "outcome_result": "Success" or "Fail" or "Mixed",
-    "efficacy_signal": "Strong" or "Moderate" or "Weak" or "None",
-    "safety_profile": "Favorable" or "Acceptable" or "Concerning" or "Unknown",
-    "follow_up_duration": "duration" or null,
-    "key_findings": "1-2 sentence key findings",
-    "year": publication year or null,
-    "journal": "journal name" or null,
-    "authors": "author list" or null
-}}
-
-CRITICAL:
-- Set is_relevant=false if this is NOT about off-label use
-- Set is_relevant=false if the disease is one of the approved indications
-- Return ONLY the JSON, no other text"""
+        return self._prompts.render(
+            "case_series/main_extraction",
+            drug_name=drug_name,
+            mechanism=drug_info.get('mechanism', 'Unknown'),
+            approved_indications=approved_str,
+            paper_title=paper.get('title', 'N/A'),
+            content_label=content_label,
+            content=content
+        )
 
     def _build_extraction_from_data(
         self,
@@ -1910,12 +2396,11 @@ CRITICAL:
         drug_name: str,
         drug_info: Dict[str, Any]
     ) -> Optional[CaseSeriesExtraction]:
-        """Build CaseSeriesExtraction from extracted data."""
+        """Build CaseSeriesExtraction from extracted data.
 
-        # Skip irrelevant papers
-        if not data.get('is_relevant', True):
-            logger.info(f"Skipping irrelevant paper: {paper.get('title', 'Unknown')[:50]}")
-            return None
+        Returns extraction even if irrelevant (for database caching).
+        The extraction will have is_relevant=False flag set.
+        """
 
         # Build source
         source = CaseSeriesSource(
@@ -1997,6 +2482,7 @@ CRITICAL:
             source=source,
             disease=data.get('disease', 'Unknown'),
             is_off_label=True,
+            is_relevant=data.get('is_relevant', True),  # Set from extraction data
             evidence_level=evidence_level,
             patient_population=patient_pop,
             treatment=treatment,
@@ -2030,28 +2516,10 @@ CRITICAL:
         if len(disease_names) <= 1:
             return opportunities
 
-        prompt = f"""You are a medical terminology expert. Standardize these disease names by grouping similar/related conditions under canonical names.
-
-Disease names found in papers:
-{json.dumps(disease_names, indent=2)}
-
-RULES:
-1. Group diseases that are essentially the same condition with different descriptions
-2. Group subtypes under their parent disease when appropriate
-3. Keep distinct diseases separate
-4. Use standard medical terminology (prefer MeSH/ICD-10 naming)
-5. For autoinflammatory conditions, group CANDLE, SAVI, AGS, NNS under "Type I Interferonopathies"
-6. Adult-onset Still's disease variants should all be "Adult-onset Still's Disease (AOSD)"
-7. Keep specific diseases like "vitiligo", "atopic dermatitis", "lichen planus" as their own categories
-
-Return ONLY valid JSON mapping original names to standardized names:
-{{
-    "original disease name 1": "Standardized Disease Name",
-    "original disease name 2": "Standardized Disease Name",
-    "vitiligo": "Vitiligo"
-}}
-
-Return ONLY the JSON mapping."""
+        prompt = self._prompts.render(
+            "case_series/standardize_diseases",
+            disease_names=disease_names
+        )
 
         try:
             response = self.client.messages.create(
@@ -2064,16 +2532,22 @@ Return ONLY the JSON mapping."""
             content = self._clean_json_response(response.content[0].text.strip())
             disease_mapping = json.loads(content)
 
-            # Apply mapping to opportunities
+            # Apply mapping to opportunities - always set disease_normalized
+            standardized_count = 0
             for opp in opportunities:
                 original = opp.extraction.disease
                 if original in disease_mapping:
                     standardized = disease_mapping[original]
+                    # Always set disease_normalized (even if same as original)
+                    opp.extraction.disease_normalized = standardized
                     if standardized != original:
+                        standardized_count += 1
                         logger.info(f"Standardized disease: '{original}' -> '{standardized}'")
-                        opp.extraction.disease_normalized = standardized
-                        # Keep original in disease field for reference, use normalized for grouping
+                else:
+                    # If not in mapping, set normalized to original
+                    opp.extraction.disease_normalized = original
 
+            logger.info(f"Disease standardization complete: {standardized_count} names standardized out of {len(opportunities)}")
             return opportunities
 
         except Exception as e:
@@ -2321,31 +2795,11 @@ Return ONLY the JSON mapping."""
                 'url': r.get('url')
             })
 
-        prompt = f"""Extract epidemiology data for {disease} from these search results.
-
-Search Results:
-{json.dumps(results_with_urls, indent=2)[:6000]}
-
-Return ONLY valid JSON:
-{{
-    "us_prevalence_estimate": "estimated US prevalence (e.g. '1 in 10,000' or '200,000 patients') or null",
-    "us_incidence_estimate": "annual incidence estimate or null",
-    "patient_population_size": integer estimate of US patient count (MUST be integer, not string),
-    "prevalence_source": "name of source (e.g. 'NIH GARD', 'CDC', journal name) or null",
-    "prevalence_source_url": "URL of the source or null",
-    "trend": "increasing/stable/decreasing or null"
-}}
-
-CRITICAL FOR patient_population_size:
-- This MUST be an integer estimate of US patients (not null unless truly unknown)
-- If prevalence is given as percentage (e.g., "1%"), calculate: US population (335M) * prevalence
-- If prevalence is "1 in X", calculate: 335,000,000 / X
-- If worldwide cases given (e.g., "130 worldwide"), estimate US portion (~4% of world population)
-- If a range is given, use the midpoint
-- Example: "1-2% prevalence" -> 335M * 0.015 = 5,025,000
-- Example: "1 in 10,000" -> 335M / 10000 = 33,500
-- Example: "130 worldwide" -> 130 * 0.04 = ~5 (round to nearest integer)
-Return ONLY the JSON."""
+        prompt = self._prompts.render(
+            "case_series/extract_epidemiology",
+            disease=disease,
+            search_results=results_with_urls[:6000]
+        )
 
         try:
             response = self.client.messages.create(
@@ -2375,74 +2829,11 @@ Return ONLY the JSON."""
                 'url': r.get('url')
             })
 
-        prompt = f"""Extract FDA-approved BRANDED INNOVATIVE treatments for {disease}.
-
-=== CRITICAL: INDICATION-SPECIFIC FDA APPROVALS ONLY ===
-Only count drugs with FDA approval for THIS EXACT INDICATION: "{disease}"
-
-IMPORTANT INDICATION DISTINCTIONS (different FDA labels):
-- "Systemic Lupus Erythematosus (SLE)" ≠ "Lupus Nephritis" (different indications!)
-  * SLE approved: Benlysta, Saphnelo
-  * Lupus Nephritis approved: Lupkynis, Benlysta
-- "Rheumatoid Arthritis" ≠ "Juvenile Idiopathic Arthritis"
-- "Atopic Dermatitis" (adult) may have different approvals than pediatric
-- "Crohn's Disease" ≠ "Ulcerative Colitis"
-
-If analyzing "{disease}", only count drugs FDA-approved for EXACTLY "{disease}".
-Do NOT count drugs approved for related but different indications.
-
-=== BRANDED INNOVATIVE DRUGS ONLY ===
-INCLUDE (is_branded_innovative=true):
-- Biologics: monoclonal antibodies, fusion proteins, recombinant proteins
-  Examples: Ilaris, Kineret, Actemra, Humira, Enbrel, Cosentyx, Stelara, Dupixent, Ocrevus
-- Novel small molecules with brand names: JAK inhibitors, kinase inhibitors, targeted therapies
-  Examples: Olumiant (baricitinib), Xeljanz (tofacitinib), Rinvoq (upadacitinib), Jakafi
-- Specialty drugs: IVIG products, enzyme replacement therapies
-  Examples: Octagam 10%, Gamunex-C, Cerezyme, Fabrazyme
-- Gene/cell therapies: Zolgensma, Luxturna, Yescarta
-
-EXCLUDE (is_branded_innovative=false):
-- Generic drugs even with brand names: corticosteroids (prednisone, Medrol), methotrexate, azathioprine, cyclosporine
-- Supportive care: NSAIDs, pain medications, antihistamines
-- OTC medications: eye drops, topical steroids
-- Branded generics: Cyclogyl (cyclopentolate), generic-equivalent products
-
-Search Results:
-{json.dumps(results_with_urls, indent=2)[:6000]}
-
-Return ONLY valid JSON:
-{{
-    "top_treatments": [
-        {{
-            "drug_name": "Brand Name (generic)",
-            "drug_class": "class (e.g., IL-1 inhibitor, JAK inhibitor)",
-            "is_branded_innovative": true/false,
-            "fda_approved": true/false,
-            "fda_approved_indication": "EXACT indication name from FDA label or null",
-            "line_of_therapy": "1L/2L/3L or null",
-            "efficacy_range": "60-70%",
-            "annual_cost_usd": integer or null,
-            "notes": "FDA approval details including specific indication"
-        }}
-    ],
-    "approved_drug_names": ["Brand1 (generic1)", "Brand2 (generic2)"],
-    "num_approved_drugs": integer (count of drugs FDA-approved for EXACTLY "{disease}"),
-    "avg_annual_cost_usd": integer (average of branded innovative drugs only),
-    "treatment_paradigm": "1-2 sentence description of treatment approach including line of therapy",
-    "unmet_need": true/false,
-    "unmet_need_description": "description or null",
-    "competitive_landscape": "2-sentence summary",
-    "soc_source": "source name and URL"
-}}
-
-VALIDATION RULES:
-1. fda_approved=true ONLY if FDA approved for EXACTLY "{disease}" (not related conditions)
-2. approved_drug_names MUST only contain drugs where is_branded_innovative=true AND fda_approved=true for THIS indication
-3. num_approved_drugs MUST exactly equal length of approved_drug_names list
-4. Generic drugs (corticosteroids, methotrexate, etc.) should NEVER appear in approved_drug_names
-5. If drug is approved for related but different indication (e.g., Lupus Nephritis vs SLE), set fda_approved=false
-
-Return ONLY the JSON."""
+        prompt = self._prompts.render(
+            "case_series/extract_treatments",
+            disease=disease,
+            search_results=results_with_urls[:6000]
+        )
 
         try:
             response = self.client.messages.create(
@@ -2514,34 +2905,11 @@ Return ONLY the JSON."""
                 'url': r.get('url')
             })
 
-        prompt = f"""Extract clinical trial pipeline data for {disease}.
-
-Search Results:
-{json.dumps(results_with_urls, indent=2)[:5000]}
-
-Return ONLY valid JSON:
-{{
-    "pipeline_therapies": [
-        {{
-            "drug_name": "Drug name or code (e.g., 'ABC-123' or 'drugname')",
-            "company": "Sponsoring company",
-            "mechanism": "Mechanism of action",
-            "phase": "Phase 1/Phase 2/Phase 3",
-            "trial_id": "NCT number if available",
-            "expected_completion": "Expected date or null"
-        }}
-    ],
-    "pipeline_summary": "1-2 sentence summary of pipeline activity"
-}}
-
-RULES:
-- Only include drugs in ACTIVE clinical trials (Phase 1, 2, or 3)
-- EXCLUDE: Preclinical drugs, discontinued trials, already approved drugs
-- EXCLUDE: Trials for other indications even if same drug
-- Include NCT numbers when available
-- Focus on this SPECIFIC indication: {disease}
-
-Return ONLY the JSON."""
+        prompt = self._prompts.render(
+            "case_series/extract_pipeline",
+            disease=disease,
+            search_results=results_with_urls[:5000]
+        )
 
         try:
             response = self.client.messages.create(
@@ -2600,48 +2968,12 @@ Return ONLY the JSON."""
             'unmet_need': soc.unmet_need
         }
 
-        prompt = f"""Calculate the Total Addressable Market (TAM) for a NEW DRUG entering the {disease} market.
-
-=== KNOWN DATA ===
-{json.dumps(context, indent=2)}
-
-=== MARKET RESEARCH RESULTS ===
-{json.dumps(results_with_urls, indent=2)[:4000]}
-
-=== TAM CALCULATION FRAMEWORK ===
-TAM should account for REALISTIC market penetration, not total patient population x cost.
-
-Consider:
-1. TREATMENT FUNNEL:
-   - What % of patients are diagnosed?
-   - What % of diagnosed patients receive treatment?
-   - What line of therapy would a new drug likely be positioned? (1L, 2L, 3L)
-   - What % of patients reach each line of therapy?
-
-2. MARKET PENETRATION:
-   - How many approved competitors exist?
-   - What market share could a new entrant realistically capture?
-   - Typical new drug peak market share: 10-30% in crowded markets, 30-50% in underserved
-
-3. TREATMENT DURATION:
-   - Is this chronic or acute treatment?
-   - What is typical treatment duration and compliance?
-
-4. PRICING:
-   - What is realistic pricing for this indication?
-   - Orphan drugs: $100K-500K/yr, Specialty: $50K-150K/yr, Primary care: $10K-50K/yr
-
-Return ONLY valid JSON:
-{{
-    "tam_usd": integer (Total Addressable Market in USD),
-    "tam_estimate": "formatted string (e.g., '$2.5B')",
-    "tam_rationale": "Detailed 2-4 sentence explanation including: patient funnel (X diagnosed, Y% treated, Z% reach target LOT), assumed market share (A%), pricing ($B/yr), calculation steps"
-}}
-
-EXAMPLE tam_rationale:
-"Of ~100,000 US patients with [disease], ~70% are diagnosed (70K), ~60% receive systemic treatment (42K), ~30% fail 1L therapy and are candidates for 2L+ (12.6K). A new 2L drug could capture 25-35% market share (~3.8K patients). At $75K/yr, TAM = $285M. High unmet need in refractory population supports premium pricing."
-
-Return ONLY the JSON."""
+        prompt = self._prompts.render(
+            "case_series/calculate_tam",
+            disease=disease,
+            context=context,
+            search_results=results_with_urls[:4000]
+        )
 
         try:
             response = self.client.messages.create(
@@ -2680,30 +3012,58 @@ Return ONLY the JSON."""
         """
         Score a single repurposing opportunity.
 
-        Weights: Clinical 50%, Evidence 25%, Market 25%
-        Each dimension is the average of its component scores (all 1-10).
+        UPDATED v2: Removed separate endpoint_quality_score since quality is now
+        factored into the efficacy score. Redistributed weights.
+
+        Clinical Signal (50%):
+        - Response rate (quality-weighted): 40%
+        - Safety profile: 40%
+        - Organ domain breadth: 20%
+
+        Evidence Quality (25%):
+        - Sample size: 35%
+        - Publication venue: 25%
+        - Response durability: 25%
+        - Extraction completeness: 15%
+
+        Market Opportunity (25%):
+        - Competitors: 33%
+        - Market size: 33%
+        - Unmet need: 33%
         """
         ext = opp.extraction
 
-        # Clinical Signal Score (50% weight) - average of response rate and safety
-        response_score = self._score_response_rate(ext)
-        safety_score = self._score_safety_profile(ext)
-        clinical_score = (response_score + safety_score) / 2
+        # Clinical Signal Score (50% of overall)
+        response_score, response_breakdown = self._score_response_rate_v2(ext)
+        safety_score, safety_breakdown = self._score_safety_profile_detailed(ext)
+        organ_domain_score = self._score_organ_domain_breadth(ext)
 
-        # Evidence Quality Score (25% weight) - average of sample size, venue, followup
-        sample_score = self._score_sample_size(ext)
+        clinical_score = (
+            response_score * 0.40 +
+            safety_score * 0.40 +
+            organ_domain_score * 0.20
+        )
+
+        # Evidence Quality Score (25% of overall)
+        sample_score = self._score_sample_size_v2(ext)
         venue_score = self._score_publication_venue(ext)
-        followup_score = self._score_followup_duration(ext)
-        evidence_score = (sample_score + venue_score + followup_score) / 3
+        durability_score = self._score_response_durability(ext)
+        completeness_score = self._score_extraction_completeness(ext)
 
-        # Market Opportunity Score (25% weight) - average of competitors, market size, unmet need
+        evidence_score = (
+            sample_score * 0.35 +
+            venue_score * 0.25 +
+            durability_score * 0.25 +
+            completeness_score * 0.15
+        )
+
+        # Market Opportunity Score (25% of overall)
         competitors_score = self._score_competitors(opp)
         market_size_score = self._score_market_size(opp)
         unmet_need_score = self._score_unmet_need(opp)
         market_score = (competitors_score + market_size_score + unmet_need_score) / 3
 
-        # Overall Priority (weighted average)
-        # 50% clinical, 25% evidence, 25% market
+        # Overall Priority
         overall = (
             clinical_score * 0.50 +
             evidence_score * 0.25 +
@@ -2718,18 +3078,27 @@ Return ONLY the JSON."""
             # Clinical breakdown
             response_rate_score=round(response_score, 1),
             safety_profile_score=round(safety_score, 1),
+            endpoint_quality_score=None,  # Now baked into response_rate_score
+            organ_domain_score=round(organ_domain_score, 1),
             clinical_breakdown={
-                "response_rate": round(response_score, 1),
-                "safety_profile": round(safety_score, 1)
+                "response_rate_quality_weighted": round(response_score, 1),
+                "safety_profile": round(safety_score, 1),
+                "organ_domain_breadth": round(organ_domain_score, 1),
+                "safety_categories": safety_breakdown.get('categories_detected', []),
+                "regulatory_flags": safety_breakdown.get('regulatory_flags', []),
+                "efficacy_endpoint_count": response_breakdown.get('n_endpoints_scored', 0),
+                "efficacy_concordance": response_breakdown.get('concordance_multiplier', 1.0),
             },
             # Evidence breakdown
             sample_size_score=round(sample_score, 1),
             publication_venue_score=round(venue_score, 1),
-            followup_duration_score=round(followup_score, 1),
+            followup_duration_score=round(durability_score, 1),
+            extraction_completeness_score=round(completeness_score, 1),
             evidence_breakdown={
                 "sample_size": round(sample_score, 1),
                 "publication_venue": round(venue_score, 1),
-                "followup_duration": round(followup_score, 1)
+                "response_durability": round(durability_score, 1),
+                "extraction_completeness": round(completeness_score, 1),
             },
             # Market breakdown
             competitors_score=round(competitors_score, 1),
@@ -2748,35 +3117,714 @@ Return ONLY the JSON."""
 
     def _score_response_rate(self, ext: CaseSeriesExtraction) -> float:
         """
-        Score response rate (1-10).
+        Score response rate considering totality of efficacy data (1-10).
 
-        Based on % patients achieving primary outcome:
+        Primary: Based on % patients achieving primary outcome
+        Secondary: Adjusted by endpoint concordance across all endpoints
+
         >80%=10, 60-80%=8, 40-60%=6, 20-40%=4, <20%=2
+        Bonus/penalty: +/-1 based on concordance of secondary endpoints
         """
+        base_score = 5.0  # Default unknown
+
         if ext.efficacy.responders_pct is not None:
             pct = ext.efficacy.responders_pct
             if pct >= 80:
-                return 10.0
+                base_score = 10.0
             elif pct >= 60:
-                return 8.0
+                base_score = 8.0
             elif pct >= 40:
-                return 6.0
+                base_score = 6.0
             elif pct >= 20:
-                return 4.0
+                base_score = 4.0
             else:
-                return 2.0
+                base_score = 2.0
+        elif ext.efficacy_signal == EfficacySignal.STRONG:
+            base_score = 9.0
+        elif ext.efficacy_signal == EfficacySignal.MODERATE:
+            base_score = 6.0
+        elif ext.efficacy_signal == EfficacySignal.WEAK:
+            base_score = 3.0
+        elif ext.efficacy_signal == EfficacySignal.NONE:
+            base_score = 1.0
 
-        # Fallback to efficacy signal if no percentage available
+        # Adjust based on endpoint concordance
+        concordance = self._calculate_endpoint_concordance(ext)
+        if concordance['total_endpoints'] >= 3:
+            # Significant endpoint data - apply concordance adjustment
+            concordance_rate = concordance['positive_rate']
+            if concordance_rate >= 0.8:
+                base_score = min(10.0, base_score + 0.5)  # Strong concordance bonus
+            elif concordance_rate >= 0.6:
+                pass  # Moderate concordance - no adjustment
+            elif concordance_rate < 0.4:
+                base_score = max(1.0, base_score - 0.5)  # Poor concordance penalty
+
+        return base_score
+
+    def _score_response_rate_v2(self, ext: CaseSeriesExtraction) -> Tuple[float, Dict[str, Any]]:
+        """
+        Enhanced response rate scoring using totality of efficacy endpoints
+        with quality weighting.
+
+        Returns (score, breakdown_dict) where score is 1-10.
+
+        Scoring approach:
+        1. Score each endpoint individually (1-10 based on results)
+        2. Get quality score for each endpoint (validated vs ad-hoc)
+        3. Calculate weight = (category_weight) × (quality_weight)
+        4. Compute weighted average across all endpoints
+        5. Apply concordance multiplier (0.85-1.15)
+        6. Blend with best single endpoint to prevent dilution
+
+        Category weights: Primary=1.0, Secondary=0.6, Exploratory=0.3
+                          Unknown defaults to Secondary (0.6)
+        Quality weights: Scaled from 0.4 (ad-hoc) to 1.0 (validated gold-standard)
+        """
+        breakdown = {
+            'method': 'multi_endpoint_quality_weighted',
+            'n_endpoints_scored': 0,
+            'primary_score': None,
+            'secondary_avg_score': None,
+            'weighted_avg_score': None,
+            'concordance_multiplier': 1.0,
+            'best_endpoint_score': None,
+            'final_score': None,
+            'endpoint_details': []
+        }
+
+        # Fallback if no detailed endpoints available
+        if not ext.detailed_efficacy_endpoints:
+            base_score = self._score_response_rate_fallback(ext)
+            breakdown['method'] = 'fallback_no_detailed_endpoints'
+            breakdown['final_score'] = base_score
+            return base_score, breakdown
+
+        # Get validated instruments for this disease
+        disease = ext.disease or ext.disease_normalized or ""
+        validated_instruments = self._get_validated_instruments_for_disease(disease)
+
+        # Score each endpoint
+        endpoint_scores = []
+        primary_scores = []
+        secondary_scores = []
+        exploratory_scores = []
+
+        for ep in ext.detailed_efficacy_endpoints:
+            # Get efficacy score (how good were the results?)
+            efficacy_score, efficacy_detail = self._score_single_endpoint(ep)
+
+            # Get quality score (how good was the instrument?)
+            quality_score = self._get_endpoint_quality_score_v2(ep, validated_instruments)
+
+            # Determine category (defaults to secondary if unknown)
+            raw_category = getattr(ep, 'endpoint_category', '') if hasattr(ep, 'endpoint_category') else ''
+            category, category_weight = self._get_category_and_weight(raw_category)
+
+            # Calculate quality weight (scale 0.4 to 1.0)
+            # quality_score is 1-10, map to 0.4-1.0
+            quality_weight = 0.4 + (quality_score / 10) * 0.6
+
+            # Combined weight
+            combined_weight = category_weight * quality_weight
+
+            endpoint_info = {
+                'name': getattr(ep, 'endpoint_name', 'Unknown'),
+                'category': category,
+                'category_inferred': raw_category == '' or raw_category is None,
+                'efficacy_score': efficacy_score,
+                'quality_score': quality_score,
+                'category_weight': category_weight,
+                'quality_weight': round(quality_weight, 2),
+                'combined_weight': round(combined_weight, 2),
+                'efficacy_detail': efficacy_detail
+            }
+            endpoint_scores.append(endpoint_info)
+
+            # Track by category for reporting
+            if category == 'primary':
+                primary_scores.append(efficacy_score)
+            elif category == 'secondary':
+                secondary_scores.append(efficacy_score)
+            else:
+                exploratory_scores.append(efficacy_score)
+
+        breakdown['endpoint_details'] = endpoint_scores
+        breakdown['n_endpoints_scored'] = len(endpoint_scores)
+
+        # Calculate weighted average
+        weighted_sum = 0.0
+        total_weight = 0.0
+
+        for ep_info in endpoint_scores:
+            weighted_sum += ep_info['efficacy_score'] * ep_info['combined_weight']
+            total_weight += ep_info['combined_weight']
+
+        weighted_avg = weighted_sum / total_weight if total_weight > 0 else 5.0
+        breakdown['weighted_avg_score'] = round(weighted_avg, 2)
+
+        # Track category averages for reporting
+        if primary_scores:
+            breakdown['primary_score'] = round(sum(primary_scores) / len(primary_scores), 2)
+        if secondary_scores:
+            breakdown['secondary_avg_score'] = round(sum(secondary_scores) / len(secondary_scores), 2)
+
+        # Calculate concordance multiplier
+        concordance_mult = self._calculate_concordance_multiplier_v2(endpoint_scores)
+        breakdown['concordance_multiplier'] = concordance_mult
+
+        # Find best single endpoint (prevents dilution of strong signals)
+        all_efficacy_scores = [ep['efficacy_score'] for ep in endpoint_scores]
+        best_score = max(all_efficacy_scores) if all_efficacy_scores else 5.0
+        breakdown['best_endpoint_score'] = best_score
+
+        # Final score calculation:
+        # 70% weighted average (with concordance) + 30% best endpoint
+        adjusted_avg = weighted_avg * concordance_mult
+        final_score = (adjusted_avg * 0.70) + (best_score * 0.30)
+
+        # Clamp to 1-10
+        final_score = max(1.0, min(10.0, final_score))
+        breakdown['final_score'] = round(final_score, 1)
+
+        return round(final_score, 1), breakdown
+
+    def _get_category_and_weight(self, raw_category: str) -> Tuple[str, float]:
+        """
+        Get normalized category and weight for an endpoint.
+
+        Handles missing/unknown categories by defaulting to "secondary" (0.6 weight).
+        This is conservative - not over-weighting or under-weighting when we don't know.
+
+        Returns: (normalized_category, weight)
+        """
+        category_lower = (raw_category or '').lower().strip()
+
+        # Primary indicators
+        if category_lower in ['primary', 'main', 'principal', 'primary endpoint',
+                              'primary outcome', 'main outcome']:
+            return 'primary', 1.0
+
+        # Exploratory indicators
+        if category_lower in ['exploratory', 'tertiary', 'post-hoc', 'additional',
+                              'exploratory endpoint', 'post hoc', 'supplementary']:
+            return 'exploratory', 0.3
+
+        # Secondary or unknown → default to secondary weight
+        return 'secondary', 0.6
+
+    def _score_single_endpoint(self, ep) -> Tuple[float, Dict[str, Any]]:
+        """
+        Score a single efficacy endpoint on 1-10 scale based on results.
+
+        Priority order:
+        1. Response rate percentage (most direct)
+        2. Percent change from baseline
+        3. Absolute change from baseline (calculate % if possible)
+        4. Statistical significance (weak proxy)
+
+        Returns (score, detail_dict)
+        """
+        detail = {
+            'scoring_basis': None,
+            'raw_value': None,
+            'interpretation': None
+        }
+
+        # Priority 1: Response rate percentage
+        responders_pct = getattr(ep, 'responders_pct', None)
+        if responders_pct is not None:
+            try:
+                pct = float(responders_pct)
+                score = _response_pct_to_score(pct)
+                detail['scoring_basis'] = 'responders_pct'
+                detail['raw_value'] = pct
+                detail['interpretation'] = f"{pct:.0f}% responders"
+                return score, detail
+            except (ValueError, TypeError):
+                pass
+
+        # Priority 2: Percent change from baseline
+        change_pct = getattr(ep, 'change_pct', None)
+        if change_pct is not None:
+            try:
+                pct = float(change_pct)
+                ep_name = getattr(ep, 'endpoint_name', '').lower()
+                decrease_is_good = _is_decrease_good(ep_name)
+
+                # Flip sign so positive = improvement
+                effective_change = -pct if decrease_is_good else pct
+
+                score = _percent_change_to_score(effective_change)
+                detail['scoring_basis'] = 'change_pct'
+                detail['raw_value'] = pct
+                direction = 'improvement' if effective_change > 0 else 'worsening'
+                detail['interpretation'] = f"{pct:.1f}% change ({direction})"
+                return score, detail
+            except (ValueError, TypeError):
+                pass
+
+        # Priority 3: Absolute change from baseline
+        change = getattr(ep, 'change_from_baseline', None)
+        baseline = getattr(ep, 'baseline_value', None)
+        if change is not None:
+            try:
+                change_val = float(change)
+                ep_name = getattr(ep, 'endpoint_name', '').lower()
+                decrease_is_good = _is_decrease_good(ep_name)
+
+                # Try to calculate percent change if we have baseline
+                if baseline is not None:
+                    try:
+                        baseline_val = float(baseline)
+                        if baseline_val != 0:
+                            calc_pct = (change_val / baseline_val) * 100
+                            effective_change = -calc_pct if decrease_is_good else calc_pct
+
+                            score = _percent_change_to_score(effective_change)
+                            detail['scoring_basis'] = 'calculated_pct_change'
+                            detail['raw_value'] = round(calc_pct, 1)
+                            detail['interpretation'] = f"Calculated {calc_pct:.1f}% change from baseline"
+                            return score, detail
+                    except (ValueError, TypeError):
+                        pass
+
+                # Can't calculate %, use direction only
+                is_improved = (change_val < 0) if decrease_is_good else (change_val > 0)
+                score = 6.5 if is_improved else 3.5
+                detail['scoring_basis'] = 'direction_only'
+                detail['raw_value'] = change_val
+                detail['interpretation'] = f"Change of {change_val} ({'improved' if is_improved else 'worsened'})"
+                return score, detail
+            except (ValueError, TypeError):
+                pass
+
+        # Priority 4: Statistical significance as weak proxy
+        if getattr(ep, 'statistical_significance', False):
+            detail['scoring_basis'] = 'statistical_significance'
+            detail['raw_value'] = True
+            detail['interpretation'] = 'Statistically significant (p<0.05), direction assumed positive'
+            return 6.0, detail
+
+        # Check p-value directly
+        p_value = getattr(ep, 'p_value', None)
+        if p_value is not None:
+            try:
+                # Handle strings like "<0.001" or "0.03"
+                p_str = str(p_value).replace('<', '').replace('>', '').strip()
+                p = float(p_str)
+                if p < 0.05:
+                    detail['scoring_basis'] = 'p_value'
+                    detail['raw_value'] = p_value
+                    detail['interpretation'] = f'p={p_value}, assumed positive direction'
+                    return 6.0, detail
+            except (ValueError, TypeError):
+                pass
+
+        # Unable to score - return neutral
+        detail['scoring_basis'] = 'insufficient_data'
+        detail['interpretation'] = 'Could not determine efficacy from available data'
+        return 5.0, detail
+
+    def _get_endpoint_quality_score_v2(self, ep, validated_instruments: Dict[str, int]) -> float:
+        """
+        Get quality score for an endpoint based on whether it uses validated instruments.
+
+        Returns score from 1-10:
+        - 10: Gold-standard validated instrument (ACR50, DAS28, SLEDAI, etc.)
+        - 7-9: Known validated instruments
+        - 4-6: Generic or ad-hoc measures
+        - 4: Completely ad-hoc
+        """
+        ep_name = getattr(ep, 'endpoint_name', '') or ''
+        ep_name_lower = ep_name.lower()
+
+        # Check against disease-specific validated instruments from database
+        best_score = 0
+        for instrument, score in validated_instruments.items():
+            if instrument.lower() in ep_name_lower or ep_name_lower in instrument.lower():
+                best_score = max(best_score, score)
+
+        if best_score > 0:
+            return float(best_score)
+
+        # Check against gold-standard patterns (disease-agnostic)
+        gold_standard_patterns = {
+            # Rheumatology
+            'acr20': 10, 'acr50': 10, 'acr70': 10, 'acr90': 10,
+            'das28': 10, 'das-28': 10,
+            'sdai': 9, 'cdai': 9,
+            'haq': 9, 'haq-di': 9,
+            # Lupus
+            'sledai': 10, 'sledai-2k': 10,
+            'bilag': 10,
+            'sri': 9, 'sri-4': 9, 'sri-5': 9,
+            'clasi': 9,
+            # Dermatology
+            'pasi': 10, 'pasi50': 10, 'pasi75': 10, 'pasi90': 10, 'pasi100': 10,
+            'easi': 10, 'easi50': 10, 'easi75': 10, 'easi90': 10,
+            'iga': 9, 'iga 0/1': 9,
+            'dlqi': 9,
+            'scorad': 9,
+            'salt': 9, 'salt50': 9, 'salt75': 9, 'salt90': 9,  # Alopecia
+            # GI
+            'mayo': 9, 'mayo score': 9,
+            'ses-cd': 9,
+            # Neurology
+            'edss': 9,
+            # General
+            'sf-36': 8, 'sf36': 8,
+            'eq-5d': 8, 'eq5d': 8,
+            'facit': 8, 'facit-fatigue': 8,
+            'pain vas': 7, 'vas pain': 7,
+            'physician global': 7, 'pga': 7,
+            'patient global': 7,
+        }
+
+        for pattern, score in gold_standard_patterns.items():
+            if pattern in ep_name_lower:
+                return float(score)
+
+        # Check for generic positive indicators
+        moderate_patterns = ['remission', 'response', 'responder', 'improvement']
+        for pattern in moderate_patterns:
+            if pattern in ep_name_lower:
+                return 7.0
+
+        # Ad-hoc endpoint
+        return 4.0
+
+    def _calculate_concordance_multiplier_v2(self, endpoint_scores: List[Dict]) -> float:
+        """
+        Calculate concordance multiplier (0.85 to 1.15).
+
+        High concordance (most endpoints agree on direction) = bonus
+        Low concordance (mixed/contradictory results) = penalty
+        """
+        if len(endpoint_scores) < 2:
+            return 1.0  # No adjustment for single endpoint
+
+        scores = [ep['efficacy_score'] for ep in endpoint_scores]
+
+        # Classify each endpoint result
+        positive = sum(1 for s in scores if s > 5.5)   # Clearly positive
+        negative = sum(1 for s in scores if s < 4.5)   # Clearly negative
+        neutral = sum(1 for s in scores if 4.5 <= s <= 5.5)  # Neutral/unknown
+        total = len(scores)
+
+        # Calculate concordance - what fraction point in the same direction?
+        if positive >= negative:
+            # Majority positive
+            concordance = (positive + neutral * 0.5) / total
+        else:
+            # Majority negative (still concordant, just concordantly bad)
+            concordance = (negative + neutral * 0.5) / total
+
+        # Map concordance to multiplier
+        if concordance >= 0.9:
+            return 1.15  # Very high agreement
+        elif concordance >= 0.75:
+            return 1.10  # Good agreement
+        elif concordance >= 0.6:
+            return 1.0   # Acceptable agreement
+        elif concordance >= 0.4:
+            return 0.90  # Mixed results
+        else:
+            return 0.85  # Contradictory results
+
+    def _score_response_rate_fallback(self, ext: CaseSeriesExtraction) -> float:
+        """
+        Fallback scoring when no detailed endpoints available.
+        Uses summary efficacy data from extraction.
+        """
+        # Try responders_pct from summary
+        if ext.efficacy.responders_pct is not None:
+            return _response_pct_to_score(ext.efficacy.responders_pct)
+
+        # Use efficacy signal enum
         if ext.efficacy_signal == EfficacySignal.STRONG:
-            return 9.0
+            return 8.5
         elif ext.efficacy_signal == EfficacySignal.MODERATE:
             return 6.0
         elif ext.efficacy_signal == EfficacySignal.WEAK:
-            return 3.0
+            return 3.5
         elif ext.efficacy_signal == EfficacySignal.NONE:
-            return 1.0
+            return 1.5
 
         return 5.0  # Unknown
+
+    def _calculate_endpoint_concordance(self, ext: CaseSeriesExtraction) -> Dict[str, Any]:
+        """
+        Calculate concordance across all efficacy endpoints.
+
+        Returns dict with:
+        - total_endpoints: Number of endpoints analyzed
+        - positive_endpoints: Number showing positive results
+        - positive_rate: Fraction of positive results
+        - significant_endpoints: Number with p<0.05
+        - significance_rate: Fraction statistically significant
+        - primary_positive: Whether primary endpoint was positive
+        - secondary_concordance: % of secondary endpoints concordant with primary
+        """
+        result = {
+            'total_endpoints': 0,
+            'positive_endpoints': 0,
+            'positive_rate': 0.0,
+            'significant_endpoints': 0,
+            'significance_rate': 0.0,
+            'primary_positive': None,
+            'secondary_concordance': 0.0,
+            'endpoint_details': []
+        }
+
+        if not ext.detailed_efficacy_endpoints:
+            return result
+
+        primary_positive = None
+        secondary_positive = 0
+        secondary_total = 0
+
+        for ep in ext.detailed_efficacy_endpoints:
+            result['total_endpoints'] += 1
+
+            # Determine if endpoint shows positive result
+            is_positive = self._is_endpoint_positive(ep)
+            is_significant = False
+
+            if is_positive:
+                result['positive_endpoints'] += 1
+
+            # Check statistical significance
+            if hasattr(ep, 'statistical_significance') and ep.statistical_significance:
+                is_significant = True
+                result['significant_endpoints'] += 1
+            elif hasattr(ep, 'p_value') and ep.p_value is not None:
+                try:
+                    p = float(ep.p_value) if isinstance(ep.p_value, (int, float, str)) else None
+                    if p is not None and p < 0.05:
+                        is_significant = True
+                        result['significant_endpoints'] += 1
+                except (ValueError, TypeError):
+                    pass
+
+            # Track primary vs secondary
+            category = getattr(ep, 'endpoint_category', '').lower() if hasattr(ep, 'endpoint_category') else ''
+            if category == 'primary':
+                primary_positive = is_positive
+            else:
+                secondary_total += 1
+                if is_positive:
+                    secondary_positive += 1
+
+            # Store endpoint detail for rationale
+            result['endpoint_details'].append({
+                'name': getattr(ep, 'endpoint_name', 'Unknown'),
+                'category': category,
+                'is_positive': is_positive,
+                'is_significant': is_significant,
+                'responders_pct': getattr(ep, 'responders_pct', None),
+                'change_pct': getattr(ep, 'change_pct', None),
+                'p_value': getattr(ep, 'p_value', None)
+            })
+
+        # Calculate rates
+        if result['total_endpoints'] > 0:
+            result['positive_rate'] = result['positive_endpoints'] / result['total_endpoints']
+            result['significance_rate'] = result['significant_endpoints'] / result['total_endpoints']
+
+        result['primary_positive'] = primary_positive
+        if secondary_total > 0:
+            result['secondary_concordance'] = secondary_positive / secondary_total
+
+        return result
+
+    def _is_endpoint_positive(self, ep) -> bool:
+        """Determine if an efficacy endpoint shows a positive result."""
+        # Check responders percentage (>50% is positive)
+        if hasattr(ep, 'responders_pct') and ep.responders_pct is not None:
+            return ep.responders_pct >= 50.0
+
+        # Check change from baseline (negative is improvement for most scores)
+        if hasattr(ep, 'change_from_baseline') and ep.change_from_baseline is not None:
+            try:
+                change = float(ep.change_from_baseline)
+                # Most clinical scores decrease = improvement
+                return change < 0
+            except (ValueError, TypeError):
+                pass
+
+        # Check percent change
+        if hasattr(ep, 'change_pct') and ep.change_pct is not None:
+            try:
+                pct = float(ep.change_pct)
+                # Negative percent change usually = improvement
+                return pct < 0
+            except (ValueError, TypeError):
+                pass
+
+        # Check statistical significance as proxy
+        if hasattr(ep, 'statistical_significance') and ep.statistical_significance:
+            return True
+
+        return False  # Unable to determine
+
+    def _analyze_efficacy_totality(self, ext: CaseSeriesExtraction) -> Dict[str, Any]:
+        """
+        Analyze totality of efficacy data for detailed rationale generation.
+
+        Returns comprehensive summary for PDF report narratives.
+        """
+        concordance = self._calculate_endpoint_concordance(ext)
+
+        # Categorize endpoints by type
+        primary_endpoints = []
+        secondary_endpoints = []
+        exploratory_endpoints = []
+
+        for detail in concordance.get('endpoint_details', []):
+            cat = detail.get('category', '').lower()
+            if cat == 'primary':
+                primary_endpoints.append(detail)
+            elif cat == 'secondary':
+                secondary_endpoints.append(detail)
+            else:
+                exploratory_endpoints.append(detail)
+
+        # Count statistically significant by category
+        primary_sig = sum(1 for ep in primary_endpoints if ep.get('is_significant'))
+        secondary_sig = sum(1 for ep in secondary_endpoints if ep.get('is_significant'))
+
+        # Get best response rates
+        all_response_rates = [
+            ep.get('responders_pct') for ep in concordance.get('endpoint_details', [])
+            if ep.get('responders_pct') is not None
+        ]
+
+        return {
+            'total_endpoints': concordance['total_endpoints'],
+            'positive_endpoints': concordance['positive_endpoints'],
+            'positive_rate': concordance['positive_rate'],
+            'significant_endpoints': concordance['significant_endpoints'],
+            'significance_rate': concordance['significance_rate'],
+            # By category
+            'primary_count': len(primary_endpoints),
+            'primary_positive': sum(1 for ep in primary_endpoints if ep.get('is_positive')),
+            'primary_significant': primary_sig,
+            'secondary_count': len(secondary_endpoints),
+            'secondary_positive': sum(1 for ep in secondary_endpoints if ep.get('is_positive')),
+            'secondary_significant': secondary_sig,
+            'exploratory_count': len(exploratory_endpoints),
+            # Response rates
+            'response_rates': all_response_rates,
+            'max_response_rate': max(all_response_rates) if all_response_rates else None,
+            'min_response_rate': min(all_response_rates) if all_response_rates else None,
+            'avg_response_rate': sum(all_response_rates) / len(all_response_rates) if all_response_rates else None,
+            # Primary endpoint detail
+            'primary_endpoint_name': ext.efficacy.primary_endpoint,
+            'primary_response_pct': ext.efficacy.responders_pct,
+            # Concordance assessment
+            'concordance_assessment': self._assess_concordance(concordance),
+            'endpoint_details': concordance.get('endpoint_details', [])
+        }
+
+    def _assess_concordance(self, concordance: Dict[str, Any]) -> str:
+        """Generate text assessment of endpoint concordance."""
+        if concordance['total_endpoints'] < 2:
+            return "Limited endpoint data available"
+
+        pos_rate = concordance['positive_rate']
+        sig_rate = concordance['significance_rate']
+
+        if pos_rate >= 0.8 and sig_rate >= 0.5:
+            return "Strong concordance: majority of endpoints show positive, statistically significant results"
+        elif pos_rate >= 0.6:
+            return "Moderate concordance: most endpoints show positive results"
+        elif pos_rate >= 0.4:
+            return "Mixed results: approximately half of endpoints show improvement"
+        else:
+            return "Limited concordance: minority of endpoints show positive results"
+
+    def _analyze_safety_totality(self, ext: CaseSeriesExtraction) -> Dict[str, Any]:
+        """
+        Analyze totality of safety data for detailed rationale generation.
+
+        Returns comprehensive safety summary for PDF report narratives.
+        """
+        safety = ext.safety
+        n_patients = ext.patient_population.n_patients if ext.patient_population else None
+
+        # Categorize detailed safety endpoints
+        sae_events = []
+        ae_events = []
+        lab_abnormalities = []
+
+        if ext.detailed_safety_endpoints:
+            for ep in ext.detailed_safety_endpoints:
+                cat = getattr(ep, 'event_category', '').lower() if hasattr(ep, 'event_category') else ''
+                is_serious = getattr(ep, 'is_serious', False)
+
+                event_info = {
+                    'name': getattr(ep, 'event_name', 'Unknown'),
+                    'category': cat,
+                    'n_affected': getattr(ep, 'n_patients_affected', None),
+                    'incidence_pct': getattr(ep, 'incidence_pct', None),
+                    'is_serious': is_serious
+                }
+
+                if is_serious or 'sae' in cat or 'serious' in cat:
+                    sae_events.append(event_info)
+                elif 'lab' in cat:
+                    lab_abnormalities.append(event_info)
+                else:
+                    ae_events.append(event_info)
+
+        # Calculate rates
+        sae_rate = None
+        discontinuation_rate = None
+        if n_patients and n_patients > 0:
+            if safety.sae_count is not None:
+                sae_rate = (safety.sae_count / n_patients) * 100
+            if safety.discontinuations_n is not None:
+                discontinuation_rate = (safety.discontinuations_n / n_patients) * 100
+
+        return {
+            'safety_profile': safety.safety_profile.value if safety.safety_profile else 'Unknown',
+            'safety_summary': safety.safety_summary,
+            # SAE data
+            'sae_count': safety.sae_count,
+            'sae_percentage': safety.sae_percentage or sae_rate,
+            'sae_list': safety.serious_adverse_events or [],
+            'sae_events_detailed': sae_events,
+            # AE data
+            'ae_list': safety.adverse_events or [],
+            'ae_events_detailed': ae_events,
+            'total_ae_types': len(safety.adverse_events or []),
+            # Lab abnormalities
+            'lab_abnormalities': lab_abnormalities,
+            # Discontinuations
+            'discontinuations_n': safety.discontinuations_n,
+            'discontinuation_rate': discontinuation_rate,
+            'discontinuation_reasons': safety.discontinuation_reasons or [],
+            # Assessment
+            'safety_assessment': self._assess_safety(safety, n_patients),
+            'n_patients': n_patients
+        }
+
+    def _assess_safety(self, safety, n_patients: Optional[int]) -> str:
+        """Generate text assessment of safety profile."""
+        sae_count = safety.sae_count or 0
+        disc_n = safety.discontinuations_n or 0
+
+        if sae_count == 0 and disc_n == 0:
+            return "Excellent tolerability: no serious adverse events or discontinuations reported"
+        elif sae_count == 0:
+            return f"Good tolerability: no serious adverse events, {disc_n} discontinuation(s)"
+        elif n_patients and sae_count / n_patients < 0.05:
+            return f"Acceptable safety: {sae_count} SAE(s) reported (<5% rate)"
+        elif n_patients and sae_count / n_patients < 0.1:
+            return f"Safety signal present: {sae_count} SAE(s) reported (5-10% rate)"
+        else:
+            return f"Safety concerns: {sae_count} SAE(s) reported, requires monitoring"
 
     def _score_safety_profile(self, ext: CaseSeriesExtraction) -> float:
         """
@@ -2837,6 +3885,489 @@ Return ONLY the JSON."""
 
         return 5.0  # Unknown
 
+    def _is_positive_response(self, endpoint: Dict[str, Any]) -> bool:
+        """
+        Determine if an endpoint shows a positive response.
+
+        Checks for responder percentages, statistical significance,
+        and positive change from baseline.
+        """
+        # Check responder percentage
+        responders_pct = endpoint.get('responders_pct')
+        if responders_pct is not None and responders_pct > 30:
+            return True
+
+        # Check statistical significance
+        if endpoint.get('statistical_significance') is True:
+            return True
+        if endpoint.get('p_value') is not None:
+            try:
+                p = float(str(endpoint['p_value']).replace('<', '').replace('>', ''))
+                if p < 0.05:
+                    return True
+            except (ValueError, TypeError):
+                pass
+
+        # Check change from baseline (negative is usually improvement)
+        change = endpoint.get('change_from_baseline')
+        if change is not None:
+            try:
+                change_val = float(change)
+                # Most clinical scores improve with decrease
+                if change_val < 0:
+                    return True
+            except (ValueError, TypeError):
+                pass
+
+        # Check for positive keywords in outcome
+        outcome = str(endpoint.get('outcome', '')).lower()
+        positive_keywords = ['improved', 'improvement', 'response', 'remission',
+                           'resolved', 'normalized', 'achieved', 'success']
+        if any(kw in outcome for kw in positive_keywords):
+            return True
+
+        return False
+
+    def _get_organ_domains(self) -> Dict[str, List[str]]:
+        """
+        Get organ domain keyword mappings from database (cached).
+
+        Returns dict mapping domain_name to list of keywords.
+        Falls back to minimal defaults if database unavailable.
+        """
+        if self._organ_domains is not None:
+            return self._organ_domains
+
+        # Try to load from database
+        if self.cs_db:
+            self._organ_domains = self.cs_db.get_organ_domains()
+            if self._organ_domains:
+                logger.debug(f"Loaded {len(self._organ_domains)} organ domains from database")
+                return self._organ_domains
+
+        # Fallback to minimal defaults
+        logger.warning("Using fallback organ domains (database unavailable)")
+        self._organ_domains = {
+            'musculoskeletal': ['joint', 'arthritis', 'das28', 'acr20', 'acr50', 'haq'],
+            'mucocutaneous': ['skin', 'rash', 'pasi', 'easi', 'bsa'],
+            'renal': ['kidney', 'renal', 'proteinuria', 'creatinine', 'gfr'],
+            'neurological': ['neuro', 'cognitive', 'edss', 'relapse'],
+            'hematological': ['anemia', 'platelet', 'neutropenia', 'cytopenia'],
+            'cardiopulmonary': ['cardiac', 'lung', 'fvc', 'dlco'],
+            'immunological': ['complement', 'autoantibody', 'crp', 'esr'],
+            'systemic': ['sledai', 'bilag', 'bvas', 'disease activity'],
+            'gastrointestinal': ['gi', 'bowel', 'mayo', 'cdai'],
+            'ocular': ['eye', 'uveitis', 'visual acuity'],
+            'constitutional': ['fatigue', 'fever', 'weight loss'],
+        }
+        return self._organ_domains
+
+    def _score_organ_domain_breadth(self, ext: CaseSeriesExtraction) -> float:
+        """
+        Score the breadth of organ domain response (1-10).
+
+        Multi-organ response indicates broader therapeutic effect.
+        1 domain=4, 2 domains=6, 3 domains=8, 4+ domains=10
+        """
+        # Collect all endpoint text for matching
+        endpoint_texts = []
+
+        # From detailed efficacy endpoints (on extraction, not efficacy)
+        if ext.detailed_efficacy_endpoints:
+            for ep in ext.detailed_efficacy_endpoints:
+                if hasattr(ep, 'endpoint_name') and ep.endpoint_name:
+                    endpoint_texts.append(ep.endpoint_name.lower())
+                if hasattr(ep, 'endpoint_category') and ep.endpoint_category:
+                    endpoint_texts.append(ep.endpoint_category.lower())
+                if hasattr(ep, 'notes') and ep.notes:
+                    endpoint_texts.append(ep.notes.lower())
+
+        # From efficacy summary
+        if ext.efficacy.primary_endpoint:
+            endpoint_texts.append(ext.efficacy.primary_endpoint.lower())
+        if ext.efficacy.efficacy_summary:
+            endpoint_texts.append(ext.efficacy.efficacy_summary.lower())
+
+        # Combine all text for matching
+        combined_text = ' '.join(endpoint_texts)
+
+        # Find matching domains using database
+        organ_domains = self._get_organ_domains()
+        matched_domains = set()
+        for domain, keywords in organ_domains.items():
+            for keyword in keywords:
+                if keyword.lower() in combined_text:
+                    matched_domains.add(domain)
+                    break  # One match per domain is enough
+
+        # Score based on number of domains
+        n_domains = len(matched_domains)
+        if n_domains >= 4:
+            return 10.0
+        elif n_domains == 3:
+            return 8.0
+        elif n_domains == 2:
+            return 6.0
+        elif n_domains == 1:
+            return 4.0
+        else:
+            return 3.0  # No domains matched (data quality issue)
+
+    def _get_matched_organ_domains(self, ext: CaseSeriesExtraction) -> List[str]:
+        """
+        Get list of organ domains matched for an extraction.
+
+        Used for reporting which organ systems showed response.
+        """
+        # Collect all endpoint text for matching
+        endpoint_texts = []
+
+        # From detailed efficacy endpoints
+        if ext.detailed_efficacy_endpoints:
+            for ep in ext.detailed_efficacy_endpoints:
+                if hasattr(ep, 'endpoint_name') and ep.endpoint_name:
+                    endpoint_texts.append(ep.endpoint_name.lower())
+                if hasattr(ep, 'endpoint_category') and ep.endpoint_category:
+                    endpoint_texts.append(ep.endpoint_category.lower())
+                if hasattr(ep, 'notes') and ep.notes:
+                    endpoint_texts.append(ep.notes.lower())
+
+        # From efficacy summary
+        if ext.efficacy.primary_endpoint:
+            endpoint_texts.append(ext.efficacy.primary_endpoint.lower())
+        if ext.efficacy.efficacy_summary:
+            endpoint_texts.append(ext.efficacy.efficacy_summary.lower())
+
+        # Combine all text for matching
+        combined_text = ' '.join(endpoint_texts)
+
+        # Find matching domains
+        organ_domains = self._get_organ_domains()
+        matched_domains = []
+        for domain, keywords in organ_domains.items():
+            for keyword in keywords:
+                if keyword.lower() in combined_text:
+                    matched_domains.append(domain)
+                    break  # One match per domain is enough
+
+        return sorted(matched_domains)
+
+    def _get_validated_instruments_for_disease(self, disease: str) -> Dict[str, int]:
+        """
+        Get validated instruments for a disease from the database.
+
+        Returns a dict of instrument_name -> quality_score (1-10).
+        Falls back to generic instruments if disease not found.
+        """
+        if not disease:
+            return self._get_generic_instruments()
+
+        # Try database lookup first
+        if self.cs_db:
+            instruments = self.cs_db.find_instruments_for_disease(disease)
+            if instruments:
+                return instruments
+
+        # Return generic instruments that apply across diseases
+        return self._get_generic_instruments()
+
+    def _get_generic_instruments(self) -> Dict[str, int]:
+        """Return generic instruments that apply across diseases."""
+        return {
+            'Physician Global': 7,
+            'Patient Global': 7,
+            'SF-36': 8,
+            'EQ-5D': 8,
+            'Pain VAS': 7,
+            'FACIT-Fatigue': 8,
+        }
+
+    def _score_endpoint_quality(self, ext: CaseSeriesExtraction) -> float:
+        """
+        Score endpoint quality based on validated instruments (1-10).
+
+        Uses the database of validated instruments to score endpoints.
+        Validated primary endpoints score higher than ad-hoc measures.
+        """
+        if not ext.detailed_efficacy_endpoints:
+            # Fallback: check if primary endpoint mentions validated instruments
+            if ext.efficacy.primary_endpoint:
+                outcome_lower = ext.efficacy.primary_endpoint.lower()
+                # Check for common validated instrument patterns
+                validated_patterns = [
+                    'acr', 'das28', 'sledai', 'bilag', 'pasi', 'easi',
+                    'cdai', 'sdai', 'haq', 'basdai', 'mda', 'sri'
+                ]
+                if any(p in outcome_lower for p in validated_patterns):
+                    return 8.0
+            return 5.0  # Unknown quality
+
+        # Get validated instruments for the disease
+        disease = ext.disease or ""
+        validated_instruments = self._get_validated_instruments_for_disease(disease)
+
+        endpoint_scores = []
+        for ep in ext.detailed_efficacy_endpoints:
+            ep_name = getattr(ep, 'endpoint_name', '') or ''
+            ep_name_lower = ep_name.lower()
+
+            # Check against validated instruments
+            best_score = 0
+            for instrument, score in validated_instruments.items():
+                if instrument.lower() in ep_name_lower or ep_name_lower in instrument.lower():
+                    best_score = max(best_score, score)
+
+            # Check for generic validated patterns
+            if best_score == 0:
+                validated_patterns = {
+                    'acr20': 10, 'acr50': 10, 'acr70': 10,
+                    'das28': 10, 'sledai': 10, 'bilag': 10,
+                    'pasi': 10, 'easi': 10, 'cdai': 9,
+                    'remission': 8, 'response': 7,
+                }
+                for pattern, score in validated_patterns.items():
+                    if pattern in ep_name_lower:
+                        best_score = max(best_score, score)
+
+            # Boost for primary endpoints
+            ep_category = getattr(ep, 'endpoint_category', '') or ''
+            if 'primary' in ep_category.lower():
+                best_score = min(10, best_score + 1)
+
+            # Boost for statistical significance
+            if getattr(ep, 'statistical_significance', False):
+                best_score = min(10, best_score + 0.5)
+
+            if best_score > 0:
+                endpoint_scores.append(best_score)
+            else:
+                # Ad-hoc endpoint
+                endpoint_scores.append(4.0)
+
+        if endpoint_scores:
+            return min(10.0, sum(endpoint_scores) / len(endpoint_scores))
+        return 5.0
+
+    def _get_safety_categories(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get safety signal categories from database (cached).
+
+        Returns dict mapping category_name to {keywords, severity_weight, regulatory_flag}.
+        Falls back to minimal defaults if database unavailable.
+        """
+        if self._safety_categories is not None:
+            return self._safety_categories
+
+        # Try to load from database
+        if self.cs_db:
+            self._safety_categories = self.cs_db.get_safety_categories()
+            if self._safety_categories:
+                logger.debug(f"Loaded {len(self._safety_categories)} safety categories from database")
+                return self._safety_categories
+
+        # Fallback to minimal defaults
+        logger.warning("Using fallback safety categories (database unavailable)")
+        self._safety_categories = {
+            'serious_infection': {'keywords': ['serious infection', 'sepsis', 'pneumonia', 'tb'], 'severity_weight': 9, 'regulatory_flag': True},
+            'malignancy': {'keywords': ['malignancy', 'cancer', 'lymphoma'], 'severity_weight': 10, 'regulatory_flag': True},
+            'cardiovascular': {'keywords': ['mace', 'mi', 'stroke', 'heart failure'], 'severity_weight': 9, 'regulatory_flag': True},
+            'thromboembolic': {'keywords': ['vte', 'dvt', 'pe', 'thrombosis'], 'severity_weight': 9, 'regulatory_flag': True},
+            'hepatotoxicity': {'keywords': ['hepatotoxicity', 'liver injury', 'alt increased'], 'severity_weight': 8, 'regulatory_flag': True},
+            'cytopenia': {'keywords': ['neutropenia', 'thrombocytopenia', 'anemia'], 'severity_weight': 7, 'regulatory_flag': True},
+            'death': {'keywords': ['death', 'fatal', 'mortality'], 'severity_weight': 10, 'regulatory_flag': True},
+        }
+        return self._safety_categories
+
+    def _score_safety_profile_detailed(self, ext: CaseSeriesExtraction) -> Tuple[float, Dict[str, Any]]:
+        """
+        Score safety profile with detailed breakdown by category (1-10).
+
+        Uses database safety categories for MedDRA-aligned classification.
+        Returns (score, breakdown_dict).
+        """
+        breakdown = {
+            'categories_detected': [],
+            'serious_signals': [],
+            'regulatory_flags': [],
+            'sae_percentage': None,
+            'discontinuation_rate': None,
+        }
+
+        # Collect all safety text
+        safety_texts = []
+
+        # From detailed safety endpoints (on extraction, not safety)
+        if ext.detailed_safety_endpoints:
+            for ep in ext.detailed_safety_endpoints:
+                if hasattr(ep, 'event_name') and ep.event_name:
+                    safety_texts.append(ep.event_name.lower())
+                if hasattr(ep, 'event_category') and ep.event_category:
+                    safety_texts.append(ep.event_category.lower())
+
+        # From SAE list
+        if ext.safety.serious_adverse_events:
+            for sae in ext.safety.serious_adverse_events:
+                safety_texts.append(sae.lower())
+
+        # From AE list (adverse_events, not common_adverse_events)
+        if ext.safety.adverse_events:
+            for ae in ext.safety.adverse_events:
+                safety_texts.append(ae.lower())
+
+        combined_text = ' '.join(safety_texts)
+
+        # Classify safety signals using database categories
+        safety_categories = self._get_safety_categories()
+        category_scores = []
+        for category, config in safety_categories.items():
+            for keyword in config['keywords']:
+                if keyword.lower() in combined_text:
+                    breakdown['categories_detected'].append(category)
+                    category_scores.append(config['severity_weight'])
+
+                    if config['severity_weight'] >= 8:
+                        breakdown['serious_signals'].append(category)
+                    if config.get('regulatory_flag', False):
+                        breakdown['regulatory_flags'].append(category)
+                    break  # One match per category
+
+        # Calculate base score from SAE percentage
+        base_score = 5.0
+        if ext.safety.sae_percentage is not None:
+            breakdown['sae_percentage'] = ext.safety.sae_percentage
+            sae_pct = ext.safety.sae_percentage
+            if sae_pct == 0:
+                base_score = 10.0
+            elif sae_pct < 5:
+                base_score = 8.0
+            elif sae_pct < 10:
+                base_score = 6.0
+            elif sae_pct < 20:
+                base_score = 4.0
+            else:
+                base_score = 2.0
+        elif ext.safety.safety_profile == SafetyProfile.FAVORABLE:
+            base_score = 9.0
+        elif ext.safety.safety_profile == SafetyProfile.ACCEPTABLE:
+            base_score = 7.0
+        elif ext.safety.safety_profile == SafetyProfile.CONCERNING:
+            base_score = 3.0
+
+        # Adjust based on detected categories
+        if category_scores:
+            avg_severity = sum(category_scores) / len(category_scores)
+            # Higher severity = lower safety score
+            severity_penalty = (avg_severity - 5) * 0.3  # Scale penalty
+            base_score = max(1.0, min(10.0, base_score - severity_penalty))
+
+        # Extra penalty for regulatory flags
+        n_regulatory = len(set(breakdown['regulatory_flags']))
+        if n_regulatory >= 3:
+            base_score = max(1.0, base_score - 2.0)
+        elif n_regulatory >= 1:
+            base_score = max(1.0, base_score - 1.0)
+
+        # Deduplicate lists
+        breakdown['categories_detected'] = list(set(breakdown['categories_detected']))
+        breakdown['serious_signals'] = list(set(breakdown['serious_signals']))
+        breakdown['regulatory_flags'] = list(set(breakdown['regulatory_flags']))
+
+        return round(base_score, 1), breakdown
+
+    def _score_response_durability(self, ext: CaseSeriesExtraction) -> float:
+        """
+        Score response durability based on follow-up timepoints (1-10).
+
+        Long-term sustained response scores higher than short-term.
+        """
+        follow_up = (ext.follow_up_duration or "").lower()
+
+        # Parse follow-up duration
+        months = 0
+
+        # Check for years
+        year_match = re.search(r'(\d+(?:\.\d+)?)\s*year', follow_up)
+        if year_match:
+            months = float(year_match.group(1)) * 12
+
+        # Check for months
+        month_match = re.search(r'(\d+(?:\.\d+)?)\s*month', follow_up)
+        if month_match:
+            months = max(months, float(month_match.group(1)))
+
+        # Check for weeks
+        week_match = re.search(r'(\d+(?:\.\d+)?)\s*week', follow_up)
+        if week_match:
+            months = max(months, float(week_match.group(1)) / 4.33)
+
+        # Score based on duration
+        if months >= 24:
+            duration_score = 10.0
+        elif months >= 12:
+            duration_score = 9.0
+        elif months >= 6:
+            duration_score = 7.0
+        elif months >= 3:
+            duration_score = 5.0
+        elif months >= 1:
+            duration_score = 3.0
+        elif months > 0:
+            duration_score = 2.0
+        else:
+            duration_score = 4.0  # Unknown duration
+
+        # Bonus for sustained response mentioned
+        if ext.detailed_efficacy_endpoints:
+            for ep in ext.detailed_efficacy_endpoints:
+                ep_name = (getattr(ep, 'endpoint_name', '') or '').lower()
+                if any(term in ep_name for term in ['sustained', 'durable', 'maintained', 'long-term']):
+                    duration_score = min(10.0, duration_score + 1.0)
+                    break
+
+        return duration_score
+
+    def _score_extraction_completeness(self, ext: CaseSeriesExtraction) -> float:
+        """
+        Score data extraction completeness (1-10).
+
+        Higher scores for more complete data extraction.
+        """
+        completeness_checks = [
+            # Source information
+            ext.source.pmid is not None,
+            ext.source.title is not None and len(ext.source.title) > 10,
+            ext.source.journal is not None,
+            ext.source.year is not None,
+
+            # Patient population
+            ext.patient_population.n_patients is not None and ext.patient_population.n_patients > 0,
+            ext.disease is not None,
+            ext.patient_population.age_description is not None,
+
+            # Treatment details
+            ext.treatment.drug_name is not None,
+            ext.treatment.dose is not None,
+            ext.treatment.duration is not None,
+
+            # Efficacy data
+            ext.efficacy.primary_endpoint is not None,
+            ext.efficacy.responders_pct is not None or ext.efficacy.responders_n is not None,
+            len(ext.detailed_efficacy_endpoints or []) > 0,
+
+            # Safety data
+            len(ext.safety.adverse_events or []) > 0,
+            ext.safety.sae_count is not None or ext.safety.sae_percentage is not None,
+
+            # Follow-up
+            ext.follow_up_duration is not None,
+        ]
+
+        completeness_pct = sum(completeness_checks) / len(completeness_checks)
+
+        # Convert to 1-10 scale
+        score = 1.0 + (completeness_pct * 9.0)
+        return round(score, 1)
+
     # -------------------------------------------------------------------------
     # Evidence Quality Component Scores
     # -------------------------------------------------------------------------
@@ -2846,6 +4377,8 @@ Return ONLY the JSON."""
         Score sample size (1-10).
 
         N≥50=10, N=20-49=8, N=10-19=6, N=5-9=4, N=2-4=2, N=1=1
+
+        NOTE: This is the legacy method. Use _score_sample_size_v2 for case series.
         """
         n = ext.patient_population.n_patients
         if n is None:
@@ -2862,6 +4395,41 @@ Return ONLY the JSON."""
             return 2.0
         else:
             return 1.0
+
+    def _score_sample_size_v2(self, ext: CaseSeriesExtraction) -> float:
+        """
+        Score sample size calibrated for case series (1-10).
+
+        For case series, 20+ patients is considered substantial.
+        100-patient case series are rare, so thresholds are adjusted accordingly.
+        Single case reports get minimal weight.
+
+        Scoring:
+        N >= 20: 10 (large case series for this literature type)
+        N >= 15: 9  (substantial case series)
+        N >= 10: 8  (solid case series)
+        N >= 5:  6  (small but acceptable series)
+        N >= 3:  4  (minimal case series)
+        N >= 2:  2  (two-patient case report)
+        N = 1:   1  (single case report)
+        N = 0:   1  (unknown, treat as single case)
+        """
+        n = ext.patient_population.n_patients if ext.patient_population else 0
+
+        if n >= 20:
+            return 10.0
+        elif n >= 15:
+            return 9.0
+        elif n >= 10:
+            return 8.0
+        elif n >= 5:
+            return 6.0
+        elif n >= 3:
+            return 4.0
+        elif n >= 2:
+            return 2.0
+        else:
+            return 1.0  # N=1 or unknown
 
     def _score_publication_venue(self, ext: CaseSeriesExtraction) -> float:
         """
@@ -3069,6 +4637,109 @@ Return ONLY the JSON."""
 
         return 5.0  # Unknown
 
+    # -------------------------------------------------------------------------
+    # Cross-Study Aggregation
+    # -------------------------------------------------------------------------
+
+    def _aggregate_disease_evidence(
+        self,
+        disease: str,
+        extractions: List[CaseSeriesExtraction]
+    ) -> Dict[str, Any]:
+        """
+        Aggregate evidence across multiple papers for the same disease.
+
+        Returns pooled estimates with confidence metrics:
+        - Weighted response rate (by sample size)
+        - Response range
+        - Heterogeneity assessment
+        - Evidence confidence level
+        """
+        if not extractions:
+            return {
+                'n_studies': 0,
+                'total_patients': 0,
+                'total_responders': 0,
+                'pooled_response_pct': None,
+                'response_range': None,
+                'heterogeneity_cv': None,
+                'consistency': 'N/A',
+                'evidence_confidence': 'None'
+            }
+
+        # Collect response rates and sample sizes
+        response_data = []
+        total_patients = 0
+        total_responders = 0
+
+        for ext in extractions:
+            n = ext.patient_population.n_patients if ext.patient_population else 0
+            total_patients += n
+
+            resp_pct = ext.efficacy.responders_pct
+            resp_n = ext.efficacy.responders_n
+
+            if resp_n:
+                total_responders += resp_n
+
+            if n > 0 and resp_pct is not None:
+                response_data.append({
+                    'n': n,
+                    'response_pct': resp_pct
+                })
+
+        # Calculate pooled estimate (weighted by sample size)
+        pooled_response = None
+        response_range = None
+        heterogeneity_cv = None
+        consistency = 'N/A'
+
+        if response_data:
+            # Weighted average
+            total_weight = sum(d['n'] for d in response_data)
+            if total_weight > 0:
+                pooled_response = sum(
+                    d['response_pct'] * d['n'] for d in response_data
+                ) / total_weight
+
+            # Range
+            rates = [d['response_pct'] for d in response_data]
+            response_range = (min(rates), max(rates))
+
+            # Heterogeneity (coefficient of variation)
+            if len(rates) >= 2:
+                mean_rate = sum(rates) / len(rates)
+                if mean_rate > 0:
+                    variance = sum((r - mean_rate) ** 2 for r in rates) / len(rates)
+                    heterogeneity_cv = (variance ** 0.5) / mean_rate
+
+                    # Classify consistency
+                    if heterogeneity_cv < 0.25:
+                        consistency = 'High'
+                    elif heterogeneity_cv < 0.50:
+                        consistency = 'Moderate'
+                    else:
+                        consistency = 'Low'
+            elif len(rates) == 1:
+                consistency = 'Single study'
+
+        # Determine evidence confidence (calibrated for case series)
+        n_studies = len(extractions)
+        evidence_confidence = _calculate_evidence_confidence_case_series(
+            n_studies, total_patients, consistency, extractions
+        )
+
+        return {
+            'n_studies': n_studies,
+            'total_patients': total_patients,
+            'total_responders': total_responders,
+            'pooled_response_pct': round(pooled_response, 1) if pooled_response else None,
+            'response_range': response_range,
+            'heterogeneity_cv': round(heterogeneity_cv, 2) if heterogeneity_cv else None,
+            'consistency': consistency,
+            'evidence_confidence': evidence_confidence
+        }
+
     # =========================================================================
     # UTILITY METHODS
     # =========================================================================
@@ -3113,6 +4784,113 @@ Return ONLY the JSON."""
         logger.info(f"Exported to JSON: {filepath}")
         return str(filepath)
 
+    def _generate_analysis_summary_sheet(
+        self,
+        result: DrugAnalysisResult,
+        writer,
+        pd
+    ) -> None:
+        """
+        Generate consolidated Analysis Summary sheet as first sheet in Excel export.
+
+        Shows top 5 opportunities with aggregated evidence across studies.
+        """
+        # Group opportunities by disease
+        disease_groups: Dict[str, List[RepurposingOpportunity]] = {}
+        for opp in result.opportunities:
+            disease = opp.extraction.disease_normalized or opp.extraction.disease or 'Unknown'
+            if disease not in disease_groups:
+                disease_groups[disease] = []
+            disease_groups[disease].append(opp)
+
+        # Calculate aggregated metrics for each disease
+        disease_summaries = []
+        for disease, opps in disease_groups.items():
+            # Get extractions for aggregation
+            extractions = [opp.extraction for opp in opps]
+
+            # Aggregate evidence
+            evidence = self._aggregate_disease_evidence(disease, extractions)
+
+            # Get best opportunity for this disease (highest overall score)
+            best_opp = max(opps, key=lambda o: o.scores.overall_priority if o.scores else 0)
+
+            # Calculate average scores across all studies for this disease
+            avg_clinical = sum(o.scores.clinical_signal for o in opps if o.scores) / len(opps) if opps else 0
+            avg_evidence = sum(o.scores.evidence_quality for o in opps if o.scores) / len(opps) if opps else 0
+            avg_market = sum(o.scores.market_opportunity for o in opps if o.scores) / len(opps) if opps else 0
+            avg_overall = sum(o.scores.overall_priority for o in opps if o.scores) / len(opps) if opps else 0
+
+            # Get market intelligence from best opportunity
+            mi = best_opp.market_intelligence
+
+            disease_summaries.append({
+                'disease': disease,
+                'n_studies': evidence['n_studies'],
+                'total_patients': evidence['total_patients'],
+                'pooled_response_pct': evidence['pooled_response_pct'],
+                'response_range': evidence['response_range'],
+                'consistency': evidence['consistency'],
+                'evidence_confidence': evidence['evidence_confidence'],
+                'avg_clinical_score': round(avg_clinical, 1),
+                'avg_evidence_score': round(avg_evidence, 1),
+                'avg_market_score': round(avg_market, 1),
+                'avg_overall_score': round(avg_overall, 1),
+                'best_overall_score': best_opp.scores.overall_priority if best_opp.scores else 0,
+                'market_intelligence': mi,
+                'best_opp': best_opp
+            })
+
+        # Sort by average overall score and take top 5
+        disease_summaries.sort(key=lambda x: x['avg_overall_score'], reverse=True)
+        top_5 = disease_summaries[:5]
+
+        # Build summary data
+        summary_rows = []
+        for i, ds in enumerate(top_5, 1):
+            mi = ds['market_intelligence']
+
+            # Format response range
+            range_str = None
+            if ds['response_range']:
+                range_str = f"{ds['response_range'][0]:.0f}%-{ds['response_range'][1]:.0f}%"
+
+            # Get market info
+            competitors = mi.standard_of_care.num_approved_drugs if mi and mi.standard_of_care else None
+            pipeline = mi.standard_of_care.num_pipeline_therapies if mi and mi.standard_of_care else None
+            unmet_need = mi.standard_of_care.unmet_need if mi and mi.standard_of_care else None
+            tam = mi.tam_estimate if mi else None
+
+            summary_rows.append({
+                'Rank': i,
+                'Disease': ds['disease'],
+                '# Studies': ds['n_studies'],
+                'Total Patients': ds['total_patients'],
+                'Pooled Response (%)': ds['pooled_response_pct'],
+                'Response Range': range_str,
+                'Consistency': ds['consistency'],
+                'Evidence Confidence': ds['evidence_confidence'],
+                'Clinical Score (avg)': ds['avg_clinical_score'],
+                'Evidence Score (avg)': ds['avg_evidence_score'],
+                'Market Score (avg)': ds['avg_market_score'],
+                'Overall Score (avg)': ds['avg_overall_score'],
+                'Best Study Score': ds['best_overall_score'],
+                '# Approved Competitors': competitors,
+                '# Pipeline Therapies': pipeline,
+                'Unmet Need': 'Yes' if unmet_need else 'No' if unmet_need is False else 'Unknown',
+                'TAM Estimate': tam
+            })
+
+        # Write to Excel
+        if summary_rows:
+            df = pd.DataFrame(summary_rows)
+            df.to_excel(writer, sheet_name='Analysis Summary', index=False)
+        else:
+            # Empty summary
+            pd.DataFrame({'Note': ['No opportunities found']}).to_excel(
+                writer, sheet_name='Analysis Summary', index=False
+            )
+
     def export_to_excel(self, result: DrugAnalysisResult, filename: Optional[str] = None) -> str:
         """Export analysis result to Excel with multiple sheets."""
         try:
@@ -3133,7 +4911,10 @@ Return ONLY the JSON."""
         estimated_cost = input_cost + output_cost
 
         with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
-            # Summary sheet
+            # Analysis Summary sheet (first sheet - consolidated top 5 opportunities)
+            self._generate_analysis_summary_sheet(result, writer, pd)
+
+            # Drug Summary sheet
             summary_data = {
                 'Drug': [result.drug_name],
                 'Generic Name': [result.generic_name],
@@ -3146,7 +4927,7 @@ Return ONLY the JSON."""
                 'Output Tokens': [result.total_output_tokens],
                 'Estimated Cost': [f"${estimated_cost:.2f}"]
             }
-            pd.DataFrame(summary_data).to_excel(writer, sheet_name='Summary', index=False)
+            pd.DataFrame(summary_data).to_excel(writer, sheet_name='Drug Summary', index=False)
 
             # Opportunities sheet - enhanced with detailed endpoints
             if result.opportunities:
@@ -3155,6 +4936,13 @@ Return ONLY the JSON."""
                     ext = opp.extraction
                     eff = ext.efficacy
                     saf = ext.safety
+
+                    # Get organ domains matched for this extraction
+                    organ_domains_matched = self._get_matched_organ_domains(ext)
+
+                    # Get score breakdowns if available
+                    clinical_breakdown = opp.scores.clinical_breakdown if opp.scores else {}
+                    evidence_breakdown = opp.scores.evidence_breakdown if opp.scores else {}
 
                     opp_data.append({
                         'Rank': opp.rank,
@@ -3176,13 +4964,28 @@ Return ONLY the JSON."""
                         'SAE (%)': saf.sae_percentage,
                         'Discontinuations': saf.discontinuations_n,
                         'Adverse Events': '; '.join(saf.adverse_events or [])[:200] if saf.adverse_events else None,
-                        'Serious AEs': '; '.join(saf.serious_adverse_events or [])[:200] if saf.serious_adverse_events else None,
+                        # Serious AEs: show list if available, otherwise show count info
+                        'Serious AEs': (
+                            '; '.join(saf.serious_adverse_events)[:200] if saf.serious_adverse_events
+                            else f"{saf.sae_count} SAE(s)" if saf.sae_count and saf.sae_count > 0
+                            else "None reported" if saf.sae_count == 0
+                            else None
+                        ),
                         'Safety Summary': saf.safety_summary,
-                        # Scores
+                        # Scores - Overall
                         'Clinical Score': opp.scores.clinical_signal if opp.scores else None,
                         'Evidence Score': opp.scores.evidence_quality if opp.scores else None,
                         'Market Score': opp.scores.market_opportunity if opp.scores else None,
                         'Overall Priority': opp.scores.overall_priority if opp.scores else None,
+                        # Scores - Clinical Breakdown (v2: quality-weighted efficacy)
+                        'Response Rate Score (Quality-Weighted)': clinical_breakdown.get('response_rate_quality_weighted'),
+                        'Safety Score': clinical_breakdown.get('safety_profile'),
+                        'Organ Domain Score': clinical_breakdown.get('organ_domain_breadth'),
+                        '# Efficacy Endpoints Scored': clinical_breakdown.get('efficacy_endpoint_count'),
+                        'Efficacy Concordance': clinical_breakdown.get('efficacy_concordance'),
+                        # Organ Domains
+                        'Organ Domains Matched': ', '.join(organ_domains_matched) if organ_domains_matched else None,
+                        'N Organ Domains': len(organ_domains_matched),
                         # Source
                         'Key Findings': ext.key_findings,
                         'Source': ext.source.title,
@@ -3272,8 +5075,222 @@ Return ONLY the JSON."""
             if market_data:
                 pd.DataFrame(market_data).to_excel(writer, sheet_name='Market Intelligence', index=False)
 
+            # Detailed Efficacy Endpoints sheet (from multi-stage extraction)
+            efficacy_data = []
+            for opp in result.opportunities:
+                ext = opp.extraction
+                disease = ext.disease_normalized or ext.disease
+                pmid = ext.source.pmid if ext.source else None
+
+                # Get study-level N as fallback for per-endpoint N
+                study_n = ext.patient_population.n_patients if ext.patient_population else None
+
+                # Get detailed endpoints if available
+                detailed_eps = getattr(ext, 'detailed_efficacy_endpoints', []) or []
+                for ep in detailed_eps:
+                    # Handle both dict and Pydantic model
+                    if hasattr(ep, 'model_dump'):
+                        ep_dict = ep.model_dump()
+                    elif isinstance(ep, dict):
+                        ep_dict = ep
+                    else:
+                        continue
+
+                    # Derive Is Primary from endpoint_category
+                    endpoint_category = ep_dict.get('endpoint_category', '')
+                    is_primary = endpoint_category.lower() == 'primary' if endpoint_category else False
+
+                    # Use per-endpoint total_n if available, otherwise fall back to study N
+                    endpoint_total_n = ep_dict.get('total_n') or study_n
+
+                    efficacy_data.append({
+                        'Disease': disease,
+                        'PMID': pmid,
+                        'Endpoint Name': ep_dict.get('endpoint_name'),
+                        'Endpoint Category': endpoint_category,
+                        'Is Primary': is_primary,
+                        'Baseline Value': ep_dict.get('baseline_value'),
+                        'Final Value': ep_dict.get('final_value'),
+                        'Change from Baseline': ep_dict.get('change_from_baseline'),
+                        'Percent Change': ep_dict.get('change_pct'),  # Fixed: was percent_change
+                        'P-value': ep_dict.get('p_value'),
+                        'Statistical Significance': ep_dict.get('statistical_significance'),
+                        'Responders (n)': ep_dict.get('responders_n'),
+                        'Total (n)': endpoint_total_n,  # Falls back to study N if not specified
+                        # Calculate response rate: use extracted value, or compute from n/total
+                        'Response Rate (%)': (
+                            ep_dict.get('responders_pct') or
+                            (round(ep_dict.get('responders_n') / endpoint_total_n * 100, 1)
+                             if ep_dict.get('responders_n') and endpoint_total_n else None)
+                        ),
+                        'Timepoint': ep_dict.get('timepoint'),
+                        'Measurement Type': ep_dict.get('measurement_type'),  # Fixed: was measurement_method
+                        'Notes': ep_dict.get('notes')
+                    })
+
+            if efficacy_data:
+                pd.DataFrame(efficacy_data).to_excel(writer, sheet_name='Efficacy Endpoints', index=False)
+
+            # Detailed Safety Endpoints sheet (from multi-stage extraction)
+            safety_data = []
+            for opp in result.opportunities:
+                ext = opp.extraction
+                disease = ext.disease_normalized or ext.disease
+                pmid = ext.source.pmid if ext.source else None
+
+                # Get detailed endpoints if available
+                detailed_eps = getattr(ext, 'detailed_safety_endpoints', []) or []
+                for ep in detailed_eps:
+                    # Handle both dict and Pydantic model
+                    if hasattr(ep, 'model_dump'):
+                        ep_dict = ep.model_dump()
+                    elif isinstance(ep, dict):
+                        ep_dict = ep
+                    else:
+                        continue
+
+                    safety_data.append({
+                        'Disease': disease,
+                        'PMID': pmid,
+                        'Event Name': ep_dict.get('event_name'),
+                        'Event Category': ep_dict.get('event_category'),
+                        'Is Serious (SAE)': ep_dict.get('is_serious', False),
+                        'Grade': ep_dict.get('grade'),
+                        'Patients Affected (n)': ep_dict.get('n_patients_affected'),
+                        'Total Patients (n)': ep_dict.get('n_total_patients'),
+                        'Incidence (%)': ep_dict.get('incidence_pct'),
+                        'Related to Drug': ep_dict.get('relatedness'),
+                        'Outcome': ep_dict.get('outcome'),
+                        'Time to Onset': ep_dict.get('time_to_onset'),
+                        'Notes': ep_dict.get('notes')
+                    })
+
+            if safety_data:
+                pd.DataFrame(safety_data).to_excel(writer, sheet_name='Safety Endpoints', index=False)
+
         logger.info(f"Exported to Excel: {filepath}")
         return str(filepath)
+
+    def export_to_pdf(
+        self,
+        result: DrugAnalysisResult,
+        filename: Optional[str] = None,
+        include_rationale: bool = True
+    ) -> str:
+        """
+        Export analysis result to PDF with LLM-generated scoring rationale.
+
+        Args:
+            result: DrugAnalysisResult to export
+            filename: Optional filename (auto-generated if not provided)
+            include_rationale: Whether to include LLM-generated rationale for each disease
+
+        Returns:
+            Path to generated PDF file
+        """
+        from src.reports.pdf_report_generator import PDFReportGenerator
+
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{result.drug_name.lower().replace(' ', '_')}_report_{timestamp}.pdf"
+
+        filepath = self.output_dir / filename
+
+        # Create PDF generator with our client for rationale generation
+        pdf_generator = PDFReportGenerator(
+            client=self.client if include_rationale else None,
+            model=self.model
+        )
+
+        # Pass self as analysis_provider so PDF generator can use our
+        # _analyze_efficacy_totality and _analyze_safety_totality methods
+        output_path = pdf_generator.generate_report(
+            result=result,
+            output_path=str(filepath),
+            include_rationale=include_rationale,
+            analysis_provider=self if include_rationale else None
+        )
+
+        logger.info(f"Exported to PDF: {output_path}")
+        return output_path
+
+    def generate_analytical_report(
+        self,
+        result: DrugAnalysisResult = None,
+        excel_path: str = None,
+        output_path: str = None,
+        max_tokens: int = 8000,
+        auto_save: bool = True
+    ) -> tuple[str, Optional[str]]:
+        """
+        Generate a comprehensive analytical report from case series analysis.
+
+        This generates a detailed, objective analysis of the findings without making
+        strategic recommendations. The report includes:
+        - Score derivation with specific data citations
+        - Concordance analysis across studies and endpoints
+        - Cross-indication pattern analysis
+        - Evidence quality assessment
+        - Competitive landscape context
+
+        Parameters:
+        -----------
+        result : DrugAnalysisResult, optional
+            Analysis result object. If None, must provide excel_path.
+        excel_path : str, optional
+            Path to Excel file. If None, must provide result.
+        output_path : str, optional
+            Where to save the report. If None, saves to data/reports/
+        max_tokens : int
+            Maximum tokens for report generation (default: 8000)
+        auto_save : bool
+            Whether to automatically save the report to file (default: True)
+
+        Returns:
+        --------
+        tuple[str, Optional[str]]
+            (report_text, saved_path) where saved_path is None if auto_save=False
+
+        Raises:
+        -------
+        ValueError
+            If neither result nor excel_path is provided
+        """
+        try:
+            logger.info("Generating analytical report...")
+
+            # Create report generator
+            report_gen = CaseSeriesReportGenerator(
+                client=self.client,
+                model=self.model
+            )
+
+            if auto_save:
+                # Generate and save in one step
+                report_text, saved_path = report_gen.generate_and_save_report(
+                    excel_path=excel_path,
+                    result=result,
+                    output_path=output_path or (self.output_dir / 'reports'),
+                    max_tokens=max_tokens
+                )
+                logger.info(f"Report generated and saved to: {saved_path}")
+                return report_text, saved_path
+            else:
+                # Just generate, don't save
+                if excel_path:
+                    data = report_gen.format_data_from_excel(excel_path)
+                elif result:
+                    data = report_gen.format_data_from_result(result)
+                else:
+                    raise ValueError("Must provide either result or excel_path")
+
+                report_text = report_gen.generate_report(data, max_tokens=max_tokens)
+                logger.info(f"Report generated ({len(report_text)} characters)")
+                return report_text, None
+
+        except Exception as e:
+            logger.error(f"Error generating analytical report: {e}", exc_info=True)
+            raise
 
     # =========================================================================
     # GROUPING & ORGANIZATION
@@ -3294,33 +5311,21 @@ Return ONLY the JSON."""
         if not papers:
             return {}
 
-        # Use Claude to classify papers by disease
-        prompt = f"""Classify these papers by the primary disease/condition being studied for {drug_name}.
-
-Papers:
-"""
+        # Build papers list for template
+        papers_list = []
         for i, paper in enumerate(papers, 1):
-            prompt += f"\n{i}. Title: {paper.get('title', 'Unknown')}"
-            abstract = paper.get('abstract', '')[:300]
-            if abstract:
-                prompt += f"\n   Abstract: {abstract}..."
+            papers_list.append({
+                'num': i,
+                'title': paper.get('title', 'Unknown'),
+                'abstract': paper.get('abstract', '')[:300]
+            })
 
-        prompt += """
-
-Return ONLY valid JSON mapping paper number to disease:
-{
-    "classifications": [
-        {"paper_num": 1, "disease": "exact disease name"},
-        {"paper_num": 2, "disease": "exact disease name"},
-        ...
-    ]
-}
-
-Rules:
-- Use standardized disease names (e.g., "Vitiligo" not "vitiligo", "Alopecia Areata" not "AA")
-- If a paper covers multiple diseases, choose the PRIMARY one
-- If disease is unclear, use "Unknown"
-- Group similar conditions together (e.g., all types of eczema under "Atopic Dermatitis")"""
+        # Use Claude to classify papers by disease
+        prompt = self._prompts.render(
+            "case_series/classify_papers_by_disease",
+            drug_name=drug_name,
+            papers=papers_list
+        )
 
         try:
             response = self.client.messages.create(
@@ -3380,35 +5385,21 @@ Rules:
         if not papers:
             return {}
 
-        # Use Claude to classify papers by disease AND drug
-        prompt = f"""Classify these papers by both the disease being studied AND the specific drug used.
-These papers are about drugs with the mechanism: {mechanism}
-
-Papers:
-"""
+        # Build papers list for template
+        papers_list = []
         for i, paper in enumerate(papers, 1):
-            prompt += f"\n{i}. Title: {paper.get('title', 'Unknown')}"
-            abstract = paper.get('abstract', '')[:300]
-            if abstract:
-                prompt += f"\n   Abstract: {abstract}..."
+            papers_list.append({
+                'num': i,
+                'title': paper.get('title', 'Unknown'),
+                'abstract': paper.get('abstract', '')[:300]
+            })
 
-        prompt += """
-
-Return ONLY valid JSON mapping paper number to disease and drug:
-{
-    "classifications": [
-        {"paper_num": 1, "disease": "exact disease name", "drug": "drug name"},
-        {"paper_num": 2, "disease": "exact disease name", "drug": "drug name"},
-        ...
-    ]
-}
-
-Rules:
-- Use standardized disease names (e.g., "Vitiligo", "Alopecia Areata", "Rheumatoid Arthritis")
-- Use standardized drug names (generic name preferred, e.g., "baricitinib", "tofacitinib")
-- If a paper covers multiple diseases, choose the PRIMARY one
-- If disease or drug is unclear, use "Unknown"
-"""
+        # Use Claude to classify papers by disease AND drug
+        prompt = self._prompts.render(
+            "case_series/classify_papers_by_disease_and_drug",
+            mechanism=mechanism,
+            papers=papers_list
+        )
 
         try:
             response = self.client.messages.create(

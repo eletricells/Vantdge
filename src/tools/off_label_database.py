@@ -117,6 +117,8 @@ class OffLabelDatabase:
                 paper_path, is_open_access, citation_count,
                 extracted_by, extraction_timestamp, extraction_confidence, extraction_notes,
                 evidence_quality, evidence_grade,
+                extraction_method, extraction_stages_completed,
+                detailed_efficacy_endpoints, detailed_safety_endpoints, standard_endpoints_matched,
                 search_query, search_source
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s,
@@ -131,10 +133,21 @@ class OffLabelDatabase:
                 %s, %s, %s,
                 %s, %s, %s, %s,
                 %s, %s,
+                %s, %s,
+                %s, %s, %s,
                 %s, %s
             )
             RETURNING case_study_id
         """
+
+        # Serialize detailed endpoints to JSON
+        detailed_efficacy_json = None
+        if case_study.detailed_efficacy_endpoints:
+            detailed_efficacy_json = Json([ep.model_dump() for ep in case_study.detailed_efficacy_endpoints])
+
+        detailed_safety_json = None
+        if case_study.detailed_safety_endpoints:
+            detailed_safety_json = Json([ep.model_dump() for ep in case_study.detailed_safety_endpoints])
 
         cur.execute(query, (
             case_study.pmid, case_study.doi, case_study.pmc, case_study.title,
@@ -159,6 +172,11 @@ class OffLabelDatabase:
             case_study.extraction_confidence, case_study.extraction_notes,
             Json(case_study.evidence_quality) if case_study.evidence_quality else None,
             case_study.evidence_grade,
+            case_study.extraction_method,
+            Json(case_study.extraction_stages_completed) if case_study.extraction_stages_completed else None,
+            detailed_efficacy_json,
+            detailed_safety_json,
+            Json(case_study.standard_endpoints_matched) if case_study.standard_endpoints_matched else None,
             case_study.search_query, case_study.search_source
         ))
 

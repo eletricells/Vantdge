@@ -1,0 +1,95 @@
+Calculate the Total Addressable Market (TAM) for a NEW DRUG entering the {{ disease }} market.
+
+=== KNOWN DATA ===
+{{ context | to_json }}
+
+=== MARKET RESEARCH RESULTS ===
+{{ search_results | to_json }}
+
+=== TAM CALCULATION FRAMEWORK ===
+TAM should account for REALISTIC market penetration, not total patient population x cost.
+
+Consider:
+1. TREATMENT FUNNEL:
+   - What % of patients are diagnosed?
+   - What % of diagnosed patients receive treatment?
+   - What line of therapy would a new drug likely be positioned? (1L, 2L, 3L)
+   - What % of patients reach each line of therapy?
+
+2. MARKET PENETRATION:
+   - How many approved competitors exist?
+   - What market share could a new entrant realistically capture?
+   - Typical new drug peak market share: 10-30% in crowded markets, 30-50% in underserved
+
+3. TREATMENT DURATION:
+   - Is this chronic or acute treatment?
+   - What is typical treatment duration and compliance?
+
+4. PRICING:
+   - What is realistic pricing for this indication?
+   - Orphan drugs: $100K-500K/yr, Specialty: $50K-150K/yr, Primary care: $10K-50K/yr
+
+THERAPEUTIC AREA BENCHMARKS:
+
+AUTOIMMUNE - DERMATOLOGY (Atopic Dermatitis, Psoriasis, Alopecia Areata):
+- Pricing: $30-60K/year
+- Market penetration: 60-80% of moderate-severe patients
+- Treatment duration: Chronic, high compliance
+- Reference launches:
+  * Dupixent (AD): ~$37K/yr, achieved ~40% market share in moderate-severe
+  * Rinvoq (AD): ~$60K/yr, capturing share with oral convenience
+  * Skyrizi (Psoriasis): ~$60K/yr, rapid uptake with superior efficacy
+
+AUTOIMMUNE - RHEUMATOLOGY (RA, PsA, axSpA):
+- Pricing: $50-80K/year
+- Market penetration: 50-70% of biologic-eligible patients
+- Treatment duration: Chronic
+- Reference launches:
+  * Rinvoq (RA): ~$60K/yr, competing with established biologics
+  * Taltz (PsA): ~$65K/yr
+
+RARE AUTOIMMUNE (Dermatomyositis, Scleroderma, Vasculitis):
+- Pricing: $80-200K/year (orphan eligible)
+- Market penetration: 30-50% of diagnosed patients
+- Lower diagnosis rates
+- Reference: Specialty drugs in similar rare diseases
+
+ULTRA-RARE (<5,000 US patients):
+- Pricing: $200-500K/year
+- Market penetration: 40-60% of diagnosed (strong unmet need)
+- Orphan drug exclusivity benefits
+
+LUPUS (SLE, Lupus Nephritis):
+- Pricing: $40-80K/year
+- Complex market with multiple lines of therapy
+- Market penetration: 40-60%
+- Reference launches:
+  * Saphnelo (SLE): ~$60K/yr, slow uptake in crowded market
+  * Lupkynis (LN): ~$75K/yr, narrow indication
+
+TREATMENT FUNNEL DEFAULTS (if not specified):
+- Diagnosis rate: 60-80% for common diseases, 30-50% for rare
+- Treatment rate: 50-70% of diagnosed receive systemic treatment
+- 2L reach: 25-40% of treated patients fail 1L
+- 3L reach: 10-20% of treated patients fail 2L
+- New drug peak share: 15-30% in crowded market, 30-50% in underserved
+
+CALCULATION TEMPLATE:
+TAM = (Patient population) × (Diagnosis rate) × (Treatment rate) × (Target LOT reach) × (Market share) × (Annual price)
+
+Example for rare autoimmune (10,000 US patients):
+= 10,000 × 0.70 × 0.60 × 0.35 × 0.30 × $100,000
+= 10,000 × 0.0441 × $100,000 = $44.1M
+
+Return ONLY valid JSON:
+{
+    "tam_usd": integer (Total Addressable Market in USD),
+    "tam_estimate": "formatted string (e.g., '$2.5B')",
+    "tam_rationale": "Detailed 2-4 sentence explanation including: patient funnel (X diagnosed, Y% treated, Z% reach target LOT), assumed market share (A%), pricing ($B/yr), calculation steps"
+}
+
+EXAMPLE tam_rationale:
+"Of ~100,000 US patients with [disease], ~70% are diagnosed (70K), ~60% receive systemic treatment (42K), ~30% fail 1L therapy and are candidates for 2L+ (12.6K). A new 2L drug could capture 25-35% market share (~3.8K patients). At $75K/yr, TAM = $285M. High unmet need in refractory population supports premium pricing."
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

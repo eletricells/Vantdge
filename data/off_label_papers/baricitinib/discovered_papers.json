@@ -1,0 +1,61 @@
+{
+  "drug_name": "baricitinib",
+  "search_date": "2025-12-06T17:59:29.552727",
+  "total_papers": 2,
+  "papers": [
+    {
+      "pmid": "39031307",
+      "title": "A double-blind pilot study of oral baricitinib in adult patients with lupus erythematosus panniculitis.",
+      "abstract": "Lupus erythematosus panniculitis (LEP) is a chronic inflammatory skin disease with a significant impact on the overall well-being of patients. The safety and efficacy of oral baricitinib for the treatment of LEP have not been studied. This study aimed to explore the efficacy of oral baricitinib in patients with LEP who are recalcitrant or intolerant to conventional therapies. Patients (aged ≥18 years) with active LEP (with a revised cutaneous lupus erythematosus disease area and severity index [RCLASI]-active score ≥4] were randomly assigned 2:1 to baricitinib (4 mg) or placebo (once daily for 20 weeks). The placebo group was switched to baricitinib (4 mg) at week 13, and the final evaluation was conducted at week 24. The primary endpoint was the proportion of patients with an RCLASI-A score decreased by 20% at week 12. The secondary endpoints included the changes in the Cutaneous Lupus Erythematosus Disease Area and Severity Index active-(CLASI-A) score, the Dermatology Life Quality Index (DLQI), the Physician's Global Assessment (PGA) score, and safety. Five patients were enrolled. Three patients received baricitinib (4 mg), and two patients were treated with placebo. Two patients in the baricitinib treatment group showed a significant RCLASI-A decrease at week 12 and week 24. Two patients in the placebo group had no change in RCLASI-A at week 12 and a significant decrease at week 24. No new safety events were observed. Treatment with baricitinib was effective and well tolerated in patients with LEP.",
+      "authors": [
+        "Jingjing Chen",
+        "Yijin Luo",
+        "Yuanyuan Duan",
+        "Liangchun Wang",
+        "Hai Long",
+        "Yi Liu",
+        "Xu Yao",
+        "Qianjin Lu"
+      ],
+      "journal": "The Journal of dermatology",
+      "year": "2024",
+      "publication_date": "2024-11",
+      "doi": "10.1111/1346-8138.17354",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/39031307/",
+      "search_query": "baricitinib pilot study treatment",
+      "search_source": "Web Search",
+      "is_open_access": false,
+      "indication": "Lupus erythematosus panniculitis",
+      "study_type": "Clinical Trial",
+      "n_patients": 5,
+      "relevance_score": 1.0
+    },
+    {
+      "pmid": "35190385",
+      "title": "Baricitinib for relapsing giant cell arteritis: a prospective open-label 52-week pilot study.",
+      "abstract": "Preclinical vascular inflammation models have demonstrated effective suppression of arterial wall lesional T cells through inhibition of Janus kinase 3 and JAK1. However, JAK inhibition in patients with giant cell arteritis (GCA) has not been prospectively investigated.",
+      "authors": [
+        "Matthew J Koster",
+        "Cynthia S Crowson",
+        "Rachel E Giblon",
+        "Jane M Jaquith",
+        "Ali Duarte-García",
+        "Eric L Matteson",
+        "Cornelia M Weyand",
+        "Kenneth J Warrington"
+      ],
+      "journal": "Annals of the rheumatic diseases",
+      "year": "2022",
+      "publication_date": "2022-06",
+      "doi": "10.1136/annrheumdis-2021-221961",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/35190385/",
+      "search_query": "baricitinib pilot study treatment",
+      "search_source": "Web Search",
+      "is_open_access": false,
+      "indication": "Relapsing giant cell arteritis",
+      "study_type": "Clinical Trial",
+      "n_patients": null,
+      "relevance_score": 1.0
+    }
+  ]
+}

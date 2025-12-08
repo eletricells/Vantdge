@@ -1,0 +1,19 @@
+{
+  "drug_name": "Fabhalta",
+  "generic_name": "iptacopan",
+  "mechanism": "Iptacopan binds to Factor B of the alternative complement pathway and regulates the cleavage of C3, generation of downstream effectors, and the amplification of the terminal pathway. In PNH, intravascular hemolysis (IVH) is mediated by the downstream membrane attack complex (MAC), while extravascular hemolysis (EVH) is facilitated by C3b opsonization. Iptacopan acts proximally in the alternative pathway of the complement cascade to control both C3b-mediated EVH and terminal complement-mediated IVH. In IgAN, the deposition of galactose deficient IgA1 (Gd-IgA1) containing immune complexes in the kidney locally activates the alternative complement pathway which is thought to contribute to the pathogenesis of IgAN. By binding to Factor B, iptacopan inhibits the alternative pathway. In C3G, overactivation of the alternative complement pathway leads to C3 cleavage within the glomeruli resulting in C3 deposition and inflammation, which are thought to contribute to the pathogenesis of C3G. By ",
+  "target": null,
+  "approved_indications": [
+    "oral fabhalta (iptacopan), the first and only treatment approved in c3 glomerulopathy",
+    "fabhalta (iptacopan) for the reduction of proteinuria in primary iga nephropathy (igan)",
+    "adults with paroxysmal nocturnal hemoglobinuria (pnh)"
+  ],
+  "opportunities": [],
+  "analysis_date": "2025-12-07T23:16:59.953326",
+  "search_queries_used": [],
+  "papers_screened": 40,
+  "papers_extracted": 0,
+  "total_input_tokens": 351726,
+  "total_output_tokens": 43142,
+  "estimated_cost_usd": 1.7023
+}

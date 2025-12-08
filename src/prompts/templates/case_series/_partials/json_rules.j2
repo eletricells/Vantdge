@@ -1,0 +1,33 @@
+CRITICAL JSON RULES - FOLLOW EXACTLY:
+
+1. OUTPUT FORMAT:
+   - Return ONLY valid JSON
+   - No markdown code fences (```)
+   - No explanatory text before or after the JSON
+   - No comments within the JSON
+
+2. NULL VALUES:
+   - Use null for missing/unknown values
+   - Do NOT use empty strings (""), "N/A", "unknown", or "not reported"
+   - Example: "response_rate": null (NOT "response_rate": "")
+
+3. DATA TYPES:
+   - Numbers must be numbers: 5 (NOT "5")
+   - Percentages as numbers: 80.0 (NOT "80%" or "80.0%")
+   - Booleans as true/false: true (NOT "true" or "True")
+   - Integers where specified: 15 (NOT 15.0)
+
+4. STRING ESCAPING:
+   - Escape quotes within strings: "He said \"hello\""
+   - Escape backslashes: "path\\to\\file"
+   - No unescaped newlines in string values
+
+5. ARRAY FORMATTING:
+   - No trailing commas: ["a", "b"] (NOT ["a", "b",])
+   - Empty arrays as []: "adverse_events": []
+
+6. EXTRACTION PRINCIPLES:
+   - Extract only what is explicitly stated
+   - If a value is not clearly stated, use null
+   - Do not infer or calculate values unless specifically instructed
+   - When uncertain between two values, prefer null over guessing

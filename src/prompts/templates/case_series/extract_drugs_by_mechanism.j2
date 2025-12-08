@@ -1,0 +1,10 @@
+Extract FDA-approved drug names with this mechanism: {{ mechanism }}
+
+Search Results:
+{{ search_results | to_json }}
+
+Return ONLY a JSON array of generic drug names:
+["drug1", "drug2", ...]
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

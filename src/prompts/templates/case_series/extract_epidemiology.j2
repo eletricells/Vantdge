@@ -1,0 +1,42 @@
+Extract epidemiology data for {{ disease }} from these search results.
+
+Search Results:
+{{ search_results | to_json }}
+
+Return ONLY valid JSON:
+{
+    "us_prevalence_estimate": "estimated US prevalence (e.g. '1 in 10,000' or '200,000 patients') or null",
+    "us_incidence_estimate": "annual incidence estimate or null",
+    "patient_population_size": integer estimate of US patient count (MUST be integer, not string),
+    "prevalence_source": "name of source (e.g. 'NIH GARD', 'CDC', journal name) or null",
+    "prevalence_source_url": "URL of the source or null",
+    "trend": "increasing/stable/decreasing or null",
+    "source_quality": "Primary" or "Secondary" or "Estimate",
+    "data_year": year the prevalence data is from (integer) or null,
+    "geographic_scope": "US" or "Global" or "Regional",
+    "confidence": "High" or "Medium" or "Low",
+    "notes": "any caveats about the estimate (e.g., 'extrapolated from European data', 'wide range reported')"
+}
+
+SOURCE QUALITY CLASSIFICATION:
+- Primary: CDC, NIH GARD, peer-reviewed epidemiology studies, national registries, NCHS
+- Secondary: Disease foundations (Lupus Foundation, NAF), review articles, UpToDate
+- Estimate: Calculated from related data, expert opinion, extrapolated from other populations
+
+CONFIDENCE SCORING:
+- High: Multiple concordant sources, recent data (within 5 years), US-specific data
+- Medium: Single credible source, older data (5-10 years), extrapolated from similar populations
+- Low: Only estimates available, conflicting sources, data >10 years old, significant uncertainty
+
+CRITICAL FOR patient_population_size:
+- This MUST be an integer estimate of US patients (not null unless truly unknown)
+- If prevalence is given as percentage (e.g., "1%"), calculate: US population (335M) * prevalence
+- If prevalence is "1 in X", calculate: 335,000,000 / X
+- If worldwide cases given (e.g., "130 worldwide"), estimate US portion (~4% of world population)
+- If a range is given, use the midpoint
+- Example: "1-2% prevalence" -> 335M * 0.015 = 5,025,000
+- Example: "1 in 10,000" -> 335M / 10000 = 33,500
+- Example: "130 worldwide" -> 130 * 0.04 = ~5 (round to nearest integer)
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

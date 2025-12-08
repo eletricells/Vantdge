@@ -1,0 +1,69 @@
+Extract FDA-approved BRANDED INNOVATIVE treatments for {{ disease }}.
+
+=== CRITICAL: INDICATION-SPECIFIC FDA APPROVALS ONLY ===
+Only count drugs with FDA approval for THIS EXACT INDICATION: "{{ disease }}"
+
+IMPORTANT INDICATION DISTINCTIONS (different FDA labels):
+- "Systemic Lupus Erythematosus (SLE)" ≠ "Lupus Nephritis" (different indications!)
+  * SLE approved: Benlysta, Saphnelo
+  * Lupus Nephritis approved: Lupkynis, Benlysta
+- "Rheumatoid Arthritis" ≠ "Juvenile Idiopathic Arthritis"
+- "Atopic Dermatitis" (adult) may have different approvals than pediatric
+- "Crohn's Disease" ≠ "Ulcerative Colitis"
+
+If analyzing "{{ disease }}", only count drugs FDA-approved for EXACTLY "{{ disease }}".
+Do NOT count drugs approved for related but different indications.
+
+=== BRANDED INNOVATIVE DRUGS ONLY ===
+INCLUDE (is_branded_innovative=true):
+- Biologics: monoclonal antibodies, fusion proteins, recombinant proteins
+  Examples: Ilaris, Kineret, Actemra, Humira, Enbrel, Cosentyx, Stelara, Dupixent, Ocrevus
+- Novel small molecules with brand names: JAK inhibitors, kinase inhibitors, targeted therapies
+  Examples: Olumiant (baricitinib), Xeljanz (tofacitinib), Rinvoq (upadacitinib), Jakafi
+- Specialty drugs: IVIG products, enzyme replacement therapies
+  Examples: Octagam 10%, Gamunex-C, Cerezyme, Fabrazyme
+- Gene/cell therapies: Zolgensma, Luxturna, Yescarta
+
+EXCLUDE (is_branded_innovative=false):
+- Generic drugs even with brand names: corticosteroids (prednisone, Medrol), methotrexate, azathioprine, cyclosporine
+- Supportive care: NSAIDs, pain medications, antihistamines
+- OTC medications: eye drops, topical steroids
+- Branded generics: Cyclogyl (cyclopentolate), generic-equivalent products
+
+Search Results:
+{{ search_results | to_json }}
+
+Return ONLY valid JSON:
+{
+    "top_treatments": [
+        {
+            "drug_name": "Brand Name (generic)",
+            "drug_class": "class (e.g., IL-1 inhibitor, JAK inhibitor)",
+            "is_branded_innovative": true/false,
+            "fda_approved": true/false,
+            "fda_approved_indication": "EXACT indication name from FDA label or null",
+            "line_of_therapy": "1L/2L/3L or null",
+            "efficacy_range": "60-70%",
+            "annual_cost_usd": integer or null,
+            "notes": "FDA approval details including specific indication"
+        }
+    ],
+    "approved_drug_names": ["Brand1 (generic1)", "Brand2 (generic2)"],
+    "num_approved_drugs": integer (count of drugs FDA-approved for EXACTLY "{{ disease }}"),
+    "avg_annual_cost_usd": integer (average of branded innovative drugs only),
+    "treatment_paradigm": "1-2 sentence description of treatment approach including line of therapy",
+    "unmet_need": true/false,
+    "unmet_need_description": "description or null",
+    "competitive_landscape": "2-sentence summary",
+    "soc_source": "source name and URL"
+}
+
+VALIDATION RULES:
+1. fda_approved=true ONLY if FDA approved for EXACTLY "{{ disease }}" (not related conditions)
+2. approved_drug_names MUST only contain drugs where is_branded_innovative=true AND fda_approved=true for THIS indication
+3. num_approved_drugs MUST exactly equal length of approved_drug_names list
+4. Generic drugs (corticosteroids, methotrexate, etc.) should NEVER appear in approved_drug_names
+5. If drug is approved for related but different indication (e.g., Lupus Nephritis vs SLE), set fda_approved=false
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

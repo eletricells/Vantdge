@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS cs_extractions (
     drug_name VARCHAR(255) NOT NULL,
     disease VARCHAR(500) NOT NULL,
     is_off_label BOOLEAN DEFAULT TRUE,
+    is_relevant BOOLEAN DEFAULT TRUE,
     n_patients INT,
     age_description VARCHAR(255),
     gender_distribution VARCHAR(255),

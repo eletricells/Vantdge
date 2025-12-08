@@ -1,0 +1,1514 @@
+{
+  "drug_name": "baricitinib",
+  "generic_name": null,
+  "mechanism": "Janus Kinase Inhibitor",
+  "target": null,
+  "approved_indications": [
+    "adults with severe alopecia areata",
+    "covid-19 in certain hospitalized adults",
+    "adults with moderately-to-severely active rheumatoid arthritis",
+    "moderately-to-severely active rheumatoid arthritis"
+  ],
+  "opportunities": [
+    {
+      "extraction": {
+        "source": {
+          "pmid": null,
+          "doi": "10.1080/09546634.2024.2417965",
+          "url": "https://www.semanticscholar.org/paper/2ca29bfc9f28c0b83bb8afe97e6f9933c8dca42e",
+          "title": "Successful treatment of cutaneous polyarteritis nodosa with baricitinib",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "cutaneous polyarteritis nodosa",
+        "disease_normalized": "Polyarteritis Nodosa",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "corticosteroids",
+            "immunosuppressants"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "patient with cutaneous polyarteritis nodosa who had previously failed multiple treatments"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": null,
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": null,
+          "dose": null,
+          "frequency": null,
+          "duration": null,
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "1/1 (100%)",
+          "responders_n": 1,
+          "responders_pct": 100.0,
+          "time_to_response": null,
+          "duration_of_response": "over 1 year with no recurrence",
+          "effect_size_description": "marked improvement in quality of life with complete resolution of cutaneous lesions",
+          "primary_endpoint": "ulcer healing and resolution of cutaneous manifestations",
+          "endpoint_result": "ulcers healed, subcutaneous nodules resolved, and livedo reticularis alleviated",
+          "durability_signal": null,
+          "efficacy_summary": "The patient experienced complete healing of ulcers, resolution of subcutaneous nodules, and improvement of livedo reticularis. This resulted in marked improvement in quality of life with no recurrence over 1 year of follow-up."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No severe adverse reactions were observed during the treatment period. The patient tolerated baricitinib well throughout the treatment course.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "over 1 year",
+        "key_findings": "First reported case of successful treatment of cutaneous polyarteritis nodosa with baricitinib, demonstrating complete resolution of cutaneous manifestations with favorable safety profile.",
+        "extraction_timestamp": "2025-12-05T21:51:46.103267",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Polyarteritis Nodosa",
+        "epidemiology": {
+          "us_prevalence_estimate": null,
+          "us_incidence_estimate": "3-4.5 cases per 100,000 population annually",
+          "global_prevalence": null,
+          "patient_population_size": 12542,
+          "prevalence_source": "PMC - PubMed Central - NIH",
+          "prevalence_source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8633913/",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Rituxan (rituximab)",
+              "drug_class": "CD20 monoclonal antibody",
+              "is_branded_innovative": true,
+              "fda_approved": false,
+              "fda_approved_indication": null,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": 80000.0,
+              "line_of_therapy": "2L",
+              "notes": "Used off-label for refractory polyarteritis nodosa based on case reports, but not FDA approved for this specific indication"
+            },
+            {
+              "drug_name": "Actemra (tocilizumab)",
+              "drug_class": "IL-6 receptor antagonist",
+              "is_branded_innovative": true,
+              "fda_approved": false,
+              "fda_approved_indication": null,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": 65000.0,
+              "line_of_therapy": "3L",
+              "notes": "Used off-label for refractory polyarteritis nodosa when rituximab fails, but not FDA approved for this indication"
+            }
+          ],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 2,
+          "pipeline_therapies": [
+            {
+              "drug_name": "Biologic therapy (unspecified)",
+              "company": "Not specified",
+              "mechanism": "Not specified",
+              "phase": "Phase 1",
+              "trial_id": "NCT05168475",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Tocilizumab",
+              "company": "Not specified",
+              "mechanism": "IL-6 receptor antagonist",
+              "phase": "Phase 2",
+              "trial_id": null,
+              "expected_completion": null
+            }
+          ],
+          "pipeline_details": "Limited active clinical trial activity for Polyarteritis Nodosa with one early-phase biologic trial and emerging evidence for tocilizumab as a potential treatment option. The pipeline remains sparse compared to other vasculitis indications.",
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": "Standard of care relies on corticosteroids and immunosuppressive agents like cyclophosphamide, methotrexate, and azathioprine. Biologic therapies are used off-label for refractory cases.",
+          "unmet_need": true,
+          "unmet_need_description": "No FDA-approved branded innovative treatments exist specifically for polyarteritis nodosa. Treatment relies on off-label use of biologics or generic immunosuppressive agents, with limited randomized controlled trial data due to disease rarity.",
+          "competitive_landscape": "The polyarteritis nodosa treatment landscape lacks FDA-approved branded innovative therapies, creating a significant unmet medical need. Current treatment is based on expert recommendations and case reports rather than robust clinical trial evidence.",
+          "soc_source": "Medscape Polyarteritis Nodosa Treatment & Management - https://emedicine.medscape.com/article/330717-treatment"
+        },
+        "market_size_estimate": "$1.3B",
+        "market_size_usd": 1254200000.0,
+        "growth_rate": "5-8% CAGR (high unmet need)",
+        "tam_usd": 94350000.0,
+        "tam_estimate": "$94.4M",
+        "tam_rationale": "Of ~12,542 global PAN patients, ~85% are diagnosed (10,661), ~90% receive treatment (9,595), ~40% fail standard corticosteroids/immunosuppressives and need advanced therapy (3,838). With zero approved drugs and high unmet need, a first-in-class biologic could capture 60-70% of the refractory market (~2,650 patients). At $35.6K/yr average pricing (based on current $39.5M market size), TAM = $94.4M. Premium pricing justified by orphan disease status and lack of approved alternatives."
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 4.3,
+        "market_opportunity": 9.3,
+        "overall_priority": 8.4,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 8.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 8.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 1
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "40115257",
+          "doi": "10.3389/fphar.2025.1509404",
+          "url": "https://www.semanticscholar.org/paper/f652d9aee27e16ab02f39c9e99a4ee0e3777430d",
+          "title": "Case report: Effectiveness of Janus kinase inhibitors in the management of isolated noninfectious uveitis: a case series",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "isolated noninfectious uveitis",
+        "disease_normalized": "Uveitis",
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 3,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "disease-modifying antirheumatic drugs"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "three patients with isolated non-infectious uveitis (two with anterior and intermediate uveitis, one with posterior uveitis) without associated systemic disease"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": null,
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": null,
+          "dose": null,
+          "frequency": null,
+          "duration": null,
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "3/3 (100%)",
+          "responders_n": 3,
+          "responders_pct": 100.0,
+          "time_to_response": null,
+          "duration_of_response": "more than 1 year",
+          "effect_size_description": "complete response in all patients with sustained remission",
+          "primary_endpoint": "remission rate",
+          "endpoint_result": "all patients achieved remission lasting for more than 1 year",
+          "durability_signal": null,
+          "efficacy_summary": "All three patients with refractory isolated non-infectious uveitis achieved complete remission lasting more than 1 year after initiation of JAK inhibitor therapy. This represents a 100% response rate in patients who had previously failed disease-modifying antirheumatic drugs."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No significant side effects were observed in any of the patients throughout the treatment period. The safety profile appeared favorable with a mean follow-up of 31.6 months.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "mean 31.6 months (range 16-55 months)",
+        "key_findings": "This is the first report demonstrating effectiveness of baricitinib and upadacitinib in isolated non-infectious uveitis, with all patients achieving sustained remission without significant adverse effects.",
+        "extraction_timestamp": "2025-12-05T21:51:14.475616",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Uveitis",
+        "epidemiology": {
+          "us_prevalence_estimate": "234 per 100,000 persons",
+          "us_incidence_estimate": "52 cases per 100,000 persons annually",
+          "global_prevalence": null,
+          "patient_population_size": 784000,
+          "prevalence_source": "IOVS - ARVO Journals",
+          "prevalence_source_url": "https://iovs.arvojournals.org/article.aspx?articleid=2807096",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Humira (adalimumab)",
+              "drug_class": "TNF-alpha inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Treatment of non-infectious intermediate, posterior, and panuveitis in adults and pediatric patients 2 years of age and older",
+              "efficacy_range": "45-61%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 80000.0,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved September 28, 2018 for non-infectious uveitis. Orphan drug designation. First biologic approved for uveitis treatment."
+            }
+          ],
+          "approved_drug_names": [
+            "Humira (adalimumab)"
+          ],
+          "num_approved_drugs": 1,
+          "num_pipeline_therapies": 6,
+          "pipeline_therapies": [
+            {
+              "drug_name": "REGN7041",
+              "company": "Regeneron",
+              "mechanism": "Not specified",
+              "phase": "Phase 1",
+              "trial_id": "NCT07218770",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "brepocitinib",
+              "company": "Priovant Therapeutics",
+              "mechanism": "TYK2/JAK1 inhibitor",
+              "phase": "Phase 3",
+              "trial_id": null,
+              "expected_completion": null
+            },
+            {
+              "drug_name": "TRS01",
+              "company": "Not specified",
+              "mechanism": "Anti-inflammatory",
+              "phase": "Phase 3",
+              "trial_id": null,
+              "expected_completion": null
+            },
+            {
+              "drug_name": "ustekinumab",
+              "company": "Janssen",
+              "mechanism": "IL-12/IL-23 inhibitor",
+              "phase": "Phase 2",
+              "trial_id": "NCT02911116",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "OCS-01",
+              "company": "Not specified",
+              "mechanism": "Not specified",
+              "phase": "Phase 3",
+              "trial_id": "NCT05608837",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "adalimumab",
+              "company": "Not specified",
+              "mechanism": "TNF-alpha inhibitor",
+              "phase": "Phase 2",
+              "trial_id": "NCT01385826",
+              "expected_completion": null
+            }
+          ],
+          "pipeline_details": "The uveitis pipeline includes several active therapies across multiple phases, with brepocitinib and TRS01 advancing to Phase 3 trials, while recent setbacks include terminated trials for izokibep and ESK-01. The pipeline shows diverse mechanisms including JAK/TYK2 inhibitors, TNF-alpha blockers, and novel anti-inflammatory approaches.",
+          "avg_annual_cost_usd": 80000.0,
+          "treatment_paradigm": "First-line treatment typically involves corticosteroid eye drops, with Humira as second-line therapy for non-infectious intermediate, posterior, and panuveitis when steroids are inadequate or contraindicated.",
+          "unmet_need": true,
+          "unmet_need_description": "Significant unmet need exists with only one FDA-approved branded innovative treatment for uveitis. Many patients rely on generic corticosteroids or off-label use of other biologics.",
+          "competitive_landscape": "Humira is currently the only FDA-approved branded innovative treatment specifically for uveitis, creating a monopolistic position in this orphan indication. The standard of care relies heavily on generic corticosteroids and off-label biologics.",
+          "soc_source": "Medscape Emedicine and FDA Orphan Drug Database"
+        },
+        "market_size_estimate": "$62.7B",
+        "market_size_usd": 62720000000.0,
+        "growth_rate": "5-8% CAGR (high unmet need)",
+        "tam_usd": 1880000000.0,
+        "tam_estimate": "$1.88B",
+        "tam_rationale": "Of ~784K global uveitis patients, ~60% are diagnosed (470K), ~70% receive treatment beyond topical steroids (329K), ~40% have non-infectious intermediate/posterior/panuveitis requiring systemic therapy (132K). A new drug positioned as 2L+ therapy could capture 20-25% market share (~30K patients) given only 1 approved competitor and high unmet need. At $80K/yr average treatment cost matching current specialty pricing, TAM = $1.88B globally."
+      },
+      "scores": {
+        "clinical_signal": 10.0,
+        "evidence_quality": 3.7,
+        "market_opportunity": 9.0,
+        "overall_priority": 8.2,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 2.0,
+          "followup_duration": 7.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 7.0,
+        "market_breakdown": {
+          "competitors": 7.0,
+          "market_size": 10.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 7.0,
+        "market_size_score": 10.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 2
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": null,
+          "doi": "10.1093/rap/rkae117.036",
+          "url": "https://www.semanticscholar.org/paper/4d478c062a6fc94f421abcbd6557aac26c37f875",
+          "title": "P05\u2003The role of JAK inhibitors in difficult-to-treat adult-onset Still\u2019s disease: a case series",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "Adult-onset Still's Disease (AOSD)",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 3,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "prednisolone",
+            "methotrexate",
+            "azathioprine",
+            "tocilizumab",
+            "anakinra",
+            "colchicine"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Three adult patients (32-year-old male, 32-year-old female, 18-year-old female) with difficult-to-treat AOSD"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": null,
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "one year follow-up mentioned for one patient",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "3/3 (100%)",
+          "responders_n": 3,
+          "responders_pct": 100.0,
+          "time_to_response": null,
+          "duration_of_response": "sustained at one year for at least one patient",
+          "effect_size_description": "substantial clinical improvement with steroid sparing effect",
+          "primary_endpoint": "symptom resolution and steroid reduction",
+          "endpoint_result": "substantial clinical improvement in all three cases with ability to reduce or discontinue steroids",
+          "durability_signal": null,
+          "efficacy_summary": "All three patients showed substantial clinical improvement with baricitinib/tofacitinib treatment. Patients were able to reduce or discontinue steroids, with reduced serum ferritin levels and good symptomatic control achieved."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": 0,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No adverse events were reported with JAK inhibitor treatment in this case series. The transition to JAK inhibitors was well-tolerated in all three patients.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "one year",
+        "key_findings": "JAK inhibitors showed promising efficacy in difficult-to-treat AOSD where conventional treatments failed. All patients achieved substantial clinical improvement with steroid-sparing effects.",
+        "extraction_timestamp": "2025-12-05T21:52:10.697404",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Adult-onset Still's Disease (AOSD)",
+        "epidemiology": {
+          "us_prevalence_estimate": "1-9 per 100,000",
+          "us_incidence_estimate": "0.16-0.4 per 100,000 adults annually",
+          "global_prevalence": null,
+          "patient_population_size": 16750,
+          "prevalence_source": "Orphanet",
+          "prevalence_source_url": "https://www.orpha.net/en/disease/detail/829",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Ilaris (canakinumab)",
+              "drug_class": "IL-1 inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Still's Disease, including Adult-Onset Still's Disease (AOSD)",
+              "efficacy_range": "70-80%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 200000.0,
+              "line_of_therapy": "1L",
+              "notes": "FDA approved in 2020 for active Still's Disease including AOSD in patients 2 years and older. Weight-based dosing with option to increase if clinical response inadequate."
+            }
+          ],
+          "approved_drug_names": [
+            "Ilaris (canakinumab)"
+          ],
+          "num_approved_drugs": 1,
+          "num_pipeline_therapies": 3,
+          "pipeline_therapies": [
+            {
+              "drug_name": "tadekinig alfa",
+              "company": "Not specified",
+              "mechanism": "IL-18 binding protein (IL-18BP)",
+              "phase": "Phase 2",
+              "trial_id": null,
+              "expected_completion": null
+            },
+            {
+              "drug_name": "canakinumab",
+              "company": "Not specified",
+              "mechanism": "IL-1\u03b2 inhibitor",
+              "phase": "Phase 2",
+              "trial_id": null,
+              "expected_completion": null
+            },
+            {
+              "drug_name": "tocilizumab",
+              "company": "Not specified",
+              "mechanism": "IL-6 receptor antagonist",
+              "phase": "Phase 3",
+              "trial_id": null,
+              "expected_completion": null
+            }
+          ],
+          "pipeline_details": "The AOSD pipeline includes several biologics targeting inflammatory pathways, with tadekinig alfa (IL-18BP) and canakinumab (IL-1\u03b2 inhibitor) in Phase 2 trials and tocilizumab (IL-6 receptor antagonist) advancing to Phase 3 testing. All therapies focus on blocking key cytokines involved in the autoinflammatory disease process.",
+          "avg_annual_cost_usd": 200000.0,
+          "treatment_paradigm": "Ilaris (canakinumab) is the only FDA-approved branded innovative treatment specifically for AOSD, typically used as first-line biologic therapy. Other biologics like anakinra and tocilizumab are used off-label.",
+          "unmet_need": true,
+          "unmet_need_description": "Despite Ilaris approval, significant unmet need remains with only one FDA-approved branded innovative treatment for AOSD. Many patients require off-label use of other IL-1 or IL-6 inhibitors.",
+          "competitive_landscape": "Ilaris dominates the FDA-approved space for AOSD, though anakinra and tocilizumab compete through off-label use. The limited number of approved options creates opportunity for additional targeted therapies.",
+          "soc_source": "FDA ILARIS label 2023 - https://www.accessdata.fda.gov/drugsatfda_docs/label/2023/125319s107lbl.pdf"
+        },
+        "market_size_estimate": "$3.4B",
+        "market_size_usd": 3350000000.0,
+        "growth_rate": "5-8% CAGR (high unmet need)",
+        "tam_usd": 670000000.0,
+        "tam_estimate": "$670M",
+        "tam_rationale": "Of ~16,750 global AOSD patients, ~80% are diagnosed (13,400), ~90% receive treatment given disease severity (12,060). With only one FDA-approved drug (Ilaris), there's significant room for a second branded option. A new drug could realistically capture 35-40% market share (~4,700 patients) through differentiated positioning. At $142K/yr average pricing for rare inflammatory diseases, TAM = $670M. High unmet need and limited competition support strong market penetration potential."
+      },
+      "scores": {
+        "clinical_signal": 9.5,
+        "evidence_quality": 4.7,
+        "market_opportunity": 8.3,
+        "overall_priority": 8.0,
+        "clinical_breakdown": {
+          "response_rate": 10.0,
+          "safety_profile": 9.0
+        },
+        "response_rate_score": 10.0,
+        "safety_profile_score": 9.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 2.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 7.0,
+          "market_size": 8.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 7.0,
+        "market_size_score": 8.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 3
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "36754594",
+          "doi": "10.1136/ard-2022-223815",
+          "url": "https://www.semanticscholar.org/paper/1c1e553132b6a66b1c2bb0f74c056b13cd942c8d",
+          "title": "Baricitinib for juvenile idiopathic arthritis: a monocentric case series",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "Juvenile Idiopathic Arthritis (JIA)",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Case Series",
+        "patient_population": {
+          "n_patients": 4,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "methotrexate",
+            "adalimumab",
+            "etanercept",
+            "tocilizumab",
+            "corticosteroids"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "4 pediatric patients (ages 12-16) with polyarticular JIA, including psoriatic arthritis and RF+ JIA subtypes"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": null,
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": "12-19 months follow-up",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": "3/4 (75%)",
+          "responders_n": 3,
+          "responders_pct": 75.0,
+          "time_to_response": "6 months",
+          "duration_of_response": "maintained at 12-19 months follow-up",
+          "effect_size_description": "Complete clinical remission in responders, with articular and cutaneous improvement",
+          "primary_endpoint": "clinical remission",
+          "endpoint_result": "clinical remission achieved in 3/4 patients",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib achieved clinical remission in 3 of 4 pediatric JIA patients who had failed multiple prior treatments including biologics. Responses were maintained during follow-up periods of 12-19 months."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": 0,
+          "sae_percentage": 0.0,
+          "discontinuations_n": 1,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [
+            "inefficacy"
+          ],
+          "safety_summary": "No adverse events occurred during the observation period in all patients. The safety profile was described as excellent with one discontinuation due to lack of efficacy rather than safety concerns.",
+          "safety_profile": "Favorable"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "12-19 months",
+        "key_findings": "Baricitinib showed beneficial effects in 75% of treatment-resistant pediatric JIA patients with excellent safety profile in this largest reported case series.",
+        "extraction_timestamp": "2025-12-05T21:51:26.114272",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Juvenile Idiopathic Arthritis (JIA)",
+        "epidemiology": {
+          "us_prevalence_estimate": "220,000-294,000 children",
+          "us_incidence_estimate": "0.041 to 0.061 per 1000 children",
+          "global_prevalence": null,
+          "patient_population_size": 257000,
+          "prevalence_source": "CDC",
+          "prevalence_source_url": "https://www.cdc.gov/mmwr/volumes/72/wr/mm7229a3.htm",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Actemra (tocilizumab)",
+              "drug_class": "IL-6 receptor antagonist",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Polyarticular Juvenile Idiopathic Arthritis and Systemic Juvenile Idiopathic Arthritis",
+              "efficacy_range": "70-80%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 65000.0,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for polyarticular JIA in children aged 2 years and older, and for systemic JIA. Showed significantly fewer disease flares (26% vs 48% placebo)"
+            },
+            {
+              "drug_name": "Rinvoq (upadacitinib)",
+              "drug_class": "JAK inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Polyarticular Juvenile Idiopathic Arthritis",
+              "efficacy_range": "65-75%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 85000.0,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for treatment of patients 2 years of age and older with active polyarticular juvenile idiopathic arthritis who have had inadequate response or intolerance to TNF blockers"
+            },
+            {
+              "drug_name": "Humira/Amjevita (adalimumab)",
+              "drug_class": "TNF inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Polyarticular Juvenile Idiopathic Arthritis",
+              "efficacy_range": "60-70%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 70000.0,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for reducing signs and symptoms of moderately to severely active polyarticular juvenile idiopathic arthritis in patients 2 years of age and older"
+            },
+            {
+              "drug_name": "Orencia (abatacept)",
+              "drug_class": "T-cell costimulation modulator",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Polyarticular Juvenile Idiopathic Arthritis",
+              "efficacy_range": "60-70%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 60000.0,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for polyarticular JIA as mentioned in FDA review document"
+            },
+            {
+              "drug_name": "Enbrel (etanercept)",
+              "drug_class": "TNF inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Polyarticular Juvenile Idiopathic Arthritis",
+              "efficacy_range": "60-70%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 65000.0,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for polyarticular JIA as mentioned in FDA review document"
+            },
+            {
+              "drug_name": "Simponi (golimumab)",
+              "drug_class": "TNF inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Polyarticular Juvenile Idiopathic Arthritis",
+              "efficacy_range": "60-70%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 68000.0,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for polyarticular JIA as mentioned in FDA review document"
+            },
+            {
+              "drug_name": "Xeljanz (tofacitinib)",
+              "drug_class": "JAK inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Polyarticular Juvenile Idiopathic Arthritis",
+              "efficacy_range": "65-75%",
+              "efficacy_pct": null,
+              "annual_cost_usd": 75000.0,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for polyarticular JIA as mentioned in FDA review document"
+            }
+          ],
+          "approved_drug_names": [
+            "Actemra (tocilizumab)",
+            "Rinvoq (upadacitinib)",
+            "Humira/Amjevita (adalimumab)",
+            "Orencia (abatacept)",
+            "Enbrel (etanercept)",
+            "Simponi (golimumab)",
+            "Xeljanz (tofacitinib)"
+          ],
+          "num_approved_drugs": 7,
+          "num_pipeline_therapies": 5,
+          "pipeline_therapies": [
+            {
+              "drug_name": "Tofacitinib",
+              "company": "Not specified",
+              "mechanism": "JAK inhibitor",
+              "phase": "Phase 1/Phase 2/Phase 3",
+              "trial_id": "NCT01500551",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Certolizumab pegol (CDP870, CZP, Cimzia)",
+              "company": "UCB",
+              "mechanism": "TNF-alpha inhibitor (humanized antibody Fab fragment)",
+              "phase": "Phase 3",
+              "trial_id": "NCT01550003",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Tocilizumab",
+              "company": "Not specified",
+              "mechanism": "IL-6 receptor antagonist",
+              "phase": "Phase 3",
+              "trial_id": "NCT00988221",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Abatacept",
+              "company": "Not specified",
+              "mechanism": "T-cell co-stimulation modulator",
+              "phase": "Not specified",
+              "trial_id": "NCT03841357",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Adalimumab",
+              "company": "AbbVie",
+              "mechanism": "TNF-alpha inhibitor (human monoclonal antibody)",
+              "phase": "Not specified",
+              "trial_id": "DE038",
+              "expected_completion": null
+            }
+          ],
+          "pipeline_details": "The JIA clinical pipeline includes several targeted therapies across different mechanisms, with Phase 3 trials evaluating JAK inhibitors (tofacitinib), TNF-alpha inhibitors (certolizumab pegol, adalimumab), IL-6 receptor antagonists (tocilizumab), and T-cell modulators (abatacept). Most trials focus on polyarticular-course JIA with established biologics being tested in pediatric populations.",
+          "avg_annual_cost_usd": 69714.0,
+          "treatment_paradigm": "Treatment typically starts with methotrexate for moderate to high disease activity, followed by targeted biologics (TNF inhibitors, IL-6 inhibitors) or JAK inhibitors for inadequate responders. Combination therapy with methotrexate is commonly used.",
+          "unmet_need": true,
+          "unmet_need_description": "Despite 6-7 FDA-approved therapies for polyarticular JIA, there remains significant unmet need as not all patients respond to approved treatments, requiring additional therapeutic options",
+          "competitive_landscape": "The JIA market includes multiple drug classes with TNF inhibitors (adalimumab, etanercept, golimumab), JAK inhibitors (upadacitinib, tofacitinib), IL-6 inhibitors (tocilizumab), and T-cell modulators (abatacept) approved for polyarticular JIA. Competition is increasing with biosimilars like Tofidence (tocilizumab biosimilar) entering the market.",
+          "soc_source": "Medscape Juvenile Idiopathic Arthritis Treatment & Management and FDA drug approval documents"
+        },
+        "market_size_estimate": "$17.9B",
+        "market_size_usd": 17916498000.0,
+        "growth_rate": "5-8% CAGR (high unmet need)",
+        "tam_usd": 1800000000.0,
+        "tam_estimate": "$1.8B",
+        "tam_rationale": "Of ~257,000 global JIA patients, ~85% are diagnosed (218K), ~70% receive systemic treatment beyond NSAIDs (153K), ~40% require 2L+ biologics/JAK inhibitors after methotrexate inadequate response (61K). A new targeted therapy could capture 15-20% market share in this crowded field with 7 approved drugs (~10.3K patients). At $70K/yr average specialty biologic pricing for pediatric indication, TAM = $721M. However, including growth markets and pipeline expansion of treatable population, realistic TAM reaches $1.8B by 2030 given 8% CAGR in treatment market."
+      },
+      "scores": {
+        "clinical_signal": 9.0,
+        "evidence_quality": 4.7,
+        "market_opportunity": 7.7,
+        "overall_priority": 7.6,
+        "clinical_breakdown": {
+          "response_rate": 8.0,
+          "safety_profile": 10.0
+        },
+        "response_rate_score": 8.0,
+        "safety_profile_score": 10.0,
+        "evidence_breakdown": {
+          "sample_size": 2.0,
+          "publication_venue": 2.0,
+          "followup_duration": 10.0
+        },
+        "sample_size_score": 2.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 10.0,
+        "market_breakdown": {
+          "competitors": 3.0,
+          "market_size": 10.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 3.0,
+        "market_size_score": 10.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 4
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "35578304",
+          "doi": "10.1186/s13075-022-02794-x",
+          "url": "https://www.semanticscholar.org/paper/87cc82cdb100f9983aa5de52c796cd26ccd616e2",
+          "title": "Baricitinib decreases anti-dsDNA in patients with systemic lupus erythematosus: results from a phase II double-blind, randomized, placebo-controlled trial",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "Systemic Lupus Erythematosus",
+        "disease_normalized": null,
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": null,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "Patients with systemic lupus erythematosus with elevated anti-dsDNA antibodies at baseline"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": null,
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "2 mg and 4 mg",
+          "frequency": null,
+          "duration": "24 weeks",
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": "2 weeks for 2mg dose, 4 weeks for 4mg dose",
+          "duration_of_response": "Sustained through 24 weeks",
+          "effect_size_description": "Rapid and sustained significant decrease in anti-dsDNA antibodies beginning at weeks 2-4 and continuing through week 24",
+          "primary_endpoint": "Median change from baseline in anti-dsDNA antibodies",
+          "endpoint_result": "Significant decreases in anti-dsDNA: 2mg (-29.6 IU/mL), 4mg (-15.1 IU/mL) vs placebo (+3.0 IU/mL) at week 24",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib 2mg and 4mg demonstrated significant and sustained reductions in anti-dsDNA antibodies compared to placebo, with effects beginning as early as 2-4 weeks. The 4mg dose also significantly reduced IgG levels at weeks 12 and 24, suggesting potential impact on B cell activity."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Safety outcomes were not reported in this analysis, which focused specifically on serologic biomarker changes from the phase II trial.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Strong",
+        "comparator_baseline": null,
+        "follow_up_duration": "24 weeks",
+        "key_findings": "Baricitinib rapidly and significantly reduced anti-dsDNA antibodies in SLE patients, suggesting potential therapeutic benefit through modulation of B cell activity.",
+        "extraction_timestamp": "2025-12-05T21:50:51.795158",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Systemic Lupus Erythematosus",
+        "epidemiology": {
+          "us_prevalence_estimate": "72.8 per 100,000 people",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 204295,
+          "prevalence_source": "CDC-funded lupus registries",
+          "prevalence_source_url": "https://emedicine.medscape.com/article/332244-ov",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Benlysta (belimumab)",
+              "drug_class": "B-lymphocyte stimulator inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Systemic Lupus Erythematosus",
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved March 2011 for SLE, first biologic approved for lupus, IV and subcutaneous formulations available"
+            },
+            {
+              "drug_name": "Saphnelo (anifrolumab)",
+              "drug_class": "Type I interferon receptor antagonist",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Systemic Lupus Erythematosus",
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for moderate to severe SLE in adults receiving standard of care therapy"
+            },
+            {
+              "drug_name": "Rituxan (rituximab)",
+              "drug_class": "Anti-CD20 monoclonal antibody",
+              "is_branded_innovative": true,
+              "fda_approved": false,
+              "fda_approved_indication": null,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": "2L",
+              "notes": "Used off-label for SLE, not FDA approved for this specific indication"
+            }
+          ],
+          "approved_drug_names": [
+            "Benlysta (belimumab)",
+            "Saphnelo (anifrolumab)"
+          ],
+          "num_approved_drugs": 2,
+          "num_pipeline_therapies": 4,
+          "pipeline_therapies": [
+            {
+              "drug_name": "JBT-101",
+              "company": "Not specified",
+              "mechanism": "Not specified",
+              "phase": "Phase 3",
+              "trial_id": "NCT03093402",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Telitacicept",
+              "company": "Not specified",
+              "mechanism": "Dual inhibitor of B-lymphocyte stimulator (BLyS) and APRIL (a proliferation-inducing ligand)",
+              "phase": "Phase 3",
+              "trial_id": null,
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Deucravacitinib",
+              "company": "Not specified",
+              "mechanism": "Oral, selective, allosteric tyrosine kinase 2 inhibitor",
+              "phase": "Phase 3",
+              "trial_id": "NCT05617677",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Ustekinumab",
+              "company": "Not specified",
+              "mechanism": "Not specified",
+              "phase": "Phase 3",
+              "trial_id": null,
+              "expected_completion": null
+            }
+          ],
+          "pipeline_details": "The SLE clinical pipeline includes several Phase 3 trials testing novel mechanisms including dual BLyS/APRIL inhibition with telitacicept and selective TYK2 inhibition with deucravacitinib. Multiple Phase 3 programs are actively enrolling patients with active systemic lupus erythematosus.",
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": "Treatment typically begins with standard therapies including antimalarials and corticosteroids, with biologic DMARDs like belimumab or anifrolumab added as second-line therapy for patients with inadequate response.",
+          "unmet_need": true,
+          "unmet_need_description": "Limited number of FDA-approved biologics specifically for SLE, with many patients still requiring off-label treatments and immunosuppressants with significant side effects",
+          "competitive_landscape": "Only two branded innovative drugs are FDA-approved specifically for SLE: Benlysta as the first-in-class B-cell inhibitor and Saphnelo targeting interferon pathways. The market relies heavily on off-label use of other biologics and traditional immunosuppressants.",
+          "soc_source": "Drugs.com and Medscape"
+        },
+        "market_size_estimate": "$5.1B",
+        "market_size_usd": 5107375000.0,
+        "growth_rate": "5-8% CAGR (high unmet need)",
+        "tam_usd": 613500000.0,
+        "tam_estimate": "$613.5M",
+        "tam_rationale": "Of ~204K global SLE patients, ~85% are diagnosed (173K), ~75% receive treatment beyond antimalarials/steroids (130K), ~35% inadequately respond to standard therapy and need 2L biologics (45K patients). A new biologic could realistically capture 20-25% market share (~10K patients) given only 2 approved biologics and high unmet need. At $61K/yr average biologic cost (considering global pricing variations), TAM = $613M. Strong positioning opportunity in underserved 2L+ market with significant room for competition."
+      },
+      "scores": {
+        "clinical_signal": 7.0,
+        "evidence_quality": 2.7,
+        "market_opportunity": 8.7,
+        "overall_priority": 6.3,
+        "clinical_breakdown": {
+          "response_rate": 9.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 9.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 3.0,
+          "publication_venue": 2.0,
+          "followup_duration": 3.0
+        },
+        "sample_size_score": 3.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 3.0,
+        "market_breakdown": {
+          "competitors": 7.0,
+          "market_size": 9.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 7.0,
+        "market_size_score": 9.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 5
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38524384",
+          "doi": "10.1177/2050313X241235444",
+          "url": "https://www.semanticscholar.org/paper/dbf0762f2d658612639aac768df49760f5d34730",
+          "title": "Use of Baricitinib in a patient with treatment-resistant pyoderma gangrenosum",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "pyoderma gangrenosum",
+        "disease_normalized": "Pyoderma Gangrenosum",
+        "is_off_label": true,
+        "evidence_level": "Case Report",
+        "patient_population": {
+          "n_patients": 1,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [
+            "systemic corticosteroids",
+            "colchicine",
+            "intravenous immunoglobulin"
+          ],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "78-year-old female with treatment-resistant pyoderma gangrenosum and metastatic high-grade serous carcinoma of the ovary"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": null,
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": "4 mg daily",
+          "frequency": null,
+          "duration": null,
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": null,
+          "primary_endpoint": "response to treatment",
+          "endpoint_result": null,
+          "durability_signal": null,
+          "efficacy_summary": "Patient with treatment-resistant pyoderma gangrenosum was treated with baricitinib 4 mg daily in combination with tapering prednisone after failing multiple conventional therapies. Specific efficacy outcomes are not detailed in the abstract."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "Safety outcomes are not reported in the abstract.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Unknown",
+        "efficacy_signal": "Unknown",
+        "comparator_baseline": null,
+        "follow_up_duration": null,
+        "key_findings": "Baricitinib was used as a treatment option for treatment-resistant pyoderma gangrenosum in combination with corticosteroids.",
+        "extraction_timestamp": "2025-12-05T21:52:00.209224",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Pyoderma Gangrenosum",
+        "epidemiology": {
+          "us_prevalence_estimate": "5.8 per 100,000 adults",
+          "us_incidence_estimate": "0.04 to 5 per 100,000 per year",
+          "global_prevalence": null,
+          "patient_population_size": 15457,
+          "prevalence_source": "Journal of the American Academy of Dermatology",
+          "prevalence_source_url": "https://www.sciencedirect.com/science/article/abs/pii/S0190962219324946",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Infliximab (infliximab)",
+              "drug_class": "TNF-alpha inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": false,
+              "fda_approved_indication": null,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": 50000.0,
+              "line_of_therapy": "2L",
+              "notes": "Used off-label for pyoderma gangrenosum, FDA approved for other inflammatory conditions"
+            },
+            {
+              "drug_name": "Adalimumab (adalimumab)",
+              "drug_class": "TNF-alpha inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": false,
+              "fda_approved_indication": null,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": 60000.0,
+              "line_of_therapy": "2L",
+              "notes": "Used off-label for pyoderma gangrenosum, FDA approved for other inflammatory conditions"
+            },
+            {
+              "drug_name": "Risankizumab (risankizumab)",
+              "drug_class": "IL-23 inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": false,
+              "fda_approved_indication": null,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": 75000.0,
+              "line_of_therapy": "3L",
+              "notes": "Being studied for pyoderma gangrenosum, case reports show efficacy but no FDA approval for this indication"
+            },
+            {
+              "drug_name": "Guselkumab (guselkumab)",
+              "drug_class": "IL-23 inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": false,
+              "fda_approved_indication": null,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": 70000.0,
+              "line_of_therapy": "3L",
+              "notes": "Being studied for pyoderma gangrenosum but no FDA approval for this indication"
+            },
+            {
+              "drug_name": "IVIG (intravenous immunoglobulin)",
+              "drug_class": "Immunoglobulin",
+              "is_branded_innovative": true,
+              "fda_approved": false,
+              "fda_approved_indication": null,
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": 80000.0,
+              "line_of_therapy": "3L",
+              "notes": "Used off-label for pyoderma gangrenosum but no FDA approval for this specific indication"
+            }
+          ],
+          "approved_drug_names": [],
+          "num_approved_drugs": 0,
+          "num_pipeline_therapies": 4,
+          "pipeline_therapies": [
+            {
+              "drug_name": "spesolimab",
+              "company": null,
+              "mechanism": "anti-IL-36 receptor antibody",
+              "phase": "Phase 2",
+              "trial_id": null,
+              "expected_completion": null
+            },
+            {
+              "drug_name": "velobelimab",
+              "company": null,
+              "mechanism": "anti-C5a antibody",
+              "phase": "Phase 2",
+              "trial_id": null,
+              "expected_completion": null
+            },
+            {
+              "drug_name": "guselkumab",
+              "company": null,
+              "mechanism": "IL-23 inhibitor",
+              "phase": "Phase 2",
+              "trial_id": "NCT06563323",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "baricitinib",
+              "company": null,
+              "mechanism": "JAK inhibitor",
+              "phase": "Phase 2",
+              "trial_id": null,
+              "expected_completion": null
+            }
+          ],
+          "pipeline_details": "The pyoderma gangrenosum pipeline includes several promising Phase 2 trials targeting different inflammatory pathways, with spesolimab (anti-IL-36) showing particular promise and planned Phase 3 development. Multiple mechanisms are being explored including IL-36, complement C5a, IL-23, and JAK inhibition.",
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": "No FDA-approved treatments exist specifically for pyoderma gangrenosum. Treatment relies on off-label use of anti-inflammatory agents including corticosteroids as first-line, followed by immunosuppressants and biologics.",
+          "unmet_need": true,
+          "unmet_need_description": "Complete absence of FDA-approved treatments specifically for pyoderma gangrenosum, requiring reliance on off-label use of therapies approved for other inflammatory conditions",
+          "competitive_landscape": "The pyoderma gangrenosum treatment landscape represents a significant unmet medical need with no FDA-approved therapies. Current treatment relies heavily on off-label use of TNF-alpha inhibitors, IL-23 inhibitors, and other biologics approved for conditions like psoriasis and inflammatory bowel disease.",
+          "soc_source": "Medscape - https://emedicine.medscape.com/article/1123821-treatment"
+        },
+        "market_size_estimate": "$1.5B",
+        "market_size_usd": 1545700000.0,
+        "growth_rate": "5-8% CAGR (high unmet need)",
+        "tam_usd": 347000000.0,
+        "tam_estimate": "$347M",
+        "tam_rationale": "Of ~15,457 US patients with pyoderma gangrenosum, ~80% are diagnosed (12.4K) given the severe, visible nature of the disease, ~85% receive systemic treatment (10.5K) due to high morbidity. With no FDA-approved therapies, a first-to-market drug could capture 60-70% market share (~7K patients) while off-label alternatives remain. At $50K/yr pricing (specialty dermatology/immunology range for rare inflammatory conditions), TAM = $347M."
+      },
+      "scores": {
+        "clinical_signal": 5.0,
+        "evidence_quality": 2.7,
+        "market_opportunity": 9.3,
+        "overall_priority": 5.5,
+        "clinical_breakdown": {
+          "response_rate": 5.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 5.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 1.0,
+          "publication_venue": 2.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 1.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 10.0,
+          "market_size": 8.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 10.0,
+        "market_size_score": 8.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 6
+    },
+    {
+      "extraction": {
+        "source": {
+          "pmid": "38487164",
+          "doi": "10.3389/fphar.2024.1324892",
+          "url": "https://www.semanticscholar.org/paper/2ccf39d0905da10007ab903980602d33b0b7d357",
+          "title": "Off-label use of Baricitinib improves moderate and severe atopic dermatitis in China through inhibiting MAPK and PI3K/Akt/mTOR pathway via targeting JAK-STAT signaling of CD4+ cells",
+          "authors": null,
+          "journal": null,
+          "year": null,
+          "citation": null,
+          "publication_venue": "Web source",
+          "is_open_access": false
+        },
+        "disease": "moderate and severe atopic dermatitis",
+        "disease_normalized": "Atopic Dermatitis",
+        "is_off_label": true,
+        "evidence_level": "Retrospective Study",
+        "patient_population": {
+          "n_patients": null,
+          "age_description": null,
+          "sex_distribution": null,
+          "prior_treatments_failed": [],
+          "disease_severity": null,
+          "comorbidities": null,
+          "description": "patients with moderate and severe atopic dermatitis with hyperactive immune status and upregulated JAK1 and JAK2 genes on lymphocytes"
+        },
+        "treatment": {
+          "drug_name": "baricitinib",
+          "generic_name": null,
+          "mechanism": "Janus Kinase Inhibitor",
+          "target": null,
+          "route_of_administration": "oral",
+          "dose": null,
+          "frequency": null,
+          "duration": null,
+          "concomitant_medications": null
+        },
+        "efficacy": {
+          "response_rate": null,
+          "responders_n": null,
+          "responders_pct": null,
+          "time_to_response": null,
+          "duration_of_response": null,
+          "effect_size_description": "improvement in moderate and severe atopic dermatitis through inhibition of Th2 cell activation and cytokine secretion",
+          "primary_endpoint": "improvement in immune hyperresponsiveness and clinical symptoms",
+          "endpoint_result": "improved immune hyperresponsiveness and clinical symptoms in moderate and severe AD",
+          "durability_signal": null,
+          "efficacy_summary": "Baricitinib improved immune hyperresponsiveness and clinical symptoms in moderate and severe atopic dermatitis by inhibiting Th2 cell subset activation and reducing Th2-type cytokine secretion. The treatment worked through MAPK, mTOR and PI3K-Akt signaling pathways by targeting JAK-STAT signaling."
+        },
+        "safety": {
+          "adverse_events": [],
+          "serious_adverse_events": [],
+          "sae_count": null,
+          "sae_percentage": null,
+          "discontinuations_n": null,
+          "discontinuations_due_to_ae": null,
+          "discontinuation_reasons": [],
+          "safety_summary": "No safety outcomes were reported in this study.",
+          "safety_profile": "Unknown"
+        },
+        "outcome_result": "Success",
+        "efficacy_signal": "Moderate",
+        "comparator_baseline": null,
+        "follow_up_duration": null,
+        "key_findings": "Baricitinib effectively improved moderate and severe atopic dermatitis in Chinese patients through JAK-STAT pathway inhibition, providing theoretical basis for off-label clinical use.",
+        "extraction_timestamp": "2025-12-05T21:52:42.894281",
+        "extraction_confidence": 0.5
+      },
+      "market_intelligence": {
+        "disease": "Atopic Dermatitis",
+        "epidemiology": {
+          "us_prevalence_estimate": "7.3% of adults",
+          "us_incidence_estimate": null,
+          "global_prevalence": null,
+          "patient_population_size": 16500000,
+          "prevalence_source": "Atopic Dermatitis in America Study",
+          "prevalence_source_url": "https://pubmed.ncbi.nlm.nih.gov/30389491/",
+          "trend": null
+        },
+        "standard_of_care": {
+          "top_treatments": [
+            {
+              "drug_name": "Dupixent (dupilumab)",
+              "drug_class": "IL-4/IL-13 inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Moderate-to-Severe Atopic Dermatitis",
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for moderate-to-severe atopic dermatitis in multiple age groups including adults, adolescents, children 6-11 years, and children 6 months to 5 years"
+            },
+            {
+              "drug_name": "Adbry (tralokinumab-ldrm)",
+              "drug_class": "IL-13 inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Moderate-to-Severe Atopic Dermatitis",
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": "2L",
+              "notes": "FDA approved for moderate-to-severe atopic dermatitis in patients aged 12 years and older, first FDA approved biologic that specifically binds to and inhibits IL-13"
+            },
+            {
+              "drug_name": "Opzelura (ruxolitinib)",
+              "drug_class": "JAK inhibitor",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Atopic Dermatitis",
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": "1L",
+              "notes": "First topical JAK inhibitor approved for mild-to-moderate atopic dermatitis in nonimmunocompromised children (age 2 years and older) and adults"
+            },
+            {
+              "drug_name": "Ebglyss",
+              "drug_class": "Unknown",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Atopic Dermatitis",
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Recently FDA approved for atopic dermatitis"
+            },
+            {
+              "drug_name": "Nemluvio",
+              "drug_class": "Unknown",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Atopic Dermatitis",
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Recently FDA approved for atopic dermatitis"
+            },
+            {
+              "drug_name": "Zoryve",
+              "drug_class": "Unknown",
+              "is_branded_innovative": true,
+              "fda_approved": true,
+              "fda_approved_indication": "Atopic Dermatitis",
+              "efficacy_range": null,
+              "efficacy_pct": null,
+              "annual_cost_usd": null,
+              "line_of_therapy": null,
+              "notes": "Recently FDA approved for atopic dermatitis"
+            }
+          ],
+          "approved_drug_names": [
+            "Dupixent (dupilumab)",
+            "Adbry (tralokinumab-ldrm)",
+            "Opzelura (ruxolitinib)",
+            "Ebglyss",
+            "Nemluvio",
+            "Zoryve"
+          ],
+          "num_approved_drugs": 6,
+          "num_pipeline_therapies": 3,
+          "pipeline_therapies": [
+            {
+              "drug_name": "LW402",
+              "company": "Unknown",
+              "mechanism": "Unknown",
+              "phase": "Phase 3",
+              "trial_id": "NCT07186387",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Tapinarof",
+              "company": "Unknown",
+              "mechanism": "Unknown",
+              "phase": "Phase 3",
+              "trial_id": "NCT05014568",
+              "expected_completion": null
+            },
+            {
+              "drug_name": "Lebrikizumab",
+              "company": "Dermira",
+              "mechanism": "Unknown",
+              "phase": "Phase 3",
+              "trial_id": "NCT04146363",
+              "expected_completion": null
+            }
+          ],
+          "pipeline_details": "The atopic dermatitis pipeline shows active Phase 3 trials for multiple therapies including LW402, Tapinarof, and Lebrikizumab targeting moderate-to-severe disease. Lebrikizumab has completed two 52-week Phase 3 trials showing effectiveness in adolescents and adults.",
+          "avg_annual_cost_usd": null,
+          "treatment_paradigm": "Treatment approach starts with topical therapies like JAK inhibitors for mild-to-moderate disease, then progresses to systemic biologics (IL-4/IL-13 inhibitors) for moderate-to-severe atopic dermatitis when topical therapies are inadequate.",
+          "unmet_need": true,
+          "unmet_need_description": "Despite multiple approved treatments, many patients still require better control of moderate-to-severe disease with improved safety profiles and oral treatment options",
+          "competitive_landscape": "The atopic dermatitis market is dominated by biologics targeting IL-4/IL-13 pathways (Dupixent, Adbry) for systemic treatment and topical JAK inhibitors for localized therapy. Recent approvals including Ebglyss, Nemluvio, and Zoryve indicate continued innovation in this therapeutic area.",
+          "soc_source": "FDA Multi-Disciplinary Review and Evaluation and Drugs.com - https://www.fda.gov/media/189437/download"
+        },
+        "market_size_estimate": "$412.5B",
+        "market_size_usd": 412500000000.0,
+        "growth_rate": "5-8% CAGR (high unmet need)",
+        "tam_usd": 4950000000.0,
+        "tam_estimate": "$4.95B",
+        "tam_rationale": "Of 16.5M US atopic dermatitis patients, ~85% are diagnosed (14M), ~70% receive treatment (9.8M), ~25% have moderate-to-severe disease requiring systemic therapy (2.45M patients). A new biologic could capture 15-20% market share in this competitive landscape with 6 approved drugs (~450K patients). At $11K/year average pricing (blended topical/systemic), TAM = $4.95B. Strong unmet need and growing biologics adoption support market expansion."
+      },
+      "scores": {
+        "clinical_signal": 5.5,
+        "evidence_quality": 3.3,
+        "market_opportunity": 7.7,
+        "overall_priority": 5.5,
+        "clinical_breakdown": {
+          "response_rate": 6.0,
+          "safety_profile": 5.0
+        },
+        "response_rate_score": 6.0,
+        "safety_profile_score": 5.0,
+        "evidence_breakdown": {
+          "sample_size": 3.0,
+          "publication_venue": 2.0,
+          "followup_duration": 5.0
+        },
+        "sample_size_score": 3.0,
+        "publication_venue_score": 2.0,
+        "followup_duration_score": 5.0,
+        "market_breakdown": {
+          "competitors": 3.0,
+          "market_size": 10.0,
+          "unmet_need": 10.0
+        },
+        "competitors_score": 3.0,
+        "market_size_score": 10.0,
+        "unmet_need_score": 10.0
+      },
+      "rank": 7
+    }
+  ],
+  "analysis_date": "2025-12-05T22:02:14.121687",
+  "search_queries_used": [],
+  "papers_screened": 48,
+  "papers_extracted": 10,
+  "total_input_tokens": 180472,
+  "total_output_tokens": 33697,
+  "estimated_cost_usd": 0.0
+}

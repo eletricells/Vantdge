@@ -1,0 +1,29 @@
+Extract clinical trial pipeline data for {{ disease }}.
+
+Search Results:
+{{ search_results | to_json }}
+
+Return ONLY valid JSON:
+{
+    "pipeline_therapies": [
+        {
+            "drug_name": "Drug name or code (e.g., 'ABC-123' or 'drugname')",
+            "company": "Sponsoring company",
+            "mechanism": "Mechanism of action",
+            "phase": "Phase 1/Phase 2/Phase 3",
+            "trial_id": "NCT number if available",
+            "expected_completion": "Expected date or null"
+        }
+    ],
+    "pipeline_summary": "1-2 sentence summary of pipeline activity"
+}
+
+RULES:
+- Only include drugs in ACTIVE clinical trials (Phase 1, 2, or 3)
+- EXCLUDE: Preclinical drugs, discontinued trials, already approved drugs
+- EXCLUDE: Trials for other indications even if same drug
+- Include NCT numbers when available
+- Focus on this SPECIFIC indication: {{ disease }}
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

@@ -201,6 +201,7 @@ with st.sidebar:
     - Customize agent behavior
     - Edit system prompts
     - Fine-tune analysis rigor
+    - **Prompt Manager** ⭐ NEW - View/edit all templates
 
     **🔬 Landscape Discovery**
     - Landscape Discovery (V1)

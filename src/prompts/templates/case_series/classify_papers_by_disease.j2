@@ -1,0 +1,25 @@
+Classify these papers by the primary disease/condition being studied for {{ drug_name }}.
+
+Papers:
+{% for paper in papers %}
+{{ loop.index }}. Title: {{ paper.title }}
+{% if paper.abstract %}   Abstract: {{ paper.abstract[:300] }}...{% endif %}
+{% endfor %}
+
+Return ONLY valid JSON mapping paper number to disease:
+{
+    "classifications": [
+        {"paper_num": 1, "disease": "exact disease name"},
+        {"paper_num": 2, "disease": "exact disease name"},
+        ...
+    ]
+}
+
+Rules:
+- Use standardized disease names (e.g., "Vitiligo" not "vitiligo", "Alopecia Areata" not "AA")
+- If a paper covers multiple diseases, choose the PRIMARY one
+- If disease is unclear, use "Unknown"
+- Group similar conditions together (e.g., all types of eczema under "Atopic Dermatitis")
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

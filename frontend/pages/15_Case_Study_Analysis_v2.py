@@ -23,6 +23,7 @@ sys.path.insert(0, str(project_root))
 
 from src.agents.drug_repurposing_case_series_agent import DrugRepurposingCaseSeriesAgent
 from src.utils.config import get_settings
+from src.visualization.case_series_charts import render_priority_matrix, render_market_opportunity
 
 # Configure logging
 logging.basicConfig(
@@ -76,7 +77,9 @@ def get_agent():
         database_url=database_url,
         case_series_database_url=database_url,  # Use same DB for case series persistence
         tavily_api_key=getattr(settings, 'tavily_api_key', None),
-        pubmed_email='noreply@example.com',
+        pubmed_email=getattr(settings, 'pubmed_email', None) or 'noreply@example.com',
+        pubmed_api_key=getattr(settings, 'pubmed_api_key', None),
+        semantic_scholar_api_key=getattr(settings, 'semantic_scholar_api_key', None),
         cache_max_age_days=30
     )
 
@@ -205,7 +208,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📋 Data Extraction",
     "📊 Scoring & Results",
     "📈 Full Analysis",
-    "📜 Historical Runs"
+    "📚 Analysis Browser"
 ])
 
 # =====================================================
@@ -443,7 +446,7 @@ with tab2:
                             st.caption(f"💡 *{paper['llm_relevance_reason']}*")
 
                         # Show truncated abstract
-                        abstract = paper.get('abstract', 'No abstract available')
+                        abstract = paper.get('abstract') or 'No abstract available'
                         if len(abstract) > 300:
                             st.caption(abstract[:300] + "...")
                         else:
@@ -490,7 +493,7 @@ with tab2:
                         st.caption(f"🏥 Disease: **{paper['extracted_disease']}**")
 
                     st.markdown("**Abstract:**")
-                    abstract = paper.get('abstract', 'No abstract available')
+                    abstract = paper.get('abstract') or 'No abstract available'
                     st.write(abstract[:500] + "..." if len(abstract) > 500 else abstract)
 
 # =====================================================
@@ -515,21 +518,19 @@ with tab3:
 
         st.info(f"📚 {len(case_series)} case series available for extraction")
 
-        # Select papers to extract
-        col1, col2 = st.columns(2)
-        with col1:
-            max_extract = st.slider("Max papers to extract", 1, min(20, len(case_series)), min(5, len(case_series)))
-        with col2:
-            st.metric("Estimated Cost", f"~${max_extract * 0.05:.2f}")
+        # Show estimated cost for extracting all papers
+        estimated_cost = len(case_series) * 0.05
+        st.metric("Estimated Cost (all papers)", f"~${estimated_cost:.2f}")
 
         if st.button("📋 Extract Structured Data", type="primary", use_container_width=True):
-            with st.spinner(f"Extracting data from {max_extract} papers..."):
+            with st.spinner(f"Extracting data from {len(case_series)} papers..."):
                 try:
                     extractions = []
                     progress_bar = st.progress(0)
                     drug_info = st.session_state.v2_drug_info or {}
 
-                    for i, paper in enumerate(case_series[:max_extract]):
+                    total_papers = len(case_series)
+                    for i, paper in enumerate(case_series):
                         # Extract using agent method with correct signature
                         extraction = agent._extract_case_series_data(
                             drug_name=drug_name,
@@ -541,7 +542,7 @@ with tab3:
                                 'paper': paper,
                                 'extraction': extraction
                             })
-                        progress_bar.progress((i + 1) / max_extract)
+                        progress_bar.progress((i + 1) / total_papers)
 
                     st.session_state.v2_extractions = extractions
                     st.success(f"✅ Extracted data from {len(extractions)} papers!")
@@ -649,6 +650,76 @@ with tab4:
         # Display scored opportunities
         if st.session_state.v2_opportunities:
             st.markdown("---")
+
+            # Create DataFrame for visualizations
+            import pandas as pd
+
+            viz_data = []
+            for opp in st.session_state.v2_opportunities:
+                scores = opp.scores
+                ext = opp.extraction
+                market_intel = opp.market_intelligence
+
+                viz_data.append({
+                    'Disease': ext.disease if ext else 'Unknown',
+                    '# Studies': 1,  # Each extraction is from one paper
+                    'Total Patients': ext.sample_size if ext else 0,
+                    'Clinical Score (avg)': scores.clinical_signal,
+                    'Evidence Score (avg)': scores.evidence_quality,
+                    'Market Score (avg)': scores.market_opportunity,
+                    'Overall Score (avg)': scores.overall_priority,
+                    '# Approved Competitors': market_intel.approved_competitors if market_intel else 0,
+                    'Unmet Need': 'Yes' if market_intel and market_intel.unmet_need_score >= 7 else 'No',
+                    'TAM Estimate': market_intel.tam_estimate if market_intel else 'N/A'
+                })
+
+            viz_df = pd.DataFrame(viz_data)
+
+            # Aggregate by disease (in case multiple papers for same disease)
+            agg_df = viz_df.groupby('Disease').agg({
+                '# Studies': 'sum',
+                'Total Patients': 'sum',
+                'Clinical Score (avg)': 'mean',
+                'Evidence Score (avg)': 'mean',
+                'Market Score (avg)': 'mean',
+                'Overall Score (avg)': 'mean',
+                '# Approved Competitors': 'first',
+                'Unmet Need': 'first',
+                'TAM Estimate': 'first'
+            }).reset_index()
+
+            # Display visualizations
+            st.subheader("📊 Visual Analysis")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("#### Priority Matrix")
+                st.caption("Clinical Signal vs Evidence Quality")
+                try:
+                    render_priority_matrix(
+                        agg_df,
+                        drug_name=st.session_state.v2_drug_name,
+                        height=500
+                    )
+                except Exception as e:
+                    st.error(f"Error rendering priority matrix: {e}")
+                    logger.error(f"Priority matrix error: {e}", exc_info=True)
+
+            with col2:
+                st.markdown("#### Market Opportunity")
+                st.caption("Competitive Landscape vs Priority Score")
+                try:
+                    render_market_opportunity(
+                        agg_df,
+                        drug_name=st.session_state.v2_drug_name,
+                        height=500
+                    )
+                except Exception as e:
+                    st.error(f"Error rendering market opportunity: {e}")
+                    logger.error(f"Market opportunity error: {e}", exc_info=True)
+
+            st.markdown("---")
             st.subheader("🏆 Ranked Opportunities")
 
             for i, opp in enumerate(st.session_state.v2_opportunities, 1):
@@ -722,17 +793,11 @@ with tab5:
 
         st.subheader(f"🎯 Analyze: {drug_name}")
 
-        # Configuration
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            max_papers = st.number_input("Max papers", 5, 50, 15, key="full_max_papers")
-        with col2:
-            max_extract = st.number_input("Max extractions", 3, 20, 10, key="full_max_extract")
-        with col3:
-            include_market = st.checkbox("Include market intel", value=True, key="full_market")
+        # Configuration - simplified, extract ALL papers
+        include_market = st.checkbox("Include market intelligence", value=True, key="full_market")
 
-        estimated_cost = max_extract * 0.08  # Rough estimate
-        st.caption(f"💰 Estimated cost: ~${estimated_cost:.2f}")
+        st.caption("💡 This will search for all case series/reports and extract data from ALL relevant papers found.")
+        st.caption("💰 Estimated cost: ~$1-3 depending on number of papers (typically 30-60 minutes)")
 
         if st.button("🚀 Run Full Analysis", type="primary", use_container_width=True):
             progress_container = st.container()
@@ -742,60 +807,54 @@ with tab5:
                 status_text = st.empty()
 
                 try:
-                    # Step 1: Drug info
-                    status_text.text("Step 1/5: Fetching drug information...")
+                    # Use the main analyze_drug method which saves to database
+                    status_text.text("Running full analysis pipeline (this may take 30-60 minutes)...")
                     progress_bar.progress(10)
-                    drug_info = agent._get_drug_info(drug_name)
-                    st.session_state.v2_drug_info = drug_info
 
-                    # Step 2: Search
-                    status_text.text("Step 2/5: Searching for case series...")
-                    progress_bar.progress(25)
-                    exclude_indications = drug_info.get('approved_indications', [])
-                    case_series = agent._search_case_series(
+                    # Call the main analyze_drug method - this saves to database!
+                    # max_papers=500 effectively means "no limit" - LLM filtering will reduce to relevant papers
+                    result = agent.analyze_drug(
                         drug_name=drug_name,
-                        exclude_indications=exclude_indications,
-                        max_papers=max_papers,
-                        include_web_search=True
+                        max_papers=500,
+                        include_web_search=True,
+                        enrich_market_data=include_market
                     )
-                    st.session_state.v2_case_series = case_series
 
-                    # Step 3: Extract
-                    status_text.text("Step 3/5: Extracting structured data...")
-                    progress_bar.progress(40)
-                    extractions = []
-                    for i, paper in enumerate(case_series[:max_extract]):
-                        extraction = agent._extract_case_series_data(
-                            drug_name=drug_name,
-                            drug_info=drug_info,
-                            paper=paper
-                        )
-                        if extraction:
-                            extractions.append({'paper': paper, 'extraction': extraction})
-                        progress_bar.progress(40 + int(30 * (i + 1) / max_extract))
-                    st.session_state.v2_extractions = extractions
+                    progress_bar.progress(90)
+                    status_text.text("Saving results...")
 
-                    # Step 4: Score
-                    status_text.text("Step 4/5: Scoring opportunities...")
-                    progress_bar.progress(75)
-                    from src.models.case_series_schemas import RepurposingOpportunity
+                    # Update session state with results
+                    st.session_state.v2_drug_info = {
+                        'drug_name': result.drug_name,
+                        'generic_name': result.generic_name,
+                        'mechanism': result.mechanism,
+                        'target': result.target,
+                        'approved_indications': result.approved_indications or []
+                    }
+                    st.session_state.v2_opportunities = result.opportunities
+                    st.session_state.v2_extractions = [{'paper': {}, 'extraction': opp.extraction} for opp in result.opportunities]
 
-                    opportunities = []
-                    for item in extractions:
-                        ext = item['extraction']
-                        opp = RepurposingOpportunity(extraction=ext)
-                        scores = agent._score_opportunity(opp)
-                        opp.scores = scores
-                        opportunities.append(opp)
+                    # Auto-export to Excel
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    excel_filename = f"{drug_name.lower().replace(' ', '_')}_report_{timestamp}.xlsx"
+                    json_filename = f"{drug_name.lower().replace(' ', '_')}_full_{timestamp}.json"
 
-                    opportunities.sort(key=lambda x: x.scores.overall_priority, reverse=True)
-                    st.session_state.v2_opportunities = opportunities
+                    excel_path = agent.export_to_excel(result, excel_filename)
+                    json_path = agent.export_to_json(result, json_filename)
 
-                    # Step 5: Complete
-                    status_text.text("Step 5/5: Analysis complete!")
                     progress_bar.progress(100)
+                    status_text.text("Analysis complete!")
 
-                    st.success(f"✅ Analysis complete! Found {len(opportunities)} repurposing opportunities.")
+                    st.success(f"✅ Analysis complete! Found {len(result.opportunities)} repurposing opportunities.")
+                    st.info(f"📊 Excel report saved: `{excel_path}`")
+                    st.info(f"📄 JSON data saved: `{json_path}`")
+
+                    # Show cost info
+                    if result.total_input_tokens or result.total_output_tokens:
+                        input_cost = (result.total_input_tokens or 0) * 0.003 / 1000
+                        output_cost = (result.total_output_tokens or 0) * 0.015 / 1000
+                        total_cost = input_cost + output_cost
+                        st.caption(f"💰 Estimated API cost: ${total_cost:.2f}")
 
                 except Exception as e:
                     st.error(f"Error during analysis: {e}")
@@ -822,6 +881,70 @@ with tab5:
                 unique_indications = len(set(o.extraction.disease for o in opps))
                 st.metric("Unique Indications", unique_indications)
 
+            # Visual Analysis
+            st.markdown("### 📊 Visual Analysis")
+
+            # Create DataFrame for visualizations
+            import pandas as pd
+
+            viz_data = []
+            for opp in opps:
+                scores = opp.scores
+                ext = opp.extraction
+                market_intel = opp.market_intelligence
+
+                viz_data.append({
+                    'Disease': ext.disease if ext else 'Unknown',
+                    '# Studies': 1,
+                    'Total Patients': ext.sample_size if ext else 0,
+                    'Clinical Score (avg)': scores.clinical_signal,
+                    'Evidence Score (avg)': scores.evidence_quality,
+                    'Market Score (avg)': scores.market_opportunity,
+                    'Overall Score (avg)': scores.overall_priority,
+                    '# Approved Competitors': market_intel.approved_competitors if market_intel else 0,
+                    'Unmet Need': 'Yes' if market_intel and market_intel.unmet_need_score >= 7 else 'No',
+                    'TAM Estimate': market_intel.tam_estimate if market_intel else 'N/A'
+                })
+
+            viz_df = pd.DataFrame(viz_data)
+
+            # Aggregate by disease
+            agg_df = viz_df.groupby('Disease').agg({
+                '# Studies': 'sum',
+                'Total Patients': 'sum',
+                'Clinical Score (avg)': 'mean',
+                'Evidence Score (avg)': 'mean',
+                'Market Score (avg)': 'mean',
+                'Overall Score (avg)': 'mean',
+                '# Approved Competitors': 'first',
+                'Unmet Need': 'first',
+                'TAM Estimate': 'first'
+            }).reset_index()
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                try:
+                    render_priority_matrix(
+                        agg_df,
+                        drug_name=drug_name,
+                        height=500
+                    )
+                except Exception as e:
+                    st.error(f"Error rendering priority matrix: {e}")
+
+            with col2:
+                try:
+                    render_market_opportunity(
+                        agg_df,
+                        drug_name=drug_name,
+                        height=500
+                    )
+                except Exception as e:
+                    st.error(f"Error rendering market opportunity: {e}")
+
+            st.markdown("---")
+
             # Top opportunities table
             st.markdown("### 🏆 Top Opportunities")
 
@@ -836,7 +959,6 @@ with tab5:
                     "Market": opp.scores.market_opportunity
                 })
 
-            import pandas as pd
             df = pd.DataFrame(table_data)
             st.dataframe(df, use_container_width=True, hide_index=True)
 
@@ -863,7 +985,7 @@ with tab5:
                     json_str,
                     file_name=f"{drug_name}_case_series_analysis.json",
                     mime="application/json",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             with col2:
@@ -874,18 +996,136 @@ with tab5:
                     csv_data,
                     file_name=f"{drug_name}_case_series_analysis.csv",
                     mime="text/csv",
-                    use_container_width=True
+                    width='stretch'
                 )
 
+            # Report Generation Section
+            st.markdown("---")
+            st.markdown("### 📄 Generate Analytical Report")
+            st.markdown("""
+            Generate a comprehensive analytical report using Claude. The report provides:
+            - **Objective analysis** of findings without strategic recommendations
+            - **Score derivation** with specific data citations
+            - **Concordance analysis** across studies and endpoints
+            - **Cross-indication patterns** and mechanistic insights
+            - **Evidence quality assessment** and limitations
+            - **Competitive landscape** context
+            """)
+
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                if st.button("🤖 Generate Report with Claude", type="primary", use_container_width=True):
+                    with st.spinner("Generating analytical report... This may take 1-2 minutes."):
+                        try:
+                            # Find the most recent Excel export for this drug
+                            import glob
+                            excel_pattern = f"data/case_series/{drug_name.lower().replace(' ', '_')}_report_*.xlsx"
+                            excel_files = glob.glob(excel_pattern)
+
+                            if excel_files:
+                                # Use most recent Excel file
+                                excel_path = max(excel_files, key=os.path.getctime)
+
+                                # Generate report
+                                report_text, report_path = agent.generate_analytical_report(
+                                    excel_path=excel_path,
+                                    auto_save=True
+                                )
+
+                                # Store in session state
+                                st.session_state.v2_generated_report = report_text
+                                st.session_state.v2_report_path = report_path
+
+                                st.success(f"✅ Report generated! Saved to: `{report_path}`")
+                                st.info("📖 Scroll down to view the report")
+
+                            else:
+                                st.error("❌ No Excel export found. Please run the full analysis first.")
+
+                        except Exception as e:
+                            st.error(f"Error generating report: {e}")
+                            logger.error(f"Report generation error: {e}", exc_info=True)
+
+            with col2:
+                # Show cost estimate
+                st.caption("💰 Cost: ~$0.10-0.20")
+                st.caption("⏱️ Time: 1-2 min")
+
+            with col3:
+                # Download button if report exists
+                if 'v2_generated_report' in st.session_state and st.session_state.v2_generated_report:
+                    st.download_button(
+                        "📥 Download Report",
+                        st.session_state.v2_generated_report,
+                        file_name=f"{drug_name}_analytical_report.md",
+                        mime="text/markdown",
+                        use_container_width=True
+                    )
+
+            # Display generated report
+            if 'v2_generated_report' in st.session_state and st.session_state.v2_generated_report:
+                st.markdown("---")
+                st.markdown("### 📖 Generated Analytical Report")
+
+                # Show report in expandable section
+                with st.expander("📄 View Full Report", expanded=True):
+                    st.markdown(st.session_state.v2_generated_report)
+
+                # Show report metadata
+                if 'v2_report_path' in st.session_state:
+                    st.caption(f"💾 Saved to: `{st.session_state.v2_report_path}`")
+
+            # Full Excel export with detailed endpoints
+            st.markdown("---")
+            st.markdown("### 📊 Full Excel Export (with detailed endpoints)")
+            st.caption("Exports comprehensive Excel with Summary, Opportunities, Efficacy Endpoints, Safety Endpoints, and Market Intelligence sheets")
+
+            if st.button("📥 Export Full Excel Report", type="primary", use_container_width=True):
+                with st.spinner("Generating comprehensive Excel report..."):
+                    try:
+                        # Build full result object for export
+                        from src.models.case_series_schemas import DrugAnalysisResult
+
+                        full_result = DrugAnalysisResult(
+                            drug_name=drug_name,
+                            generic_name=st.session_state.v2_drug_info.get('generic_name') if st.session_state.v2_drug_info else None,
+                            mechanism=st.session_state.v2_drug_info.get('mechanism') if st.session_state.v2_drug_info else None,
+                            approved_indications=st.session_state.v2_drug_info.get('approved_indications', []) if st.session_state.v2_drug_info else [],
+                            opportunities=opps,
+                            papers_screened=len(st.session_state.v2_case_series) if st.session_state.v2_case_series else len(opps),
+                            analysis_date=datetime.now()
+                        )
+
+                        # Use agent's export method
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        filename = f"{drug_name.lower().replace(' ', '_')}_report_{timestamp}.xlsx"
+                        filepath = agent.export_to_excel(full_result, filename)
+
+                        st.success(f"✅ Excel report saved to: `{filepath}`")
+
+                        # Also provide download button
+                        with open(filepath, 'rb') as f:
+                            st.download_button(
+                                "📥 Download Excel Report",
+                                f.read(),
+                                file_name=filename,
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                width='stretch'
+                            )
+                    except Exception as e:
+                        st.error(f"Error exporting: {e}")
+                        logger.error(f"Excel export error: {e}", exc_info=True)
+
 # =====================================================
-# TAB 6: HISTORICAL RUNS
+# TAB 6: ANALYSIS BROWSER
 # =====================================================
 
 with tab6:
-    st.header("📜 Historical Analysis Runs")
+    st.header("📚 Analysis Browser")
     st.markdown("""
-    View and manage historical drug repurposing analyses. Click on any run to view details
-    or load it into the current session.
+    Browse and explore all historical drug repurposing analyses. View complete reports with
+    visualizations, tables, and export options.
     """)
 
     if not agent.database_available:
@@ -952,53 +1192,402 @@ with tab6:
 
             # Allow loading a specific run
             st.markdown("---")
-            st.subheader("🔍 View Run Details")
+            st.subheader("🔍 Select Analysis to View")
 
-            run_id_input = st.text_input(
-                "Enter Run ID (first 8 characters shown in table)",
-                placeholder="e.g., abc12345-..."
-            )
+            # Group runs by drug for easier selection
+            drug_runs = {}
+            for run in runs:
+                drug_name = run.get('drug_name', 'Unknown')
+                if drug_name not in drug_runs:
+                    drug_runs[drug_name] = []
+                drug_runs[drug_name].append(run)
 
-            # Also allow selection from runs
-            run_labels = [f"{r.get('drug_name', 'Unknown')} - {r.get('started_at', 'Unknown')}"
-                         for r in runs]
-            selected_idx = st.selectbox(
-                "Or select from recent runs",
-                options=range(len(run_labels)),
-                format_func=lambda i: run_labels[i]
-            )
-
-            col1, col2 = st.columns(2)
+            # Create dropdown options
+            col1, col2 = st.columns([2, 1])
 
             with col1:
-                if st.button("📋 View Details", use_container_width=True):
-                    run_id = run_id_input or runs[selected_idx].get('run_id')
-                    if run_id:
-                        details = agent.get_run_details(run_id)
-                        if details:
-                            st.json(details)
-                        else:
-                            st.error("Run not found")
+                # Drug selection dropdown
+                drug_names = sorted(drug_runs.keys())
+                selected_drug = st.selectbox(
+                    "📊 Select Drug",
+                    options=drug_names,
+                    help="Choose a drug to view its analysis runs"
+                )
 
             with col2:
-                if st.button("📥 Load into Session", type="primary", use_container_width=True):
-                    run_id = run_id_input or runs[selected_idx].get('run_id')
-                    if run_id:
-                        with st.spinner("Loading run..."):
-                            result = agent.load_historical_run(run_id)
-                            if result:
-                                st.session_state.v2_drug_name = result.drug_name
-                                st.session_state.v2_drug_info = {
-                                    'drug_name': result.drug_name,
-                                    'generic_name': result.generic_name,
-                                    'mechanism': result.mechanism,
-                                    'target': result.target,
-                                    'approved_indications': result.approved_indications or []
-                                }
-                                st.session_state.v2_opportunities = result.opportunities
-                                st.session_state.v2_extractions = [opp.extraction for opp in result.opportunities]
-                                st.success(f"✅ Loaded! {len(result.opportunities)} opportunities. Go to Scoring tab to view.")
+                # Run selection dropdown for the selected drug
+                if selected_drug and selected_drug in drug_runs:
+                    drug_specific_runs = drug_runs[selected_drug]
+
+                    # Format run labels with date, opportunities, and status
+                    run_options = []
+                    for run in drug_specific_runs:
+                        started = run.get('started_at')
+                        if started:
+                            date_str = started.strftime("%Y-%m-%d %H:%M") if hasattr(started, 'strftime') else str(started)[:16]
+                        else:
+                            date_str = "Unknown date"
+
+                        opps = run.get('opportunities_found', 0) or 0
+                        status = run.get('status', 'unknown')
+                        status_emoji = "✅" if status == 'completed' else "⚠️" if status == 'failed' else "🔄"
+
+                        label = f"{status_emoji} {date_str} ({opps} opps)"
+                        run_options.append((label, run))
+
+                    selected_run_idx = st.selectbox(
+                        "📅 Select Run",
+                        options=range(len(run_options)),
+                        format_func=lambda i: run_options[i][0],
+                        help="Choose a specific analysis run to view"
+                    )
+
+                    selected_run = run_options[selected_run_idx][1]
+                else:
+                    selected_run = None
+
+            # Action buttons
+            st.markdown("---")
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                if st.button("📋 View Details (JSON)", use_container_width=True):
+                    if selected_run:
+                        run_id = selected_run.get('run_id')
+                        if run_id:
+                            details = agent.get_run_details(run_id)
+                            if details:
+                                st.json(details)
                             else:
-                                st.error("Failed to load run")
+                                st.error("Run not found")
+                    else:
+                        st.warning("Please select a run first")
+
+            with col2:
+                if st.button("📊 View Full Report", type="primary", use_container_width=True):
+                    if selected_run:
+                        run_id = selected_run.get('run_id')
+                        if run_id:
+                            st.session_state.v2_viewing_run_id = run_id
+                            st.rerun()
+                    else:
+                        st.warning("Please select a run first")
+
+            with col3:
+                if st.button("📥 Quick Load to Session", use_container_width=True):
+                    if selected_run:
+                        run_id = selected_run.get('run_id')
+                        if run_id:
+                            with st.spinner("Loading run..."):
+                                result = agent.load_historical_run(run_id)
+                                if result:
+                                    st.session_state.v2_drug_name = result.drug_name
+                                    st.session_state.v2_drug_info = {
+                                        'drug_name': result.drug_name,
+                                        'generic_name': result.generic_name,
+                                        'mechanism': result.mechanism,
+                                        'target': result.target,
+                                        'approved_indications': result.approved_indications or []
+                                    }
+                                    st.session_state.v2_opportunities = result.opportunities
+                                    st.session_state.v2_extractions = [opp.extraction for opp in result.opportunities]
+                                    st.success(f"✅ Loaded {len(result.opportunities)} opportunities! Navigate to other tabs to explore.")
+                                else:
+                                    st.error("Failed to load run")
+                    else:
+                        st.warning("Please select a run first")
+
+            # Show full report if a run is selected
+            if 'v2_viewing_run_id' in st.session_state and st.session_state.v2_viewing_run_id:
+                st.markdown("---")
+
+                with st.spinner("Loading run details..."):
+                    result = agent.load_historical_run(st.session_state.v2_viewing_run_id)
+
+                    if result and result.opportunities:
+                        # Header with drug info
+                        st.markdown(f"## 📊 Full Report: {result.drug_name}")
+
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.markdown(f"**Generic Name:** {result.generic_name or 'N/A'}")
+                        with col2:
+                            st.markdown(f"**Mechanism:** {result.mechanism or 'N/A'}")
+                        with col3:
+                            st.markdown(f"**Target:** {result.target or 'N/A'}")
+
+                        # Summary metrics
+                        st.markdown("### 📈 Summary Metrics")
+                        col1, col2, col3, col4 = st.columns(4)
+
+                        opps = result.opportunities
+                        with col1:
+                            st.metric("Total Opportunities", len(opps))
+                        with col2:
+                            high_priority = len([o for o in opps if o.scores.overall_priority >= 7])
+                            st.metric("High Priority (≥7)", high_priority)
+                        with col3:
+                            avg_score = sum(o.scores.overall_priority for o in opps) / len(opps) if opps else 0
+                            st.metric("Avg Score", f"{avg_score:.1f}")
+                        with col4:
+                            unique_indications = len(set(o.extraction.disease for o in opps if o.extraction))
+                            st.metric("Unique Indications", unique_indications)
+
+                        # Visualizations
+                        st.markdown("### 📊 Visual Analysis")
+
+                        # Create DataFrame for visualizations
+                        viz_data = []
+                        for opp in opps:
+                            scores = opp.scores
+                            ext = opp.extraction
+                            market_intel = opp.market_intelligence
+
+                            viz_data.append({
+                                'Disease': ext.disease if ext else 'Unknown',
+                                '# Studies': 1,
+                                'Total Patients': ext.sample_size if ext else 0,
+                                'Clinical Score (avg)': scores.clinical_signal,
+                                'Evidence Score (avg)': scores.evidence_quality,
+                                'Market Score (avg)': scores.market_opportunity,
+                                'Overall Score (avg)': scores.overall_priority,
+                                '# Approved Competitors': market_intel.approved_competitors if market_intel else 0,
+                                'Unmet Need': 'Yes' if market_intel and market_intel.unmet_need_score >= 7 else 'No',
+                                'TAM Estimate': market_intel.tam_estimate if market_intel else 'N/A'
+                            })
+
+                        viz_df = pd.DataFrame(viz_data)
+
+                        # Aggregate by disease
+                        agg_df = viz_df.groupby('Disease').agg({
+                            '# Studies': 'sum',
+                            'Total Patients': 'sum',
+                            'Clinical Score (avg)': 'mean',
+                            'Evidence Score (avg)': 'mean',
+                            'Market Score (avg)': 'mean',
+                            'Overall Score (avg)': 'mean',
+                            '# Approved Competitors': 'first',
+                            'Unmet Need': 'first',
+                            'TAM Estimate': 'first'
+                        }).reset_index()
+
+                        col1, col2 = st.columns(2)
+
+                        with col1:
+                            try:
+                                render_priority_matrix(
+                                    agg_df,
+                                    drug_name=result.drug_name,
+                                    height=500
+                                )
+                            except Exception as e:
+                                st.error(f"Error rendering priority matrix: {e}")
+                                logger.error(f"Priority matrix error: {e}", exc_info=True)
+
+                        with col2:
+                            try:
+                                render_market_opportunity(
+                                    agg_df,
+                                    drug_name=result.drug_name,
+                                    height=500
+                                )
+                            except Exception as e:
+                                st.error(f"Error rendering market opportunity: {e}")
+                                logger.error(f"Market opportunity error: {e}", exc_info=True)
+
+                        st.markdown("---")
+
+                        # Top opportunities table
+                        st.markdown("### 🏆 Top Opportunities")
+
+                        table_data = []
+                        for opp in sorted(opps, key=lambda x: x.scores.overall_priority, reverse=True)[:10]:
+                            ext = opp.extraction
+                            indication = ext.disease if ext else "Unknown"
+
+                            # Get response rate
+                            response_rate = "N/A"
+                            if ext and ext.efficacy_endpoints:
+                                primary_endpoints = [e for e in ext.efficacy_endpoints if e.endpoint_category == 'primary']
+                                if primary_endpoints and primary_endpoints[0].response_rate:
+                                    response_rate = f"{primary_endpoints[0].response_rate:.1f}%"
+
+                            table_data.append({
+                                "Indication": indication[:50] + "..." if len(indication) > 50 else indication,
+                                "Overall": f"{opp.scores.overall_priority:.1f}",
+                                "Clinical": f"{opp.scores.clinical_signal:.1f}",
+                                "Evidence": f"{opp.scores.evidence_quality:.1f}",
+                                "Market": f"{opp.scores.market_opportunity:.1f}",
+                                "Response Rate": response_rate,
+                                "Sample Size": ext.sample_size if ext else 0
+                            })
+
+                        df_table = pd.DataFrame(table_data)
+                        st.dataframe(df_table, use_container_width=True, hide_index=True)
+
+                        st.markdown("---")
+
+                        # Export options
+                        st.markdown("### 💾 Export Options")
+
+                        col1, col2, col3 = st.columns(3)
+
+                        with col1:
+                            # Excel export
+                            try:
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                excel_filename = f"{result.drug_name.lower().replace(' ', '_')}_report_{timestamp}.xlsx"
+                                excel_path = agent.export_to_excel(result, excel_filename)
+
+                                # Read the file for download
+                                with open(excel_path, 'rb') as f:
+                                    excel_bytes = f.read()
+
+                                st.download_button(
+                                    "📥 Download Excel Report",
+                                    excel_bytes,
+                                    file_name=excel_filename,
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"Error generating Excel: {e}")
+                                logger.error(f"Excel export error: {e}", exc_info=True)
+
+                        with col2:
+                            # JSON export
+                            try:
+                                export_data = {
+                                    "drug_name": result.drug_name,
+                                    "generic_name": result.generic_name,
+                                    "mechanism": result.mechanism,
+                                    "target": result.target,
+                                    "analysis_date": datetime.now().isoformat(),
+                                    "opportunities": [
+                                        {
+                                            "indication": o.extraction.disease if o.extraction else "Unknown",
+                                            "scores": o.scores.model_dump() if hasattr(o.scores, 'model_dump') else str(o.scores),
+                                            "sample_size": o.extraction.sample_size if o.extraction else 0
+                                        }
+                                        for o in opps
+                                    ]
+                                }
+                                json_str = json.dumps(export_data, indent=2)
+                                st.download_button(
+                                    "📥 Download JSON",
+                                    json_str,
+                                    file_name=f"{result.drug_name}_analysis.json",
+                                    mime="application/json",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"Error generating JSON: {e}")
+
+                        with col3:
+                            # CSV export
+                            try:
+                                csv_data = df_table.to_csv(index=False)
+                                st.download_button(
+                                    "📥 Download CSV",
+                                    csv_data,
+                                    file_name=f"{result.drug_name}_opportunities.csv",
+                                    mime="text/csv",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"Error generating CSV: {e}")
+
+                        # Report Generation Section
+                        st.markdown("---")
+                        st.markdown("### 📄 Generate Analytical Report")
+                        st.markdown("""
+                        Generate a comprehensive analytical report using Claude. The report provides objective
+                        analysis of findings, score derivations, concordance analysis, and competitive context.
+                        """)
+
+                        col1, col2, col3 = st.columns([2, 1, 1])
+
+                        with col1:
+                            # Generate report button
+                            report_key = f"generate_report_{st.session_state.v2_viewing_run_id}"
+                            if st.button("🤖 Generate Report with Claude", type="primary", use_container_width=True, key=report_key):
+                                with st.spinner("Generating analytical report... This may take 1-2 minutes."):
+                                    try:
+                                        # Generate report from result object
+                                        report_text, report_path = agent.generate_analytical_report(
+                                            result=result,
+                                            auto_save=True
+                                        )
+
+                                        # Store in session state with run-specific key
+                                        st.session_state[f'report_{st.session_state.v2_viewing_run_id}'] = report_text
+                                        st.session_state[f'report_path_{st.session_state.v2_viewing_run_id}'] = report_path
+
+                                        st.success(f"✅ Report generated! Saved to: `{report_path}`")
+                                        st.info("📖 Scroll down to view the report")
+
+                                    except Exception as e:
+                                        st.error(f"Error generating report: {e}")
+                                        logger.error(f"Report generation error: {e}", exc_info=True)
+
+                        with col2:
+                            # Show cost estimate
+                            st.caption("💰 Cost: ~$0.10-0.20")
+                            st.caption("⏱️ Time: 1-2 min")
+
+                        with col3:
+                            # Download button if report exists
+                            report_key_check = f'report_{st.session_state.v2_viewing_run_id}'
+                            if report_key_check in st.session_state and st.session_state[report_key_check]:
+                                st.download_button(
+                                    "📥 Download Report",
+                                    st.session_state[report_key_check],
+                                    file_name=f"{result.drug_name}_analytical_report.md",
+                                    mime="text/markdown",
+                                    use_container_width=True,
+                                    key=f"download_report_{st.session_state.v2_viewing_run_id}"
+                                )
+
+                        # Display generated report
+                        report_key_display = f'report_{st.session_state.v2_viewing_run_id}'
+                        if report_key_display in st.session_state and st.session_state[report_key_display]:
+                            st.markdown("---")
+                            st.markdown("### 📖 Generated Analytical Report")
+
+                            # Show report in expandable section
+                            with st.expander("📄 View Full Report", expanded=True):
+                                st.markdown(st.session_state[report_key_display])
+
+                            # Show report metadata
+                            report_path_key = f'report_path_{st.session_state.v2_viewing_run_id}'
+                            if report_path_key in st.session_state:
+                                st.caption(f"💾 Saved to: `{st.session_state[report_path_key]}`")
+
+                        # Load into session button
+                        st.markdown("---")
+                        if st.button("📥 Load into Current Session", use_container_width=True):
+                            st.session_state.v2_drug_name = result.drug_name
+                            st.session_state.v2_drug_info = {
+                                'drug_name': result.drug_name,
+                                'generic_name': result.generic_name,
+                                'mechanism': result.mechanism,
+                                'target': result.target,
+                                'approved_indications': result.approved_indications or []
+                            }
+                            st.session_state.v2_opportunities = result.opportunities
+                            st.session_state.v2_extractions = [opp.extraction for opp in result.opportunities]
+                            st.success(f"✅ Loaded! {len(result.opportunities)} opportunities. Navigate to other tabs to explore.")
+
+                        # Close button
+                        if st.button("❌ Close Report", use_container_width=True):
+                            del st.session_state.v2_viewing_run_id
+                            st.rerun()
+
+                    else:
+                        st.error("Failed to load run or no opportunities found")
+                        if st.button("❌ Close"):
+                            del st.session_state.v2_viewing_run_id
+                            st.rerun()
+
         else:
             st.info("📭 No historical runs found. Run an analysis to see it here!")

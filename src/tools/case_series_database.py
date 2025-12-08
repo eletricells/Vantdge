@@ -311,6 +311,21 @@ class CaseSeriesDatabase:
         finally:
             conn.close()
 
+    def _build_dosing_regimen(self, treatment) -> Optional[str]:
+        """Build dosing regimen string from TreatmentDetails fields."""
+        if not treatment:
+            return None
+
+        parts = []
+        if treatment.dose:
+            parts.append(str(treatment.dose))
+        if treatment.frequency:
+            parts.append(str(treatment.frequency))
+        if treatment.route_of_administration:
+            parts.append(str(treatment.route_of_administration))
+
+        return ' '.join(parts) if parts else None
+
     def save_extraction(self, run_id: str, extraction: CaseSeriesExtraction,
                         drug_name: str) -> Optional[int]:
         """Save case series extraction to database. Returns extraction ID."""
@@ -336,7 +351,7 @@ class CaseSeriesDatabase:
 
                 cur.execute("""
                     INSERT INTO cs_extractions (
-                        run_id, pmid, paper_title, paper_year, drug_name, disease, is_off_label,
+                        run_id, pmid, paper_title, paper_year, drug_name, disease, is_off_label, is_relevant,
                         n_patients, age_description, gender_distribution, disease_severity, prior_treatments,
                         dosing_regimen, treatment_duration, concomitant_medications,
                         response_rate, responders_n, responders_pct, time_to_response, duration_of_response,
@@ -345,7 +360,7 @@ class CaseSeriesDatabase:
                         safety_summary, safety_profile, evidence_level, study_design, follow_up_duration,
                         key_findings, full_extraction
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s,
                         %s, %s, %s,
                         %s, %s, %s, %s, %s,
@@ -356,19 +371,21 @@ class CaseSeriesDatabase:
                     )
                     ON CONFLICT (pmid, drug_name, disease) DO UPDATE SET
                         run_id = EXCLUDED.run_id,
+                        is_relevant = EXCLUDED.is_relevant,
                         full_extraction = EXCLUDED.full_extraction,
                         extracted_at = CURRENT_TIMESTAMP
                     RETURNING id
                 """, (
                     run_id, source.pmid, source.title, source.year, drug_name,
-                    extraction.disease, extraction.is_off_label,
+                    extraction.disease, extraction.is_off_label, extraction.is_relevant,
                     patient_pop.n_patients if patient_pop else None,
                     patient_pop.age_description if patient_pop else None,
                     patient_pop.sex_distribution if patient_pop else None,  # Model uses sex_distribution
                     patient_pop.disease_severity if patient_pop else None,
                     prior_treatments,
-                    treatment.dosing_regimen if treatment else None,
-                    treatment.treatment_duration if treatment else None,
+                    # TreatmentDetails uses dose/frequency, combine them for dosing_regimen
+                    self._build_dosing_regimen(treatment) if treatment else None,
+                    treatment.duration if treatment else None,  # Model uses 'duration' not 'treatment_duration'
                     Json(treatment.concomitant_medications) if treatment and treatment.concomitant_medications else None,
                     efficacy.response_rate if efficacy else None,
                     efficacy.responders_n if efficacy else None,
@@ -376,21 +393,25 @@ class CaseSeriesDatabase:
                     efficacy.time_to_response if efficacy else None,
                     efficacy.duration_of_response if efficacy else None,
                     efficacy.primary_endpoint if efficacy else None,
-                    efficacy.primary_endpoint_result if efficacy else None,
+                    efficacy.endpoint_result if efficacy else None,
                     efficacy.efficacy_summary if efficacy else None,
-                    efficacy.efficacy_signal.value if efficacy and efficacy.efficacy_signal else None,
-                    Json([ae.model_dump() for ae in safety.adverse_events]) if safety and safety.adverse_events else None,
-                    Json([sae.model_dump() for sae in safety.serious_adverse_events]) if safety and safety.serious_adverse_events else None,
+                    # efficacy_signal is on extraction, not efficacy
+                    extraction.efficacy_signal.value if extraction.efficacy_signal else None,
+                    # adverse_events and serious_adverse_events are List[str], not List[objects]
+                    Json(safety.adverse_events) if safety and safety.adverse_events else None,
+                    Json(safety.serious_adverse_events) if safety and safety.serious_adverse_events else None,
                     safety.sae_count if safety else None,
                     safety.sae_percentage if safety else None,
                     safety.discontinuations_n if safety else None,
                     safety.safety_summary if safety else None,
                     safety.safety_profile.value if safety and safety.safety_profile else None,
                     extraction.evidence_level.value if extraction.evidence_level else None,
-                    source.study_type if source else None,
+                    # CaseSeriesSource doesn't have study_type, use evidence_level instead
+                    extraction.evidence_level.value if extraction.evidence_level else None,
                     extraction.follow_up_duration,
                     extraction.key_findings,
-                    Json(extraction.model_dump())
+                    # Use mode='json' to serialize datetime objects as ISO strings
+                    Json(extraction.model_dump(mode='json'))
                 ))
                 extraction_id = cur.fetchone()[0]
                 conn.commit()
@@ -551,13 +572,14 @@ class CaseSeriesDatabase:
                 sources_tam.extend(mi.tam_sources or [])
 
                 # Get values from nested objects safely
-                prevalence = mi.epidemiology.prevalence if mi.epidemiology else None
+                prevalence = mi.epidemiology.us_prevalence_estimate if mi.epidemiology else None
                 incidence = mi.epidemiology.us_incidence_estimate if mi.epidemiology else None
                 approved_drugs = mi.standard_of_care.approved_drug_names if mi.standard_of_care else []
                 treatment_paradigm = mi.standard_of_care.treatment_paradigm if mi.standard_of_care else None
                 pipeline_drugs = []
                 if mi.standard_of_care and mi.standard_of_care.pipeline_therapies:
-                    pipeline_drugs = [p.model_dump() for p in mi.standard_of_care.pipeline_therapies]
+                    # Use mode='json' for consistent datetime serialization
+                    pipeline_drugs = [p.model_dump(mode='json') for p in mi.standard_of_care.pipeline_therapies]
 
                 cur.execute("""
                     INSERT INTO cs_market_intelligence (
@@ -617,7 +639,7 @@ class CaseSeriesDatabase:
                 if opportunity.market_intelligence:
                     mi = opportunity.market_intelligence
                     market_tam = mi.tam_estimate
-                    market_prevalence = mi.epidemiology.prevalence if mi.epidemiology else None
+                    market_prevalence = mi.epidemiology.us_prevalence_estimate if mi.epidemiology else None
                     market_unmet_needs = mi.unmet_needs
 
                 # Use correct attribute names (patient_population, efficacy instead of baseline, outcomes)
@@ -629,8 +651,9 @@ class CaseSeriesDatabase:
                 efficacy_signal_val = None
                 if hasattr(extraction, 'efficacy') and extraction.efficacy:
                     response_rate = extraction.efficacy.responders_pct
-                    if extraction.efficacy.efficacy_signal:
-                        efficacy_signal_val = extraction.efficacy.efficacy_signal.value
+                # efficacy_signal is on extraction, not efficacy
+                if extraction.efficacy_signal:
+                    efficacy_signal_val = extraction.efficacy_signal.value
 
                 safety_profile_val = None
                 if hasattr(extraction, 'safety') and extraction.safety and extraction.safety.safety_profile:
@@ -799,3 +822,256 @@ class CaseSeriesDatabase:
         except Exception as e:
             logger.error(f"Error loading run as result: {e}")
             return None
+
+    # =====================================================
+    # CLINICAL SCORING REFERENCE DATA
+    # =====================================================
+
+    def get_organ_domains(self) -> Dict[str, List[str]]:
+        """
+        Get organ domain keyword mappings for breadth analysis.
+
+        Returns:
+            Dict mapping domain_name to list of keywords
+        """
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT domain_name, keywords
+                        FROM cs_organ_domains
+                        ORDER BY domain_name
+                    """)
+                    rows = cur.fetchall()
+                    return {row['domain_name']: row['keywords'] for row in rows}
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"Error fetching organ domains: {e}")
+            return {}
+
+    def get_validated_instruments(
+        self,
+        disease: Optional[str] = None
+    ) -> Dict[str, Dict[str, int]]:
+        """
+        Get validated clinical instruments with quality scores.
+
+        Args:
+            disease: Optional disease key to filter by (e.g., 'rheumatoid_arthritis')
+
+        Returns:
+            Dict mapping disease_key to dict of {instrument_name: quality_score}
+        """
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    if disease:
+                        # Search by disease_key or aliases
+                        cur.execute("""
+                            SELECT disease_key, instrument_name, quality_score
+                            FROM cs_validated_instruments
+                            WHERE disease_key = %s
+                               OR %s = ANY(disease_aliases)
+                               OR disease_key ILIKE %s
+                            ORDER BY quality_score DESC
+                        """, (disease.lower().replace(' ', '_'),
+                              disease,
+                              f'%{disease}%'))
+                    else:
+                        cur.execute("""
+                            SELECT disease_key, instrument_name, quality_score
+                            FROM cs_validated_instruments
+                            ORDER BY disease_key, quality_score DESC
+                        """)
+
+                    rows = cur.fetchall()
+                    result: Dict[str, Dict[str, int]] = {}
+                    for row in rows:
+                        disease_key = row['disease_key']
+                        if disease_key not in result:
+                            result[disease_key] = {}
+                        result[disease_key][row['instrument_name']] = row['quality_score']
+                    return result
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"Error fetching validated instruments: {e}")
+            return {}
+
+    def get_safety_categories(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get safety signal categories with keywords and severity weights.
+
+        Returns:
+            Dict mapping category_name to {keywords, severity_weight, regulatory_flag}
+        """
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT category_name, keywords, severity_weight, regulatory_flag, meddra_soc
+                        FROM cs_safety_categories
+                        ORDER BY severity_weight DESC
+                    """)
+                    rows = cur.fetchall()
+                    return {
+                        row['category_name']: {
+                            'keywords': row['keywords'],
+                            'severity_weight': row['severity_weight'],
+                            'regulatory_flag': row['regulatory_flag'],
+                            'meddra_soc': row['meddra_soc']
+                        }
+                        for row in rows
+                    }
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"Error fetching safety categories: {e}")
+            return {}
+
+    def get_scoring_weights(
+        self,
+        therapeutic_area: str = 'default'
+    ) -> Dict[str, float]:
+        """
+        Get scoring weights for a therapeutic area.
+
+        Args:
+            therapeutic_area: Area to get weights for (default, rare_disease, autoimmune, oncology)
+
+        Returns:
+            Dict of weight names to values
+        """
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT weight_response_rate, weight_safety, weight_endpoint_quality,
+                               weight_organ_breadth, weight_clinical, weight_evidence, weight_market
+                        FROM cs_scoring_weights
+                        WHERE therapeutic_area = %s
+                    """, (therapeutic_area,))
+                    row = cur.fetchone()
+                    if row:
+                        return {
+                            'response_rate': float(row['weight_response_rate']),
+                            'safety': float(row['weight_safety']),
+                            'endpoint_quality': float(row['weight_endpoint_quality']),
+                            'organ_breadth': float(row['weight_organ_breadth']),
+                            'clinical': float(row['weight_clinical']),
+                            'evidence': float(row['weight_evidence']),
+                            'market': float(row['weight_market'])
+                        }
+                    # Return defaults if not found
+                    return {
+                        'response_rate': 0.30,
+                        'safety': 0.30,
+                        'endpoint_quality': 0.25,
+                        'organ_breadth': 0.15,
+                        'clinical': 0.50,
+                        'evidence': 0.25,
+                        'market': 0.25
+                    }
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"Error fetching scoring weights: {e}")
+            return {
+                'response_rate': 0.30,
+                'safety': 0.30,
+                'endpoint_quality': 0.25,
+                'organ_breadth': 0.15,
+                'clinical': 0.50,
+                'evidence': 0.25,
+                'market': 0.25
+            }
+
+    def find_instruments_for_disease(self, disease_name: str) -> Dict[str, int]:
+        """
+        Find validated instruments for a disease, checking aliases and fuzzy matching.
+
+        Args:
+            disease_name: Disease name to search for
+
+        Returns:
+            Dict of {instrument_name: quality_score}
+        """
+        # First try exact match
+        instruments = self.get_validated_instruments(disease_name)
+        if instruments:
+            # Return first match (should be only one disease)
+            return list(instruments.values())[0]
+
+        # Try normalized name
+        normalized = disease_name.lower().replace(' ', '_').replace('-', '_')
+        instruments = self.get_validated_instruments(normalized)
+        if instruments:
+            return list(instruments.values())[0]
+
+        # Check instrument cache for LLM-discovered instruments
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT instruments
+                        FROM cs_instrument_cache
+                        WHERE disease_normalized = %s
+                          AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+                    """, (normalized,))
+                    row = cur.fetchone()
+                    if row and row['instruments']:
+                        return row['instruments']
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"Error checking instrument cache: {e}")
+
+        return {}
+
+    def cache_instruments_for_disease(
+        self,
+        disease_name: str,
+        instruments: Dict[str, int],
+        source: str = 'llm',
+        expires_days: int = 90
+    ) -> bool:
+        """
+        Cache discovered instruments for a disease.
+
+        Args:
+            disease_name: Original disease name
+            instruments: Dict of {instrument_name: quality_score}
+            source: Source of instruments ('llm', 'manual', 'imported')
+            expires_days: Days until cache expires
+
+        Returns:
+            True if cached successfully
+        """
+        try:
+            normalized = disease_name.lower().replace(' ', '_').replace('-', '_')
+            conn = self._get_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO cs_instrument_cache
+                            (disease_name, disease_normalized, instruments, source, expires_at)
+                        VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP + INTERVAL '%s days')
+                        ON CONFLICT (disease_normalized) DO UPDATE SET
+                            instruments = EXCLUDED.instruments,
+                            source = EXCLUDED.source,
+                            expires_at = EXCLUDED.expires_at,
+                            updated_at = CURRENT_TIMESTAMP
+                    """, (disease_name, normalized, Json(instruments), source, expires_days))
+                    conn.commit()
+                    return True
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Error caching instruments: {e}")
+            return False

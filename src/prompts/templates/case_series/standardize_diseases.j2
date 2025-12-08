@@ -1,0 +1,62 @@
+You are a medical terminology expert. Standardize these disease names by grouping similar/related conditions under canonical names.
+
+Disease names found in papers:
+{{ disease_names | to_json }}
+
+RULES:
+1. Group diseases that are essentially the same condition with different descriptions
+2. Group subtypes under their parent disease when appropriate
+3. Keep distinct diseases separate
+4. Use standard medical terminology (prefer MeSH/ICD-10 naming)
+5. For autoinflammatory conditions, group CANDLE, SAVI, AGS, NNS under "Type I Interferonopathies"
+6. Adult-onset Still's disease variants should all be "Adult-onset Still's Disease (AOSD)"
+7. Keep specific diseases like "vitiligo", "atopic dermatitis", "lichen planus" as their own categories
+
+COMMON ABBREVIATION MAPPINGS:
+- "AA", "alopecia", "patchy alopecia", "alopecia totalis", "alopecia universalis" → "Alopecia Areata"
+- "AD", "eczema", "atopic eczema", "atopic dermatitis" → "Atopic Dermatitis"
+- "DM", "dermatomyositis", "adult dermatomyositis" → "Dermatomyositis"
+- "JDM", "juvenile dermatomyositis" → "Juvenile Dermatomyositis"
+- "PM", "polymyositis" → "Polymyositis"
+- "IIM", "IIMs", "inflammatory myopathy", "inflammatory myopathies" → "Inflammatory Myopathies"
+- "ASM", "anti-synthetase", "antisynthetase syndrome" → "Antisynthetase Syndrome"
+- "GvHD", "GVHD", "graft versus host", "graft-versus-host" → "Graft-versus-Host Disease"
+- "cGVHD", "chronic GVHD", "chronic graft-versus-host" → "Chronic Graft-versus-Host Disease"
+- "LN", "lupus nephritis", "lupus kidney" → "Lupus Nephritis"
+- "SLE", "lupus", "systemic lupus" (without nephritis) → "Systemic Lupus Erythematosus"
+- "CLE", "cutaneous lupus", "discoid lupus", "SCLE", "DLE" → "Cutaneous Lupus Erythematosus"
+- "SSc", "PSS", "scleroderma", "systemic sclerosis", "CREST" → "Systemic Sclerosis"
+- "RA", "rheumatoid" → "Rheumatoid Arthritis"
+- "PsA", "psoriatic arthritis" → "Psoriatic Arthritis"
+- "axSpA", "ankylosing spondylitis", "AS", "axial spondyloarthritis" → "Axial Spondyloarthritis"
+- "IBD" → keep as "Inflammatory Bowel Disease" unless UC or CD specified
+- "UC", "ulcerative colitis" → "Ulcerative Colitis"
+- "CD", "Crohn's", "Crohn disease" → "Crohn's Disease"
+- "AOSD", "adult Still's", "adult-onset Still's" → "Adult-onset Still's Disease"
+- "sJIA", "systemic JIA" → "Systemic Juvenile Idiopathic Arthritis"
+- "MAS", "macrophage activation" → "Macrophage Activation Syndrome"
+- "HLH", "hemophagocytic" → "Hemophagocytic Lymphohistiocytosis"
+- "HS", "hidradenitis", "acne inversa" → "Hidradenitis Suppurativa"
+- "LP", "lichen planus" → "Lichen Planus"
+- "PG", "pyoderma gangrenosum" → "Pyoderma Gangrenosum"
+
+TYPE I INTERFERONOPATHY GROUPINGS:
+- "CANDLE", "PRAAS", "proteasome-associated" → "Type I Interferonopathies (CANDLE)"
+- "SAVI", "STING-associated" → "Type I Interferonopathies (SAVI)"
+- "AGS", "Aicardi-Goutières" → "Type I Interferonopathies (AGS)"
+
+KEEP DISTINCT (do not merge):
+- "Vitiligo" - keep separate
+- "Psoriasis" - keep separate from PsA
+- "Lichen Planus" - keep separate
+- "Morphea" - keep separate from SSc (localized vs systemic)
+
+Return ONLY valid JSON mapping original names to standardized names:
+{
+    "original disease name 1": "Standardized Disease Name",
+    "original disease name 2": "Standardized Disease Name",
+    "vitiligo": "Vitiligo"
+}
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

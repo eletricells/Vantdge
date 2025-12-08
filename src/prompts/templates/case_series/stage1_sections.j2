@@ -1,0 +1,57 @@
+Analyze this case report/series about {{ drug_name }} and identify the key data sections.
+
+PAPER TITLE: {{ paper_title }}
+
+PAPER CONTENT:
+{{ paper_content }}
+
+Identify:
+1. Tables containing baseline/demographic data
+2. Tables containing efficacy/outcome data
+3. Tables containing safety/adverse event data
+4. Figures showing clinical outcomes
+5. Key results sections
+
+COMMON TABLE/FIGURE PATTERNS TO LOOK FOR:
+
+BASELINE/DEMOGRAPHICS (usually Table 1):
+- Headers containing: "Baseline", "Demographics", "Characteristics", "Patient characteristics"
+- Columns like: Age, Sex, Disease duration, Prior treatments, Baseline disease activity
+
+EFFICACY TABLES (usually Table 2-3):
+- Headers containing: "Efficacy", "Outcomes", "Response", "Results", "Clinical outcomes"
+- Columns like: Baseline, Week X, Change, % Change, Responders
+- Row labels with: Response rates, Disease scores (EASI, PASI, SLEDAI), Remission
+
+SAFETY TABLES (often Table 3-4 or supplementary):
+- Headers containing: "Safety", "Adverse Events", "AEs", "Tolerability"
+- Columns like: n (%), Events, Related, Serious
+- Row labels with: Any AE, Serious AE, Infections, specific event names
+
+EFFICACY FIGURES:
+- Kaplan-Meier curves (time to response, duration of response)
+- Waterfall plots (individual patient responses)
+- Spider plots (disease activity over time)
+- Bar charts comparing response rates
+- Line graphs showing score changes over time
+
+SUPPLEMENTARY MATERIALS:
+- "Supplementary Table S1" often contains detailed AE data
+- "Extended Data" may have individual patient data
+- "Online supplement" may have additional efficacy endpoints
+
+Return JSON:
+{
+    "baseline_tables": ["Table 1 description", ...],
+    "efficacy_tables": ["Table 2 description", ...],
+    "safety_tables": ["Table 3 description", ...],
+    "efficacy_figures": ["Figure 1 description", ...],
+    "results_sections": ["section heading or description", ...],
+    "patient_count": number or null,
+    "study_type": "Case Report" or "Case Series" or "Retrospective Study",
+    "has_quantitative_outcomes": true/false,
+    "notes": "any important observations"
+}
+
+{% include 'case_series/_partials/json_rules.j2' %}
+

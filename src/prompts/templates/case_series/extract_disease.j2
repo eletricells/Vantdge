@@ -1,0 +1,15 @@
+Extract the disease/indication being treated in this paper.
+
+Drug: {{ drug_name }}
+Approved Indications (exclude these): {{ approved_indications }}
+
+Title: {{ title }}
+Abstract: {{ abstract }}
+
+Return ONLY the disease/indication name in a simple format (e.g., "vitiligo", "alopecia areata", "chronic graft-versus-host disease").
+If multiple diseases are mentioned, return the PRIMARY one being treated.
+If this is about an APPROVED indication, return "APPROVED_INDICATION".
+If you cannot determine the disease, return "UNKNOWN".
+
+Disease:
+

@@ -177,3 +177,173 @@ async def get_status():
         "database_configured": bool(getattr(settings, 'drug_database_url', None))
     }
 
+
+# ============================================================================
+# Prompt Management Endpoints
+# ============================================================================
+
+class PromptTemplate(BaseModel):
+    name: str
+    category: str
+    content: str
+    path: str
+
+
+class PromptUpdateRequest(BaseModel):
+    content: str = Field(..., description="New template content")
+
+
+@app.get("/api/v1/prompts/categories")
+async def list_prompt_categories():
+    """List all prompt template categories."""
+    from src.prompts import get_prompt_manager
+    from pathlib import Path
+
+    pm = get_prompt_manager()
+    templates_dir = Path(pm.templates_dir)
+
+    categories = []
+    for item in templates_dir.iterdir():
+        if item.is_dir() and not item.name.startswith('_'):
+            categories.append({
+                "name": item.name,
+                "template_count": len(list(item.rglob("*.j2")))
+            })
+
+    return {"categories": sorted(categories, key=lambda x: x["name"])}
+
+
+@app.get("/api/v1/prompts")
+async def list_prompts(category: Optional[str] = None):
+    """List all prompt templates, optionally filtered by category."""
+    from src.prompts import get_prompt_manager
+    from pathlib import Path
+
+    pm = get_prompt_manager()
+    templates_dir = Path(pm.templates_dir)
+
+    templates = []
+
+    if category:
+        search_dir = templates_dir / category
+        if not search_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Category not found: {category}")
+        template_files = search_dir.rglob("*.j2")
+    else:
+        template_files = templates_dir.rglob("*.j2")
+
+    for template_path in template_files:
+        rel_path = template_path.relative_to(templates_dir)
+        # Skip partials
+        if '_partials' in str(rel_path):
+            continue
+
+        # Extract category from path
+        parts = rel_path.parts
+        cat = parts[0] if len(parts) > 1 else "root"
+
+        templates.append({
+            "name": template_path.stem,
+            "category": cat,
+            "path": str(rel_path).replace('\\', '/'),
+            "full_path": str(template_path)
+        })
+
+    return {"templates": sorted(templates, key=lambda x: (x["category"], x["name"]))}
+
+
+@app.get("/api/v1/prompts/{category}/{template_name}")
+async def get_prompt(category: str, template_name: str):
+    """Get a specific prompt template content."""
+    from src.prompts import get_prompt_manager
+    from pathlib import Path
+
+    pm = get_prompt_manager()
+    templates_dir = Path(pm.templates_dir)
+
+    # Try with and without .j2 extension
+    if not template_name.endswith('.j2'):
+        template_name = f"{template_name}.j2"
+
+    template_path = templates_dir / category / template_name
+
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail=f"Template not found: {category}/{template_name}")
+
+    content = template_path.read_text(encoding='utf-8')
+
+    return {
+        "name": template_path.stem,
+        "category": category,
+        "path": f"{category}/{template_name}",
+        "content": content
+    }
+
+
+@app.put("/api/v1/prompts/{category}/{template_name}")
+async def update_prompt(category: str, template_name: str, request: PromptUpdateRequest):
+    """Update a prompt template content."""
+    from src.prompts import get_prompt_manager
+    from pathlib import Path
+    import shutil
+    from datetime import datetime
+
+    pm = get_prompt_manager()
+    templates_dir = Path(pm.templates_dir)
+
+    # Try with and without .j2 extension
+    if not template_name.endswith('.j2'):
+        template_name = f"{template_name}.j2"
+
+    template_path = templates_dir / category / template_name
+
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail=f"Template not found: {category}/{template_name}")
+
+    # Create backup before modifying
+    backup_dir = templates_dir / "_backups" / category
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = backup_dir / f"{template_path.stem}_{timestamp}.j2.bak"
+    shutil.copy2(template_path, backup_path)
+
+    # Write new content
+    template_path.write_text(request.content, encoding='utf-8')
+
+    # Clear cache in PromptManager
+    if pm._cache is not None:
+        pm._cache.clear()
+
+    logger.info(f"Updated template: {category}/{template_name}")
+
+    return {
+        "status": "updated",
+        "path": f"{category}/{template_name}",
+        "backup_path": str(backup_path)
+    }
+
+
+@app.get("/api/v1/prompts/partials/{category}")
+async def list_partials(category: str):
+    """List partial templates for a category."""
+    from src.prompts import get_prompt_manager
+    from pathlib import Path
+
+    pm = get_prompt_manager()
+    templates_dir = Path(pm.templates_dir)
+
+    partials_dir = templates_dir / category / "_partials"
+
+    if not partials_dir.exists():
+        return {"partials": []}
+
+    partials = []
+    for partial_path in partials_dir.glob("*.j2"):
+        partials.append({
+            "name": partial_path.stem,
+            "path": f"{category}/_partials/{partial_path.name}",
+            "content": partial_path.read_text(encoding='utf-8')
+        })
+
+    return {"partials": partials}
+
