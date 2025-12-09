@@ -5,9 +5,12 @@ import streamlit as st
 import sys
 from pathlib import Path
 
-# Add src to path
+# Add paths
+frontend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from auth import check_password
 from src.prompts import get_prompt_manager, PromptManager
 from datetime import datetime
 import shutil
@@ -17,6 +20,10 @@ st.set_page_config(
     page_icon="📝",
     layout="wide"
 )
+
+# Password protection
+if not check_password():
+    st.stop()
 
 st.title("📝 Prompt Manager")
 st.markdown("View and edit AI prompt templates used by agents")

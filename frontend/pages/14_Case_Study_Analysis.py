@@ -13,13 +13,26 @@ from datetime import datetime
 from typing import List, Dict, Any
 from pathlib import Path
 
-# Add project root to path
+# Add paths
+frontend_dir = Path(__file__).parent.parent
 project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
+from auth import check_password
 from src.agents.off_label_case_study_agent import OffLabelCaseStudyAgent
 from src.tools.off_label_database import OffLabelDatabase
 from src.utils.config import get_settings
+
+st.set_page_config(
+    page_title="Case Study Analysis",
+    page_icon="📋",
+    layout="wide"
+)
+
+# Password protection
+if not check_password():
+    st.stop()
 
 # Configure logging
 logging.basicConfig(

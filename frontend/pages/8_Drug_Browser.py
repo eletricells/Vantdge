@@ -6,12 +6,25 @@ import sys
 from pathlib import Path
 import pandas as pd
 
-# Add src to path
+# Add paths
+frontend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from auth import check_password
 from src.utils.config import get_settings
 from src.tools.drug_database import DrugDatabase
 from src.utils.drug_version_manager import DrugVersionHistory, DrugVersionManager
+
+st.set_page_config(
+    page_title="Drug Browser",
+    page_icon="🔍",
+    layout="wide"
+)
+
+# Password protection
+if not check_password():
+    st.stop()
 
 
 def smart_title_case(text: str) -> str:

@@ -17,13 +17,26 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
-# Add project root to path
+# Add paths
+frontend_dir = Path(__file__).parent.parent
 project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
+from auth import check_password
 from src.agents.drug_repurposing_case_series_agent import DrugRepurposingCaseSeriesAgent
 from src.utils.config import get_settings
 from src.visualization.case_series_charts import render_priority_matrix, render_market_opportunity
+
+st.set_page_config(
+    page_title="Case Study Analysis v2",
+    page_icon="📋",
+    layout="wide"
+)
+
+# Password protection
+if not check_password():
+    st.stop()
 
 # Configure logging
 logging.basicConfig(

@@ -18,16 +18,29 @@ from datetime import datetime
 import pandas as pd
 import json
 
-# Add project root to path
+# Add paths
+frontend_dir = Path(__file__).parent.parent
 project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
+from auth import check_password
 from src.agents.clinical_data_extractor import ClinicalDataExtractorAgent
 from src.tools.clinical_extraction_database import ClinicalExtractionDatabase
 from src.utils.config import get_settings
 from src.utils.name_standardizer import standardize_disease_name, standardize_drug_name
 from anthropic import Anthropic
 import psycopg2
+
+st.set_page_config(
+    page_title="Clinical Data Extractor",
+    page_icon="📊",
+    layout="wide"
+)
+
+# Password protection
+if not check_password():
+    st.stop()
 from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)

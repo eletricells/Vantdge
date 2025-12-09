@@ -2,6 +2,15 @@
 Vantdge - Biopharma Intelligence Platform - Main Entry Point
 """
 import streamlit as st
+import sys
+from pathlib import Path
+
+# Add frontend directory to path for imports
+frontend_dir = Path(__file__).parent
+if str(frontend_dir) not in sys.path:
+    sys.path.insert(0, str(frontend_dir))
+
+from auth import check_password
 
 st.set_page_config(
     page_title="Vantdge",
@@ -9,6 +18,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Password protection
+if not check_password():
+    st.stop()  # Do not continue if check_password is not True
 
 # Custom CSS
 st.markdown("""

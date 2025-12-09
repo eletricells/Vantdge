@@ -18,16 +18,29 @@ import json
 import pandas as pd
 import time
 
-# Add project root to path
+# Add paths
+frontend_dir = Path(__file__).parent.parent
 project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
+from auth import check_password
 from src.agents.paperscope_v2 import PaperScopeV2Agent
 from src.tools.pubmed import PubMedAPI
 from src.tools.web_search import WebSearchTool
 from src.tools.clinicaltrials import ClinicalTrialsAPI
 from src.tools.paperscope_v2_database import PaperScopeV2Database
 from src.utils.config import get_settings
+
+st.set_page_config(
+    page_title="Literature Search",
+    page_icon="📚",
+    layout="wide"
+)
+
+# Password protection
+if not check_password():
+    st.stop()
 from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)
