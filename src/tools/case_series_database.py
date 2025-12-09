@@ -832,7 +832,7 @@ class CaseSeriesDatabase:
 
                     # Load market intelligence for this disease
                     disease_key = extraction.disease_normalized or extraction.disease
-                    market_intelligence = self.check_market_intelligence(disease_key)
+                    market_intelligence = self.check_market_intel_fresh(disease_key)
 
                     opportunities.append(RepurposingOpportunity(
                         extraction=extraction,
