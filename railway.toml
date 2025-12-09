@@ -5,8 +5,9 @@
 builder = "nixpacks"
 
 [deploy]
-healthcheckPath = "/health"
-healthcheckTimeout = 300
+# Healthcheck disabled for Streamlit (doesn't have /health endpoint)
+# healthcheckPath = "/health"
+# healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
