@@ -681,8 +681,8 @@ with tab4:
                     'Evidence Score (avg)': scores.evidence_quality,
                     'Market Score (avg)': scores.market_opportunity,
                     'Overall Score (avg)': scores.overall_priority,
-                    '# Approved Competitors': market_intel.approved_competitors if market_intel else 0,
-                    'Unmet Need': 'Yes' if market_intel and market_intel.unmet_need_score >= 7 else 'No',
+                    '# Approved Competitors': market_intel.standard_of_care.num_approved_drugs if market_intel and market_intel.standard_of_care else 0,
+                    'Unmet Need': 'Yes' if market_intel and market_intel.standard_of_care and market_intel.standard_of_care.unmet_need else 'No',
                     'TAM Estimate': market_intel.tam_estimate if market_intel else 'N/A'
                 })
 
@@ -945,8 +945,8 @@ with tab5:
                     'Evidence Score (avg)': scores.evidence_quality,
                     'Market Score (avg)': scores.market_opportunity,
                     'Overall Score (avg)': scores.overall_priority,
-                    '# Approved Competitors': market_intel.approved_competitors if market_intel else 0,
-                    'Unmet Need': 'Yes' if market_intel and market_intel.unmet_need_score >= 7 else 'No',
+                    '# Approved Competitors': market_intel.standard_of_care.num_approved_drugs if market_intel and market_intel.standard_of_care else 0,
+                    'Unmet Need': 'Yes' if market_intel and market_intel.standard_of_care and market_intel.standard_of_care.unmet_need else 'No',
                     'TAM Estimate': market_intel.tam_estimate if market_intel else 'N/A'
                 })
 
@@ -1395,8 +1395,8 @@ with tab6:
                                 'Evidence Score (avg)': scores.evidence_quality,
                                 'Market Score (avg)': scores.market_opportunity,
                                 'Overall Score (avg)': scores.overall_priority,
-                                '# Approved Competitors': market_intel.approved_competitors if market_intel else 0,
-                                'Unmet Need': 'Yes' if market_intel and market_intel.unmet_need_score >= 7 else 'No',
+                                '# Approved Competitors': market_intel.standard_of_care.num_approved_drugs if market_intel and market_intel.standard_of_care else 0,
+                                'Unmet Need': 'Yes' if market_intel and market_intel.standard_of_care and market_intel.standard_of_care.unmet_need else 'No',
                                 'TAM Estimate': market_intel.tam_estimate if market_intel else 'N/A'
                             })
 
