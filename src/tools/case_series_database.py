@@ -484,7 +484,8 @@ class CaseSeriesDatabase:
                 cur.execute("""
                     SELECT disease, prevalence, incidence, approved_drugs,
                            treatment_paradigm, unmet_needs, pipeline_drugs,
-                           tam_estimate, tam_growth_rate, market_dynamics,
+                           tam_estimate, tam_usd, tam_rationale, tam_growth_rate, market_dynamics,
+                           competitive_landscape,
                            sources_epidemiology, sources_approved_drugs, sources_treatment,
                            sources_pipeline, sources_tam, fetched_at, expires_at
                     FROM cs_market_intelligence
@@ -519,7 +520,8 @@ class CaseSeriesDatabase:
                         unmet_need=bool(row.get('unmet_needs')),
                         unmet_need_description=str(row.get('unmet_needs')) if row.get('unmet_needs') else None,
                         pipeline_therapies=pipeline_therapies,
-                        num_pipeline_therapies=len(pipeline_therapies)
+                        num_pipeline_therapies=len(pipeline_therapies),
+                        competitive_landscape=row.get('competitive_landscape')
                     )
 
                     # Build attributed sources from stored source arrays
@@ -541,6 +543,8 @@ class CaseSeriesDatabase:
                         epidemiology=epi,
                         standard_of_care=soc,
                         tam_estimate=row.get('tam_estimate'),
+                        tam_usd=row.get('tam_usd'),
+                        tam_rationale=row.get('tam_rationale'),
                         growth_rate=row.get('tam_growth_rate'),
                         attributed_sources=attributed,
                         pipeline_sources=row.get('sources_pipeline') or [],
@@ -605,20 +609,27 @@ class CaseSeriesDatabase:
                     # Use mode='json' for consistent datetime serialization
                     pipeline_drugs = [p.model_dump(mode='json') for p in mi.standard_of_care.pipeline_therapies]
 
+                # Get competitive landscape from standard_of_care
+                competitive_landscape = mi.standard_of_care.competitive_landscape if mi.standard_of_care else None
+
                 cur.execute("""
                     INSERT INTO cs_market_intelligence (
                         disease, prevalence, incidence, approved_drugs,
                         treatment_paradigm, unmet_needs, pipeline_drugs,
-                        tam_estimate, tam_growth_rate, market_dynamics,
+                        tam_estimate, tam_usd, tam_rationale, tam_growth_rate, market_dynamics,
+                        competitive_landscape,
                         sources_epidemiology, sources_approved_drugs, sources_treatment,
                         sources_pipeline, sources_tam, expires_at
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     ON CONFLICT (disease) DO UPDATE SET
                         prevalence = EXCLUDED.prevalence,
                         approved_drugs = EXCLUDED.approved_drugs,
                         tam_estimate = EXCLUDED.tam_estimate,
+                        tam_usd = EXCLUDED.tam_usd,
+                        tam_rationale = EXCLUDED.tam_rationale,
+                        competitive_landscape = EXCLUDED.competitive_landscape,
                         sources_epidemiology = EXCLUDED.sources_epidemiology,
                         sources_tam = EXCLUDED.sources_tam,
                         fetched_at = CURRENT_TIMESTAMP,
@@ -627,7 +638,8 @@ class CaseSeriesDatabase:
                     mi.disease,
                     prevalence, incidence, Json(approved_drugs),
                     treatment_paradigm, unmet_needs_text, Json(pipeline_drugs),
-                    mi.tam_estimate, mi.growth_rate, None,  # market_dynamics
+                    mi.tam_estimate, mi.tam_usd, mi.tam_rationale, mi.growth_rate, None,  # market_dynamics
+                    competitive_landscape,
                     Json(sources_epi), Json(sources_drugs), Json(sources_treatment),
                     Json(sources_pipeline), Json(sources_tam), expires_at
                 ))
