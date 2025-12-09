@@ -6074,6 +6074,17 @@ class DrugRepurposingCaseSeriesAgent:
             unmet_need = mi.standard_of_care.unmet_need if mi and mi.standard_of_care else None
             tam = mi.tam_estimate if mi else None
 
+            # Get score breakdown details from best opportunity
+            best_scores = ds['best_opp'].scores if ds['best_opp'] else None
+            clinical_bd = best_scores.clinical_breakdown if best_scores and best_scores.clinical_breakdown else {}
+
+            # Extract detailed scores
+            response_rate_quality_weighted = clinical_bd.get('response_rate_quality_weighted', best_scores.response_rate_score if best_scores else None)
+            safety_score = best_scores.safety_profile_score if best_scores else None
+            organ_domain_score = best_scores.organ_domain_score if best_scores else None
+            efficacy_endpoint_count = clinical_bd.get('efficacy_endpoint_count', 0)
+            efficacy_concordance = clinical_bd.get('efficacy_concordance', None)
+
             summary_rows.append({
                 'Rank': i,
                 'Disease': ds['disease'],
@@ -6088,6 +6099,13 @@ class DrugRepurposingCaseSeriesAgent:
                 'Market Score (avg)': ds['avg_market_score'],
                 'Overall Score (avg)': ds['avg_overall_score'],
                 'Best Study Score': ds['best_overall_score'],
+                # Detailed score components
+                'Response Rate Score (Quality-Weighted)': response_rate_quality_weighted,
+                'Safety Score': safety_score,
+                'Organ Domain Score': organ_domain_score,
+                '# Efficacy Endpoints Scored': efficacy_endpoint_count,
+                'Efficacy Concordance': efficacy_concordance,
+                # Market intelligence
                 '# Approved Competitors': competitors,
                 '# Pipeline Therapies': pipeline,
                 'Unmet Need': 'Yes' if unmet_need else 'No' if unmet_need is False else 'Unknown',
