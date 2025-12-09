@@ -205,35 +205,19 @@ with st.sidebar:
     st.markdown("""
     Use the pages above to navigate:
 
-    **📊 Analysis**
-    - Run drug program analyses
-    - Get investment recommendations
-    - View clinical insights
-
-    **📝 Agent Prompts**
-    - Customize agent behavior
-    - Edit system prompts
-    - Fine-tune analysis rigor
-    - **Prompt Manager** ⭐ NEW - View/edit all templates
-
-    **🔬 Landscape Discovery**
-    - Landscape Discovery (V1)
-    - Landscape Browser (V1)
-    - **WIP - Landscape 2.0** ⭐ NEW
-    - **WIP - Landscape 2.0 Browser** ⭐ NEW
-
-    **📄 Clinical Data**
-    - Paper Discovery (PaperScope)
-    - Clinical Data Extractor
-    - Paper Processor Browser
-
-    **🔍 Research Tools**
-    - Literature Search
-    - Epidemiology Analysis
+    **📄 Case Studies**
     - Case Study Analysis
+    - Case Study Analysis v2
+
+    **🔬 WIP (Work In Progress)**
+    - Drug Extraction
+    - Drug Browser
+    - Clinical Data Extractor
+    - Literature Search
+    - Prompt Manager
 
     ---
 
-    ### 💡 Quick Tip
-    Try the new **Landscape 2.0** for faster, more comprehensive drug discovery!
+    ### 💡 Note
+    WIP pages are experimental features under development.
     """)
