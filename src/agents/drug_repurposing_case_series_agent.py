@@ -3768,6 +3768,22 @@ class DrugRepurposingCaseSeriesAgent:
             market_score * 0.25
         )
 
+        # Extract market intelligence data for breakdown
+        market_breakdown_data = {
+            "competitors": round(competitors_score, 1),
+            "market_size": round(market_size_score, 1),
+            "unmet_need": round(unmet_need_score, 1)
+        }
+
+        # Add actual market intelligence data if available
+        if opp.market_intelligence:
+            mi = opp.market_intelligence
+            if mi.standard_of_care:
+                market_breakdown_data["num_approved_drugs"] = mi.standard_of_care.num_approved_drugs
+                market_breakdown_data["unmet_need"] = mi.standard_of_care.unmet_need
+            if mi.tam_estimate:
+                market_breakdown_data["tam_estimate"] = mi.tam_estimate
+
         return OpportunityScores(
             clinical_signal=round(clinical_score, 1),
             evidence_quality=round(evidence_score, 1),
@@ -3802,11 +3818,7 @@ class DrugRepurposingCaseSeriesAgent:
             competitors_score=round(competitors_score, 1),
             market_size_score=round(market_size_score, 1),
             unmet_need_score=round(unmet_need_score, 1),
-            market_breakdown={
-                "competitors": round(competitors_score, 1),
-                "market_size": round(market_size_score, 1),
-                "unmet_need": round(unmet_need_score, 1)
-            }
+            market_breakdown=market_breakdown_data
         )
 
     # -------------------------------------------------------------------------
