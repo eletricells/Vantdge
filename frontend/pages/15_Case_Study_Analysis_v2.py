@@ -859,8 +859,39 @@ with tab5:
                     status_text.text("Analysis complete!")
 
                     st.success(f"✅ Analysis complete! Found {len(result.opportunities)} repurposing opportunities.")
-                    st.info(f"📊 Excel report saved: `{excel_path}`")
-                    st.info(f"📄 JSON data saved: `{json_path}`")
+
+                    # Download buttons for output files
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.info(f"📊 Excel report: `{excel_filename}`")
+                        try:
+                            with open(excel_path, 'rb') as f:
+                                excel_data = f.read()
+                            st.download_button(
+                                label="⬇️ Download Excel Report",
+                                data=excel_data,
+                                file_name=excel_filename,
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True
+                            )
+                        except Exception as e:
+                            st.error(f"Could not load Excel file: {e}")
+
+                    with col2:
+                        st.info(f"📄 JSON data: `{json_filename}`")
+                        try:
+                            with open(json_path, 'rb') as f:
+                                json_data = f.read()
+                            st.download_button(
+                                label="⬇️ Download JSON Data",
+                                data=json_data,
+                                file_name=json_filename,
+                                mime="application/json",
+                                use_container_width=True
+                            )
+                        except Exception as e:
+                            st.error(f"Could not load JSON file: {e}")
 
                     # Show cost info
                     if result.total_input_tokens or result.total_output_tokens:
