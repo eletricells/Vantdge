@@ -819,6 +819,8 @@ class CaseSeriesDatabase:
 
                     scores = OpportunityScores()
                     rank = None
+                    market_intelligence = None
+
                     if opp_row:
                         scores = OpportunityScores(
                             clinical_signal=float(opp_row.get('score_efficacy') or 5),
@@ -828,10 +830,15 @@ class CaseSeriesDatabase:
                         )
                         rank = opp_row.get('rank')
 
+                    # Load market intelligence for this disease
+                    disease_key = extraction.disease_normalized or extraction.disease
+                    market_intelligence = self.check_market_intelligence(disease_key)
+
                     opportunities.append(RepurposingOpportunity(
                         extraction=extraction,
                         scores=scores,
-                        rank=rank
+                        rank=rank,
+                        market_intelligence=market_intelligence
                     ))
 
             return DrugAnalysisResult(
