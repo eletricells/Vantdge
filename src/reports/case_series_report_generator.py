@@ -58,11 +58,17 @@ class CaseSeriesReportGenerator:
         try:
             xlsx = pd.ExcelFile(excel_path)
             
-            # Load all sheets
+            # Load all sheets (handle missing sheets gracefully)
             analysis_df = pd.read_excel(xlsx, sheet_name='Analysis Summary')
             drug_df = pd.read_excel(xlsx, sheet_name='Drug Summary')
             opportunities_df = pd.read_excel(xlsx, sheet_name='Opportunities')
-            market_df = pd.read_excel(xlsx, sheet_name='Market Intelligence')
+
+            # Market Intelligence sheet may not exist if no market data was gathered
+            try:
+                market_df = pd.read_excel(xlsx, sheet_name='Market Intelligence')
+            except ValueError:
+                market_df = pd.DataFrame()  # Empty dataframe if sheet doesn't exist
+
             efficacy_df = pd.read_excel(xlsx, sheet_name='Efficacy Endpoints')
             safety_df = pd.read_excel(xlsx, sheet_name='Safety Endpoints')
             
@@ -121,7 +127,7 @@ class CaseSeriesReportGenerator:
                     'Pipeline Therapies (Count)', 'Pipeline Details',
                     'Unmet Need', 'Unmet Need Description',
                     'TAM (Total Addressable Market)', 'Competitive Landscape'
-                ]].to_markdown(index=False),
+                ]].to_markdown(index=False) if not market_df.empty else "No market intelligence data available.",
                 
                 # Detailed efficacy endpoints
                 'efficacy_endpoints_table': efficacy_detail.to_markdown(index=False),
@@ -154,7 +160,11 @@ class CaseSeriesReportGenerator:
             opps = result.opportunities
 
             # Build summary statistics
-            total_patients = sum(o.extraction.sample_size for o in opps if o.extraction)
+            total_patients = sum(
+                (o.extraction.patient_population.n_patients or 0)
+                for o in opps
+                if o.extraction and o.extraction.patient_population
+            )
             unique_diseases = set(o.extraction.disease for o in opps if o.extraction)
 
             # Create analysis summary data
@@ -170,7 +180,8 @@ class CaseSeriesReportGenerator:
                         'scores': []
                     }
                 disease_groups[disease]['studies'].append(opp)
-                disease_groups[disease]['patients'] += opp.extraction.sample_size or 0
+                n_patients = (opp.extraction.patient_population.n_patients or 0) if opp.extraction.patient_population else 0
+                disease_groups[disease]['patients'] += n_patients
                 disease_groups[disease]['scores'].append(opp.scores.overall_priority)
 
             # Format as markdown tables
@@ -199,8 +210,8 @@ class CaseSeriesReportGenerator:
                 primary_endpoint = "N/A"
                 endpoint_result = "N/A"
                 response_rate = "N/A"
-                if ext.efficacy_endpoints:
-                    primary = [e for e in ext.efficacy_endpoints if e.endpoint_category == 'primary']
+                if ext.detailed_efficacy_endpoints:
+                    primary = [e for e in ext.detailed_efficacy_endpoints if e.endpoint_category == 'primary']
                     if primary:
                         primary_endpoint = primary[0].endpoint_name
                         if primary[0].response_rate:
@@ -208,9 +219,11 @@ class CaseSeriesReportGenerator:
                         if primary[0].change_from_baseline:
                             endpoint_result = f"{primary[0].change_from_baseline:+.1f}"
 
+                n_patients = (ext.patient_population.n_patients or 0) if ext.patient_population else 0
+                pmid = ext.source.pmid if ext.source else 'N/A'
                 opp_rows.append({
                     'Disease (Standardized)': ext.disease,
-                    'N Patients': ext.sample_size or 0,
+                    'N Patients': n_patients,
                     'Primary Endpoint': primary_endpoint,
                     'Endpoint Result': endpoint_result,
                     'Responders (%)': response_rate,
@@ -218,7 +231,7 @@ class CaseSeriesReportGenerator:
                     'Evidence Score': f"{opp.scores.evidence_quality:.1f}",
                     'Market Score': f"{opp.scores.market_opportunity:.1f}",
                     'Overall Priority': f"{opp.scores.overall_priority:.1f}",
-                    'PMID': ext.pmid or 'N/A'
+                    'PMID': pmid or 'N/A'
                 })
 
             opportunities_table = pd.DataFrame(opp_rows).to_markdown(index=False)
@@ -227,19 +240,20 @@ class CaseSeriesReportGenerator:
             efficacy_rows = []
             for opp in opps:
                 ext = opp.extraction
-                if not ext or not ext.efficacy_endpoints:
+                if not ext or not ext.detailed_efficacy_endpoints:
                     continue
-                for endpoint in ext.efficacy_endpoints:
+                for endpoint in ext.detailed_efficacy_endpoints:
+                    pmid = ext.source.pmid if ext.source else 'N/A'
                     efficacy_rows.append({
                         'Disease': ext.disease,
-                        'PMID': ext.pmid or 'N/A',
+                        'PMID': pmid or 'N/A',
                         'Endpoint Name': endpoint.endpoint_name,
                         'Endpoint Category': endpoint.endpoint_category,
                         'Baseline Value': endpoint.baseline_value or '',
                         'Final Value': endpoint.final_value or '',
                         'Change from Baseline': endpoint.change_from_baseline or '',
-                        'Percent Change': endpoint.percent_change or '',
-                        'Response Rate (%)': endpoint.response_rate or '',
+                        'Percent Change': endpoint.change_pct or '',  # Fixed: was percent_change
+                        'Response Rate (%)': endpoint.responders_pct or '',  # Fixed: was response_rate
                         'Timepoint': endpoint.timepoint or '',
                         'Notes': endpoint.notes or ''
                     })
@@ -250,18 +264,21 @@ class CaseSeriesReportGenerator:
             safety_rows = []
             for opp in opps:
                 ext = opp.extraction
-                if not ext or not ext.safety_events:
+                if not ext or not ext.detailed_safety_endpoints:  # Fixed: was safety_events
                     continue
-                for event in ext.safety_events:
+                for event in ext.detailed_safety_endpoints:  # Fixed: was safety_events
+                    pmid = ext.source.pmid if ext.source else 'N/A'
+                    # Determine if serious based on event_category
+                    is_serious = 'SAE' in event.event_category.upper() if event.event_category else False
                     safety_rows.append({
                         'Disease': ext.disease,
-                        'PMID': ext.pmid or 'N/A',
+                        'PMID': pmid or 'N/A',
                         'Event Name': event.event_name,
                         'Event Category': event.event_category,
-                        'Is Serious (SAE)': 'Yes' if event.is_serious else 'No',
-                        'Patients Affected (n)': event.patients_affected or '',
-                        'Incidence (%)': event.incidence_percent or '',
-                        'Related to Drug': event.relationship_to_drug or '',
+                        'Is Serious (SAE)': 'Yes' if is_serious else 'No',
+                        'Patients Affected (n)': event.patients_affected_n or '',  # Fixed: was patients_affected
+                        'Incidence (%)': event.patients_affected_pct or '',  # Fixed: was incidence_percent
+                        'Related to Drug': event.relatedness or '',  # Fixed: was relationship_to_drug
                         'Outcome': event.outcome or '',
                         'Notes': event.notes or ''
                     })
@@ -274,19 +291,28 @@ class CaseSeriesReportGenerator:
                 if not opp.market_intelligence:
                     continue
                 mi = opp.market_intelligence
+                epi = mi.epidemiology if mi.epidemiology else None
+                soc = mi.standard_of_care if mi.standard_of_care else None
+
+                # Get approved treatments count and names (from top_treatments that are FDA approved)
+                approved_treatments = [t for t in soc.top_treatments if t.fda_approved] if soc and soc.top_treatments else []
+                approved_count = len(approved_treatments)
+                approved_names = ', '.join([t.drug_name for t in approved_treatments if t.drug_name]) if approved_treatments else 'N/A'
+
+                # Get pipeline count
+                pipeline_count = len(soc.pipeline_therapies) if soc and soc.pipeline_therapies else 0
+
                 market_rows.append({
                     'Disease': opp.extraction.disease if opp.extraction else 'Unknown',
-                    'US Prevalence': mi.prevalence_us or 'N/A',
-                    'US Incidence': mi.incidence_us or 'N/A',
-                    'Patient Population': mi.patient_population or 'N/A',
-                    'Approved Treatments (Count)': mi.approved_competitors or 0,
-                    'Approved Drug Names': mi.approved_drug_names or 'N/A',
-                    'Pipeline Therapies (Count)': mi.pipeline_therapies or 0,
-                    'Pipeline Details': mi.pipeline_details or 'N/A',
-                    'Unmet Need': 'Yes' if mi.unmet_need_score >= 7 else 'No',
-                    'Unmet Need Description': mi.unmet_need_description or 'N/A',
+                    'US Prevalence': epi.us_prevalence_estimate if epi else 'N/A',
+                    'US Incidence': epi.us_incidence_estimate if epi else 'N/A',
+                    'Patient Population': epi.patient_population_size if epi else 'N/A',
+                    'Approved Treatments (Count)': approved_count,
+                    'Approved Drug Names': approved_names,
+                    'Pipeline Therapies (Count)': pipeline_count,
+                    'Unmet Need': 'Yes' if (soc and soc.unmet_need) else 'No',
+                    'Unmet Need Description': soc.unmet_need_description if (soc and soc.unmet_need_description) else 'N/A',
                     'TAM (Total Addressable Market)': mi.tam_estimate or 'N/A',
-                    'Competitive Landscape': mi.competitive_landscape or 'N/A'
                 })
 
             market_intelligence_table = pd.DataFrame(market_rows).to_markdown(index=False) if market_rows else "No market intelligence available"

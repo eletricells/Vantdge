@@ -3,6 +3,10 @@ Extract FDA-approved BRANDED INNOVATIVE treatments for {{ disease }}.
 === CRITICAL: INDICATION-SPECIFIC FDA APPROVALS ONLY ===
 Only count drugs with FDA approval for THIS EXACT INDICATION: "{{ disease }}"
 
+{% if parent_disease %}
+NOTE: "{{ disease }}" is a specific subtype/manifestation. Also consider approvals for the parent indication "{{ parent_disease }}" but clearly note if approval is for parent vs specific subtype.
+{% endif %}
+
 IMPORTANT INDICATION DISTINCTIONS (different FDA labels):
 - "Systemic Lupus Erythematosus (SLE)" ≠ "Lupus Nephritis" (different indications!)
   * SLE approved: Benlysta, Saphnelo
@@ -10,6 +14,8 @@ IMPORTANT INDICATION DISTINCTIONS (different FDA labels):
 - "Rheumatoid Arthritis" ≠ "Juvenile Idiopathic Arthritis"
 - "Atopic Dermatitis" (adult) may have different approvals than pediatric
 - "Crohn's Disease" ≠ "Ulcerative Colitis"
+- "Dermatomyositis" ≠ "Polymyositis" (though often overlap)
+- "Uveitis" approvals may specify infectious vs non-infectious
 
 If analyzing "{{ disease }}", only count drugs FDA-approved for EXACTLY "{{ disease }}".
 Do NOT count drugs approved for related but different indications.
@@ -17,20 +23,25 @@ Do NOT count drugs approved for related but different indications.
 === BRANDED INNOVATIVE DRUGS ONLY ===
 INCLUDE (is_branded_innovative=true):
 - Biologics: monoclonal antibodies, fusion proteins, recombinant proteins
-  Examples: Ilaris, Kineret, Actemra, Humira, Enbrel, Cosentyx, Stelara, Dupixent, Ocrevus
+  Examples: Ilaris, Kineret, Actemra, Humira, Enbrel, Cosentyx, Stelara, Dupixent, Ocrevus, Saphnelo
 - Novel small molecules with brand names: JAK inhibitors, kinase inhibitors, targeted therapies
-  Examples: Olumiant (baricitinib), Xeljanz (tofacitinib), Rinvoq (upadacitinib), Jakafi
+  Examples: Olumiant (baricitinib), Xeljanz (tofacitinib), Rinvoq (upadacitinib), Jakafi (ruxolitinib)
 - Specialty drugs: IVIG products, enzyme replacement therapies
-  Examples: Octagam 10%, Gamunex-C, Cerezyme, Fabrazyme
+  Examples: Octagam 10%, Gamunex-C, Hizentra, Cerezyme, Fabrazyme
 - Gene/cell therapies: Zolgensma, Luxturna, Yescarta
 
 EXCLUDE (is_branded_innovative=false):
-- Generic drugs even with brand names: corticosteroids (prednisone, Medrol), methotrexate, azathioprine, cyclosporine
+- Generic drugs even with brand names: corticosteroids (prednisone, Medrol), methotrexate, azathioprine, cyclosporine, hydroxychloroquine
 - Supportive care: NSAIDs, pain medications, antihistamines
-- OTC medications: eye drops, topical steroids
-- Branded generics: Cyclogyl (cyclopentolate), generic-equivalent products
+- OTC medications: artificial tears, topical steroids (unless Rx-only like Opzelura)
+- Branded generics: generic-equivalent products
 
-Search Results:
+{% if fda_api_data %}
+=== FDA DATABASE DATA (AUTHORITATIVE) ===
+{{ fda_api_data | to_json }}
+{% endif %}
+
+=== SEARCH RESULTS ===
 {{ search_results | to_json }}
 
 Return ONLY valid JSON:
@@ -38,32 +49,51 @@ Return ONLY valid JSON:
     "top_treatments": [
         {
             "drug_name": "Brand Name (generic)",
-            "drug_class": "class (e.g., IL-1 inhibitor, JAK inhibitor)",
+            "drug_class": "class (e.g., IL-1 inhibitor, JAK inhibitor, Anti-CD20)",
             "is_branded_innovative": true/false,
             "fda_approved": true/false,
             "fda_approved_indication": "EXACT indication name from FDA label or null",
+            "approval_year": year of FDA approval (integer) or null,
             "line_of_therapy": "1L/2L/3L or null",
-            "efficacy_range": "60-70%",
+            "efficacy_range": "response rate range if known (e.g., '60-70%')",
             "annual_cost_usd": integer or null,
-            "notes": "FDA approval details including specific indication"
+            "approval_confidence": "High" or "Medium" or "Low",
+            "approval_evidence": "Source confirming approval (e.g., 'FDA press release 2022', 'Drugs@FDA label')",
+            "notes": "FDA approval details including specific indication and any restrictions"
         }
     ],
     "approved_drug_names": ["Brand1 (generic1)", "Brand2 (generic2)"],
     "num_approved_drugs": integer (count of drugs FDA-approved for EXACTLY "{{ disease }}"),
-    "avg_annual_cost_usd": integer (average of branded innovative drugs only),
-    "treatment_paradigm": "1-2 sentence description of treatment approach including line of therapy",
+    "avg_annual_cost_usd": integer (average of branded innovative drugs only) or null,
+    "treatment_paradigm": "2-3 sentence description of treatment approach including line of therapy sequence",
     "unmet_need": true/false,
-    "unmet_need_description": "description or null",
-    "competitive_landscape": "2-sentence summary",
-    "soc_source": "source name and URL"
+    "unmet_need_description": "description of gaps in current treatment or null",
+    "competitive_landscape": "2-3 sentence summary of competitive dynamics",
+    "recent_approvals": "Any approvals in last 2 years with dates, or null",
+    "soc_source": "Primary source name and URL",
+    "data_quality": "High" or "Medium" or "Low",
+    "data_quality_notes": "Any limitations in the data (e.g., 'Could not verify approval year')"
 }
 
-VALIDATION RULES:
+=== APPROVAL CONFIDENCE SCORING ===
+- High: FDA press release, Drugs@FDA database, or drug label confirms approval for THIS indication
+- Medium: Reputable source (UpToDate, Medscape) states FDA approved, but exact label not verified
+- Low: Only mentions "approved" without specifying FDA vs EMA vs other, or approval status unclear
+
+=== COMMON FALSE POSITIVES TO AVOID ===
+- "Approved for [related disease]" ≠ approved for THIS disease
+- "Recommended in guidelines" ≠ FDA approved
+- "Used in clinical practice" or "Standard of care" ≠ FDA approved
+- "EMA approved" ≠ FDA approved (different regulatory agencies)
+- "Approved in Japan/China" ≠ FDA approved
+
+=== VALIDATION RULES ===
 1. fda_approved=true ONLY if FDA approved for EXACTLY "{{ disease }}" (not related conditions)
 2. approved_drug_names MUST only contain drugs where is_branded_innovative=true AND fda_approved=true for THIS indication
 3. num_approved_drugs MUST exactly equal length of approved_drug_names list
 4. Generic drugs (corticosteroids, methotrexate, etc.) should NEVER appear in approved_drug_names
 5. If drug is approved for related but different indication (e.g., Lupus Nephritis vs SLE), set fda_approved=false
+6. If unsure about approval status, set fda_approved=false and approval_confidence="Low"
 
 {% include 'case_series/_partials/json_rules.j2' %}
 

@@ -494,39 +494,54 @@ class CaseSeriesDatabase:
                 if row:
                     logger.info(f"Found fresh cached market intel for {disease}")
                     # Reconstruct MarketIntelligence from stored columns
-                    from src.models.case_series_schemas import Epidemiology, StandardOfCare, AttributedSource
+                    from src.models.case_series_schemas import EpidemiologyData, StandardOfCareData, AttributedSource, PipelineTherapy
 
-                    epi = Epidemiology(
-                        prevalence=row.get('prevalence'),
-                        us_prevalence_estimate=row.get('prevalence')
-                    ) if row.get('prevalence') else None
+                    # Reconstruct EpidemiologyData
+                    epi = EpidemiologyData(
+                        us_prevalence_estimate=row.get('prevalence'),
+                        us_incidence_estimate=row.get('incidence')
+                    ) if row.get('prevalence') or row.get('incidence') else EpidemiologyData()
 
-                    soc = StandardOfCare(
+                    # Reconstruct pipeline therapies from JSON
+                    pipeline_therapies = []
+                    if row.get('pipeline_drugs'):
+                        try:
+                            for p_dict in row.get('pipeline_drugs'):
+                                pipeline_therapies.append(PipelineTherapy(**p_dict))
+                        except Exception as e:
+                            logger.warning(f"Could not reconstruct pipeline therapies: {e}")
+
+                    # Reconstruct StandardOfCareData
+                    soc = StandardOfCareData(
                         approved_drug_names=row.get('approved_drugs') or [],
+                        num_approved_drugs=len(row.get('approved_drugs') or []),
                         treatment_paradigm=row.get('treatment_paradigm'),
                         unmet_need=bool(row.get('unmet_needs')),
-                        unmet_need_description=row.get('unmet_needs'),
-                        pipeline_therapies=[]
-                    ) if row.get('approved_drugs') or row.get('treatment_paradigm') else None
+                        unmet_need_description=str(row.get('unmet_needs')) if row.get('unmet_needs') else None,
+                        pipeline_therapies=pipeline_therapies,
+                        num_pipeline_therapies=len(pipeline_therapies)
+                    )
 
                     # Build attributed sources from stored source arrays
                     attributed = []
                     for url in (row.get('sources_epidemiology') or []):
-                        attributed.append(AttributedSource(url=url, attribution='Epidemiology'))
+                        attributed.append(AttributedSource(url=url, title=None, attribution='Epidemiology'))
                     for url in (row.get('sources_approved_drugs') or []):
-                        attributed.append(AttributedSource(url=url, attribution='Approved Treatments'))
+                        attributed.append(AttributedSource(url=url, title=None, attribution='Approved Treatments'))
                     for url in (row.get('sources_pipeline') or []):
-                        attributed.append(AttributedSource(url=url, attribution='Pipeline/Clinical Trials'))
+                        attributed.append(AttributedSource(url=url, title=None, attribution='Pipeline/Clinical Trials'))
                     for url in (row.get('sources_tam') or []):
-                        attributed.append(AttributedSource(url=url, attribution='TAM/Market Analysis'))
+                        attributed.append(AttributedSource(url=url, title=None, attribution='TAM/Market Analysis'))
 
+                    # Note: parent_disease is not stored in DB, it's derived at runtime
+                    # The agent will re-derive it from DISEASE_PARENT_MAPPING if needed
                     return MarketIntelligence(
                         disease=row.get('disease'),
+                        parent_disease=None,  # Will be set by agent if needed
                         epidemiology=epi,
                         standard_of_care=soc,
                         tam_estimate=row.get('tam_estimate'),
                         growth_rate=row.get('tam_growth_rate'),
-                        unmet_needs=row.get('unmet_needs'),
                         attributed_sources=attributed,
                         pipeline_sources=row.get('sources_pipeline') or [],
                         tam_sources=row.get('sources_tam') or []
@@ -576,6 +591,15 @@ class CaseSeriesDatabase:
                 incidence = mi.epidemiology.us_incidence_estimate if mi.epidemiology else None
                 approved_drugs = mi.standard_of_care.approved_drug_names if mi.standard_of_care else []
                 treatment_paradigm = mi.standard_of_care.treatment_paradigm if mi.standard_of_care else None
+                # Extract unmet_needs as TEXT for database column
+                # The database column is TEXT, so use the description if available
+                unmet_needs_text = None
+                if mi.standard_of_care:
+                    if mi.standard_of_care.unmet_need_description:
+                        unmet_needs_text = mi.standard_of_care.unmet_need_description
+                    elif mi.standard_of_care.unmet_need:
+                        unmet_needs_text = "High unmet need identified"
+
                 pipeline_drugs = []
                 if mi.standard_of_care and mi.standard_of_care.pipeline_therapies:
                     # Use mode='json' for consistent datetime serialization
@@ -602,7 +626,7 @@ class CaseSeriesDatabase:
                 """, (
                     mi.disease,
                     prevalence, incidence, Json(approved_drugs),
-                    treatment_paradigm, mi.unmet_needs, Json(pipeline_drugs),
+                    treatment_paradigm, unmet_needs_text, Json(pipeline_drugs),
                     mi.tam_estimate, mi.growth_rate, None,  # market_dynamics
                     Json(sources_epi), Json(sources_drugs), Json(sources_treatment),
                     Json(sources_pipeline), Json(sources_tam), expires_at
@@ -640,7 +664,7 @@ class CaseSeriesDatabase:
                     mi = opportunity.market_intelligence
                     market_tam = mi.tam_estimate
                     market_prevalence = mi.epidemiology.us_prevalence_estimate if mi.epidemiology else None
-                    market_unmet_needs = mi.unmet_needs
+                    market_unmet_needs = mi.standard_of_care.unmet_need if mi.standard_of_care else False
 
                 # Use correct attribute names (patient_population, efficacy instead of baseline, outcomes)
                 n_patients = None
@@ -1075,3 +1099,268 @@ class CaseSeriesDatabase:
         except Exception as e:
             logger.error(f"Error caching instruments: {e}")
             return False
+
+    # =====================================================
+    # DISEASE MAPPINGS - Name variants and parent mappings
+    # =====================================================
+
+    def load_disease_name_variants(self) -> Dict[str, List[str]]:
+        """
+        Load all disease name variants from database.
+
+        Returns:
+            Dict mapping canonical_name -> list of variant names
+        """
+        if not self.is_available:
+            return {}
+
+        result = {}
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT canonical_name, variant_name
+                        FROM cs_disease_name_variants
+                        ORDER BY canonical_name, confidence DESC
+                    """)
+                    for row in cur.fetchall():
+                        canonical = row['canonical_name']
+                        variant = row['variant_name']
+                        if canonical not in result:
+                            result[canonical] = []
+                        result[canonical].append(variant)
+                    logger.info(f"Loaded {len(result)} disease name variant mappings from database")
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"Error loading disease name variants: {e}")
+        return result
+
+    def load_disease_parent_mappings(self) -> Dict[str, str]:
+        """
+        Load all disease parent mappings from database.
+
+        Returns:
+            Dict mapping specific_name -> parent_name
+        """
+        if not self.is_available:
+            return {}
+
+        result = {}
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT specific_name, parent_name
+                        FROM cs_disease_parent_mappings
+                        ORDER BY specific_name
+                    """)
+                    for row in cur.fetchall():
+                        result[row['specific_name']] = row['parent_name']
+                    logger.info(f"Loaded {len(result)} disease parent mappings from database")
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"Error loading disease parent mappings: {e}")
+        return result
+
+    def save_disease_variant(
+        self,
+        canonical_name: str,
+        variant_name: str,
+        variant_type: str = 'synonym',
+        source: str = 'auto',
+        confidence: float = 0.9,
+        created_by: str = 'agent'
+    ) -> bool:
+        """
+        Save a disease name variant to the database.
+
+        Args:
+            canonical_name: The standard/canonical disease name
+            variant_name: The alternative name/abbreviation
+            variant_type: Type of variant (abbreviation, synonym, alternate_spelling, common_name)
+            source: Where this mapping came from (manual, auto, MeSH, ICD-10)
+            confidence: Confidence in the mapping (0.0-1.0)
+            created_by: Who/what created this mapping
+
+        Returns:
+            True if saved successfully
+        """
+        if not self.is_available:
+            return False
+
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO cs_disease_name_variants
+                            (canonical_name, variant_name, variant_type, source, confidence, created_by)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (canonical_name, variant_name) DO UPDATE SET
+                            confidence = GREATEST(cs_disease_name_variants.confidence, EXCLUDED.confidence),
+                            source = EXCLUDED.source
+                    """, (canonical_name, variant_name, variant_type, source, confidence, created_by))
+                    conn.commit()
+                    logger.debug(f"Saved disease variant: {variant_name} -> {canonical_name}")
+                    return True
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Error saving disease variant: {e}")
+            return False
+
+    def save_disease_parent_mapping(
+        self,
+        specific_name: str,
+        parent_name: str,
+        relationship_type: str = 'subtype',
+        source: str = 'auto',
+        confidence: float = 0.9,
+        notes: str = None,
+        created_by: str = 'agent'
+    ) -> bool:
+        """
+        Save a disease parent mapping to the database.
+
+        Args:
+            specific_name: The specific disease subtype name
+            parent_name: The parent/canonical disease name
+            relationship_type: Type of relationship (subtype, variant, refractory, pediatric)
+            source: Where this mapping came from
+            confidence: Confidence in the mapping (0.0-1.0)
+            notes: Optional notes about the mapping
+            created_by: Who/what created this mapping
+
+        Returns:
+            True if saved successfully
+        """
+        if not self.is_available:
+            return False
+
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO cs_disease_parent_mappings
+                            (specific_name, parent_name, relationship_type, source, confidence, notes, created_by)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (specific_name) DO UPDATE SET
+                            parent_name = EXCLUDED.parent_name,
+                            relationship_type = EXCLUDED.relationship_type,
+                            confidence = GREATEST(cs_disease_parent_mappings.confidence, EXCLUDED.confidence),
+                            notes = COALESCE(EXCLUDED.notes, cs_disease_parent_mappings.notes)
+                    """, (specific_name, parent_name, relationship_type, source, confidence, notes, created_by))
+                    conn.commit()
+                    logger.debug(f"Saved parent mapping: {specific_name} -> {parent_name}")
+                    return True
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Error saving disease parent mapping: {e}")
+            return False
+
+    def bulk_save_disease_variants(self, variants: Dict[str, List[str]], source: str = 'seed') -> int:
+        """
+        Bulk save disease name variants.
+
+        Args:
+            variants: Dict mapping canonical_name -> list of variant names
+            source: Source of mappings
+
+        Returns:
+            Number of variants saved
+        """
+        if not self.is_available:
+            return 0
+
+        count = 0
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor() as cur:
+                    for canonical, variant_list in variants.items():
+                        for variant in variant_list:
+                            try:
+                                cur.execute("""
+                                    INSERT INTO cs_disease_name_variants
+                                        (canonical_name, variant_name, variant_type, source, confidence, created_by)
+                                    VALUES (%s, %s, 'synonym', %s, 1.0, 'seed')
+                                    ON CONFLICT (canonical_name, variant_name) DO NOTHING
+                                """, (canonical, variant, source))
+                                count += 1
+                            except Exception:
+                                pass  # Skip duplicates silently
+                    conn.commit()
+                    logger.info(f"Bulk saved {count} disease variants")
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Error bulk saving disease variants: {e}")
+        return count
+
+    def bulk_save_parent_mappings(self, mappings: Dict[str, str], source: str = 'seed') -> int:
+        """
+        Bulk save disease parent mappings.
+
+        Args:
+            mappings: Dict mapping specific_name -> parent_name
+            source: Source of mappings
+
+        Returns:
+            Number of mappings saved
+        """
+        if not self.is_available:
+            return 0
+
+        count = 0
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor() as cur:
+                    for specific, parent in mappings.items():
+                        try:
+                            cur.execute("""
+                                INSERT INTO cs_disease_parent_mappings
+                                    (specific_name, parent_name, relationship_type, source, confidence, created_by)
+                                VALUES (%s, %s, 'subtype', %s, 1.0, 'seed')
+                                ON CONFLICT (specific_name) DO NOTHING
+                            """, (specific, parent, source))
+                            count += 1
+                        except Exception:
+                            pass  # Skip duplicates silently
+                    conn.commit()
+                    logger.info(f"Bulk saved {count} parent mappings")
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Error bulk saving parent mappings: {e}")
+        return count
+
+    def get_disease_variant_stats(self) -> Dict[str, Any]:
+        """Get statistics about disease mappings in database."""
+        if not self.is_available:
+            return {}
+
+        try:
+            conn = self._get_connection()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT
+                            (SELECT COUNT(DISTINCT canonical_name) FROM cs_disease_name_variants) as unique_diseases,
+                            (SELECT COUNT(*) FROM cs_disease_name_variants) as total_variants,
+                            (SELECT COUNT(*) FROM cs_disease_parent_mappings) as parent_mappings,
+                            (SELECT COUNT(DISTINCT parent_name) FROM cs_disease_parent_mappings) as unique_parents
+                    """)
+                    row = cur.fetchone()
+                    return dict(row) if row else {}
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Error getting disease variant stats: {e}")
+            return {}

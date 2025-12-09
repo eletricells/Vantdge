@@ -663,7 +663,7 @@ with tab4:
                 viz_data.append({
                     'Disease': ext.disease if ext else 'Unknown',
                     '# Studies': 1,  # Each extraction is from one paper
-                    'Total Patients': ext.sample_size if ext else 0,
+                    'Total Patients': ext.patient_population.n_patients if ext and ext.patient_population and ext.patient_population.n_patients else 0,
                     'Clinical Score (avg)': scores.clinical_signal,
                     'Evidence Score (avg)': scores.evidence_quality,
                     'Market Score (avg)': scores.market_opportunity,
@@ -896,7 +896,7 @@ with tab5:
                 viz_data.append({
                     'Disease': ext.disease if ext else 'Unknown',
                     '# Studies': 1,
-                    'Total Patients': ext.sample_size if ext else 0,
+                    'Total Patients': ext.patient_population.n_patients if ext and ext.patient_population and ext.patient_population.n_patients else 0,
                     'Clinical Score (avg)': scores.clinical_signal,
                     'Evidence Score (avg)': scores.evidence_quality,
                     'Market Score (avg)': scores.market_opportunity,
@@ -1346,7 +1346,7 @@ with tab6:
                             viz_data.append({
                                 'Disease': ext.disease if ext else 'Unknown',
                                 '# Studies': 1,
-                                'Total Patients': ext.sample_size if ext else 0,
+                                'Total Patients': ext.patient_population.n_patients if ext and ext.patient_population and ext.patient_population.n_patients else 0,
                                 'Clinical Score (avg)': scores.clinical_signal,
                                 'Evidence Score (avg)': scores.evidence_quality,
                                 'Market Score (avg)': scores.market_opportunity,
@@ -1419,7 +1419,7 @@ with tab6:
                                 "Evidence": f"{opp.scores.evidence_quality:.1f}",
                                 "Market": f"{opp.scores.market_opportunity:.1f}",
                                 "Response Rate": response_rate,
-                                "Sample Size": ext.sample_size if ext else 0
+                                "Sample Size": ext.patient_population.n_patients if ext and ext.patient_population and ext.patient_population.n_patients else 0
                             })
 
                         df_table = pd.DataFrame(table_data)
@@ -1467,7 +1467,7 @@ with tab6:
                                         {
                                             "indication": o.extraction.disease if o.extraction else "Unknown",
                                             "scores": o.scores.model_dump() if hasattr(o.scores, 'model_dump') else str(o.scores),
-                                            "sample_size": o.extraction.sample_size if o.extraction else 0
+                                            "sample_size": o.extraction.patient_population.n_patients if o.extraction and o.extraction.patient_population and o.extraction.patient_population.n_patients else 0
                                         }
                                         for o in opps
                                     ]

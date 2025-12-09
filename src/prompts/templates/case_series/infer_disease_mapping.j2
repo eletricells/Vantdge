@@ -1,0 +1,92 @@
+{# Template for inferring disease parent mappings and name variants #}
+{% include 'case_series/_partials/json_rules.j2' %}
+
+You are a medical terminology expert specializing in disease classification and nomenclature.
+
+## Task
+Analyze the given disease name and provide:
+1. The **parent/canonical disease** it belongs to (if it's a subtype, variant, or specific form)
+2. **Alternative names and abbreviations** that could be used to search for this disease
+
+## Disease to Analyze
+**Disease Name:** {{ disease_name }}
+
+## Instructions
+
+### Parent Disease Identification
+- If this is a **specific subtype** (e.g., "anti-MDA5 dermatomyositis"), identify the parent disease ("Dermatomyositis")
+- If this is a **refractory/treatment-resistant** form, identify the base disease
+- If this is a **pediatric** variant, identify the adult equivalent disease name
+- If this is **already a canonical disease name** (e.g., "Rheumatoid Arthritis"), return null for parent
+- Consider disease classification hierarchies (e.g., ICD-10, MeSH, SNOMED)
+
+### Alternative Names/Variants
+- Include common **abbreviations** (e.g., RA, SLE, DM)
+- Include **synonyms** used in medical literature
+- Include **alternative spellings** (e.g., with/without diacritics)
+- Include **common lay terms** if applicable
+- Include **related search terms** that would find relevant clinical trials
+
+### Relationship Types
+- `subtype`: A specific form of the parent disease (e.g., "class IV lupus nephritis" → "Lupus Nephritis")
+- `refractory`: A treatment-resistant form (e.g., "refractory RA" → "Rheumatoid Arthritis")
+- `pediatric`: A childhood form (e.g., "juvenile dermatomyositis" → "Dermatomyositis")
+- `variant`: A clinical variant or phenotype (e.g., "anti-MDA5 dermatomyositis" → "Dermatomyositis")
+- `anatomical`: Location-specific form (e.g., "scalp psoriasis" → "Psoriasis")
+
+## Output Format
+Return a JSON object with this exact structure:
+
+```json
+{
+  "original_disease": "the input disease name",
+  "parent_disease": "Parent Disease Name or null if already canonical",
+  "relationship_type": "subtype|refractory|pediatric|variant|anatomical|null",
+  "canonical_name": "The standardized canonical name for this disease",
+  "variants": [
+    {"name": "variant name", "type": "abbreviation|synonym|alternate_spelling|common_name"}
+  ],
+  "confidence": 0.95,
+  "reasoning": "Brief explanation of the classification"
+}
+```
+
+## Examples
+
+Input: "refractory anti-MDA5 antibody-positive dermatomyositis with rapidly progressive ILD"
+Output:
+```json
+{
+  "original_disease": "refractory anti-MDA5 antibody-positive dermatomyositis with rapidly progressive ILD",
+  "parent_disease": "Dermatomyositis",
+  "relationship_type": "variant",
+  "canonical_name": "Dermatomyositis",
+  "variants": [
+    {"name": "DM", "type": "abbreviation"},
+    {"name": "inflammatory myopathy", "type": "synonym"},
+    {"name": "anti-MDA5 dermatomyositis", "type": "synonym"}
+  ],
+  "confidence": 0.95,
+  "reasoning": "Anti-MDA5 antibody-positive dermatomyositis is a specific serological subtype of dermatomyositis characterized by rapidly progressive ILD. The parent disease for clinical trial searches is Dermatomyositis."
+}
+```
+
+Input: "Rheumatoid Arthritis"
+Output:
+```json
+{
+  "original_disease": "Rheumatoid Arthritis",
+  "parent_disease": null,
+  "relationship_type": null,
+  "canonical_name": "Rheumatoid Arthritis",
+  "variants": [
+    {"name": "RA", "type": "abbreviation"},
+    {"name": "rheumatoid disease", "type": "synonym"}
+  ],
+  "confidence": 1.0,
+  "reasoning": "Rheumatoid Arthritis is already a canonical disease name. No parent disease needed."
+}
+```
+
+Now analyze the disease and return ONLY the JSON object, no additional text.
+

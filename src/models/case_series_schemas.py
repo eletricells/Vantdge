@@ -273,6 +273,10 @@ class StandardOfCareTreatment(BaseModel):
     annual_cost_usd: Optional[float] = Field(None, description="Annual cost in USD")
     line_of_therapy: Optional[str] = Field(None, description="Line of therapy (1L, 2L, etc.)")
     notes: Optional[str] = Field(None, description="Additional notes")
+    # New fields for approval confidence tracking
+    approval_year: Optional[int] = Field(None, description="Year of FDA approval")
+    approval_confidence: str = Field("Medium", description="Confidence in approval status: High/Medium/Low")
+    approval_evidence: Optional[str] = Field(None, description="Evidence supporting approval status (e.g., 'FDA label', 'Drugs@FDA')")
 
 
 class PipelineTherapy(BaseModel):
@@ -280,9 +284,14 @@ class PipelineTherapy(BaseModel):
     drug_name: str = Field(..., description="Drug name or code")
     company: Optional[str] = Field(None, description="Sponsoring company")
     mechanism: Optional[str] = Field(None, description="Mechanism of action")
-    phase: str = Field(..., description="Trial phase (Phase 1, 2, 3)")
+    phase: Optional[str] = Field("Unknown", description="Trial phase (Phase 1, 2, 3)")
     trial_id: Optional[str] = Field(None, description="ClinicalTrials.gov ID (NCT number)")
     expected_completion: Optional[str] = Field(None, description="Expected completion date")
+    # New fields for enhanced pipeline tracking
+    trial_name: Optional[str] = Field(None, description="Trial acronym or name (e.g., 'TULIP-2')")
+    status: Optional[str] = Field(None, description="Trial status (Recruiting, Active, Completed, etc.)")
+    regulatory_designations: Optional[str] = Field(None, description="Regulatory designations (Breakthrough, Fast Track, Orphan, etc.)")
+    notes: Optional[str] = Field(None, description="Additional notes about the trial")
 
 
 class StandardOfCareData(BaseModel):
@@ -299,6 +308,14 @@ class StandardOfCareData(BaseModel):
     unmet_need_description: Optional[str] = Field(None, description="Description of unmet need")
     competitive_landscape: Optional[str] = Field(None, description="Competitive landscape summary")
     soc_source: Optional[str] = Field(None, description="Source for SOC data")
+    # New fields for enhanced pipeline data quality tracking
+    phase_3_count: int = Field(0, description="Number of Phase 3 trials")
+    phase_2_count: int = Field(0, description="Number of Phase 2 trials")
+    key_catalysts: Optional[str] = Field(None, description="Key upcoming catalysts (data readouts, FDA decisions)")
+    pipeline_data_quality: str = Field("Unknown", description="Pipeline data quality: High/Medium/Low/Unknown")
+    recent_approvals: Optional[str] = Field(None, description="Recent drug approvals in this indication")
+    data_quality: str = Field("Unknown", description="Overall data quality: High/Medium/Low/Unknown")
+    data_quality_notes: Optional[str] = Field(None, description="Notes about data quality or limitations")
 
 
 class AttributedSource(BaseModel):
@@ -311,6 +328,7 @@ class AttributedSource(BaseModel):
 class MarketIntelligence(BaseModel):
     """Complete market intelligence for an indication"""
     disease: str = Field(..., description="Disease name")
+    parent_disease: Optional[str] = Field(None, description="Parent/canonical disease name for subtypes (e.g., 'Lupus' for 'Lupus Nephritis')")
     epidemiology: EpidemiologyData = Field(default_factory=EpidemiologyData)
     standard_of_care: StandardOfCareData = Field(default_factory=StandardOfCareData)
     # Simple market sizing (patient pop x avg cost) - kept for backward compatibility

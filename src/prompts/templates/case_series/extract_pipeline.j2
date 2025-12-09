@@ -1,29 +1,86 @@
 Extract clinical trial pipeline data for {{ disease }}.
 
-Search Results:
+=== PHASE FILTER ===
+Include ONLY: Phase 2, Phase 2/3, and Phase 3 trials
+Exclude: Phase 1, Phase 4, preclinical trials
+
+=== ACTIVE DEVELOPMENT FILTER (CRITICAL) ===
+We want drugs that are STILL IN ACTIVE DEVELOPMENT, not abandoned programs.
+PRIORITIZE in this order:
+1. Currently recruiting trials (highest priority)
+2. Active, not recruiting (ongoing)
+3. Not yet recruiting (upcoming)
+4. Recently completed trials (within last 2 years) - still indicates active development
+EXCLUDE:
+- Trials completed more than 2 years ago (likely abandoned or approved)
+- Terminated/Withdrawn trials (development stopped)
+- Suspended trials
+
+{% if ct_gov_data %}
+=== CLINICALTRIALS.GOV API DATA (PRIMARY SOURCE) ===
+This is authoritative structured data from ClinicalTrials.gov.
+Note: "is_active_development" field indicates if this represents current pipeline activity.
+{{ ct_gov_data | to_json }}
+
+Use this as your primary source. Check "is_active_development" and "status" fields.
+{% endif %}
+
+=== WEB SEARCH RESULTS (SUPPLEMENTARY) ===
+Use these to fill gaps (mechanisms, company names, trial acronyms):
 {{ search_results | to_json }}
 
-Return ONLY valid JSON:
+=== EXTRACTION INSTRUCTIONS ===
+
+1. PRIORITIZE ClinicalTrials.gov API data when available
+2. CHECK "is_active_development" field - only include trials marked as true
+3. VERIFY dates: trials should have start dates within last 5 years OR be actively recruiting
+4. For each drug, try to determine:
+   - The INN (generic name) if available, otherwise use company code (e.g., VAY736)
+   - Sponsor company
+   - Mechanism of action
+   - Any regulatory designations (Breakthrough Therapy, Fast Track, Orphan)
+
+5. CROSS-REFERENCE: If web search mentions drugs NOT in the API data, include them with trial_id="Unknown - verify"
+
+For each pipeline therapy, extract:
 {
-    "pipeline_therapies": [
-        {
-            "drug_name": "Drug name or code (e.g., 'ABC-123' or 'drugname')",
-            "company": "Sponsoring company",
-            "mechanism": "Mechanism of action",
-            "phase": "Phase 1/Phase 2/Phase 3",
-            "trial_id": "NCT number if available",
-            "expected_completion": "Expected date or null"
-        }
-    ],
-    "pipeline_summary": "1-2 sentence summary of pipeline activity"
+    "drug_name": "Drug name (INN preferred, or company code like 'VAY736')",
+    "company": "Sponsor company name",
+    "mechanism": "Mechanism of action (e.g., 'Anti-BAFF-R monoclonal antibody', 'JAK inhibitor')",
+    "phase": "Phase 2" or "Phase 3" or "Phase 2/3",
+    "trial_id": "NCT number (REQUIRED when available)",
+    "trial_name": "Trial acronym if known (e.g., 'NEPTUNUS', 'DAHLIAS', 'TULIP')",
+    "status": "Recruiting" or "Active" or "Not yet recruiting",
+    "expected_completion": "Expected primary completion date (YYYY-MM) or null",
+    "regulatory_designations": "BTD, Fast Track, Orphan Drug, or null",
+    "notes": "Any important context (e.g., 'Positive Phase 2 results reported')"
 }
 
-RULES:
-- Only include drugs in ACTIVE clinical trials (Phase 1, 2, or 3)
-- EXCLUDE: Preclinical drugs, discontinued trials, already approved drugs
-- EXCLUDE: Trials for other indications even if same drug
-- Include NCT numbers when available
-- Focus on this SPECIFIC indication: {{ disease }}
+Return JSON:
+{
+    "pipeline_therapies": [
+        {therapy 1},
+        {therapy 2},
+        ...
+    ],
+    "phase_3_count": integer count of Phase 3 therapies,
+    "phase_2_count": integer count of Phase 2 therapies,
+    "pipeline_summary": "2-3 sentence summary including: total active programs, key mechanisms being tested, and any upcoming readouts or recent positive results",
+    "key_catalysts": "Major trial readouts expected in next 12-18 months, or null",
+    "data_completeness": "High" or "Medium" or "Low",
+    "data_completeness_notes": "Explain any gaps (e.g., 'Web search only, no API data available')"
+}
+
+=== DATA COMPLETENESS SCORING ===
+- High: ClinicalTrials.gov API data available AND web search confirms findings
+- Medium: Either API OR web search available with reasonable results
+- Low: Limited data found, or significant uncertainty about trial status
+
+=== VALIDATION RULES ===
+1. If {{ disease }} is a well-known autoimmune/inflammatory condition and you find <3 Phase 2/3 trials, set data_completeness="Low"
+2. Do NOT include trials for different indications even if same drug
+3. Do NOT include already-approved drugs (those go in approved treatments)
+4. Deduplicate: If same drug appears in multiple trials, list the most advanced phase
 
 {% include 'case_series/_partials/json_rules.j2' %}
 

@@ -172,12 +172,12 @@ CREATE TABLE IF NOT EXISTS cs_opportunities (
     efficacy_signal VARCHAR(50),
     safety_profile VARCHAR(50),
     evidence_level VARCHAR(50),
-    score_efficacy DECIMAL(3, 2),
-    score_safety DECIMAL(3, 2),
-    score_evidence DECIMAL(3, 2),
-    score_market DECIMAL(3, 2),
-    score_feasibility DECIMAL(3, 2),
-    score_total DECIMAL(4, 2),
+    score_efficacy DECIMAL(5, 2),
+    score_safety DECIMAL(5, 2),
+    score_evidence DECIMAL(5, 2),
+    score_market DECIMAL(5, 2),
+    score_feasibility DECIMAL(5, 2),
+    score_total DECIMAL(6, 2),
     rank INT,
     market_tam VARCHAR(255),
     market_prevalence VARCHAR(255),
@@ -248,3 +248,61 @@ SELECT
     EXTRACT(EPOCH FROM (expires_at - CURRENT_TIMESTAMP)) / 86400 as days_until_expiry
 FROM cs_market_intelligence
 ORDER BY expires_at;
+
+-- =====================================================
+-- DISEASE NAME VARIANTS - Alternative names/abbreviations for diseases
+-- Used to improve search coverage when querying ClinicalTrials.gov, etc.
+-- =====================================================
+CREATE TABLE IF NOT EXISTS cs_disease_name_variants (
+    id SERIAL PRIMARY KEY,
+    canonical_name VARCHAR(500) NOT NULL,
+    variant_name VARCHAR(500) NOT NULL,
+    variant_type VARCHAR(50) DEFAULT 'abbreviation',  -- abbreviation, synonym, alternate_spelling, common_name
+    source VARCHAR(255),  -- Where this mapping came from (manual, MeSH, ICD-10, SNOMED)
+    confidence DECIMAL(3, 2) DEFAULT 1.0,  -- 0.0-1.0 confidence in mapping
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) DEFAULT 'system',
+    UNIQUE(canonical_name, variant_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cs_variants_canonical ON cs_disease_name_variants(LOWER(canonical_name));
+CREATE INDEX IF NOT EXISTS idx_cs_variants_variant ON cs_disease_name_variants(LOWER(variant_name));
+
+-- =====================================================
+-- DISEASE PARENT MAPPINGS - Maps specific subtypes to parent diseases
+-- Used to aggregate market intelligence at the parent disease level
+-- =====================================================
+CREATE TABLE IF NOT EXISTS cs_disease_parent_mappings (
+    id SERIAL PRIMARY KEY,
+    specific_name VARCHAR(500) NOT NULL UNIQUE,
+    parent_name VARCHAR(500) NOT NULL,
+    relationship_type VARCHAR(50) DEFAULT 'subtype',  -- subtype, variant, refractory, pediatric
+    source VARCHAR(255),  -- Where this mapping came from
+    confidence DECIMAL(3, 2) DEFAULT 1.0,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) DEFAULT 'system'
+);
+
+CREATE INDEX IF NOT EXISTS idx_cs_parent_specific ON cs_disease_parent_mappings(LOWER(specific_name));
+CREATE INDEX IF NOT EXISTS idx_cs_parent_parent ON cs_disease_parent_mappings(LOWER(parent_name));
+
+-- View: All disease variants with their canonical names
+CREATE OR REPLACE VIEW v_cs_disease_variants AS
+SELECT
+    canonical_name,
+    ARRAY_AGG(variant_name ORDER BY confidence DESC, variant_name) as variants,
+    COUNT(*) as variant_count
+FROM cs_disease_name_variants
+GROUP BY canonical_name
+ORDER BY canonical_name;
+
+-- View: Disease hierarchy showing parent-child relationships
+CREATE OR REPLACE VIEW v_cs_disease_hierarchy AS
+SELECT
+    parent_name,
+    ARRAY_AGG(specific_name ORDER BY specific_name) as subtypes,
+    COUNT(*) as subtype_count
+FROM cs_disease_parent_mappings
+GROUP BY parent_name
+ORDER BY parent_name;

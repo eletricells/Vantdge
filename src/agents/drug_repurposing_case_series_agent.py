@@ -25,6 +25,7 @@ import logging
 import os
 import re
 import time
+import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -74,6 +75,70 @@ THINKING_BUDGET_SECTIONS = 3000  # Stage 1: Section identification
 THINKING_BUDGET_EFFICACY = 4000  # Stage 2: Efficacy extraction
 THINKING_BUDGET_SAFETY = 2000    # Stage 3: Safety extraction
 MIN_FULLTEXT_LENGTH = 2000       # Minimum chars to use multi-stage
+
+
+# =============================================================================
+# DISEASE NAME VARIANTS FOR BETTER SEARCH COVERAGE
+# =============================================================================
+DISEASE_NAME_VARIANTS = {
+    "Primary Sjogren's syndrome": [
+        "Sjogren syndrome", "Sjögren's disease", "Sjögren syndrome",
+        "sicca syndrome", "primary Sjögren's"
+    ],
+    "Systemic Lupus Erythematosus": ["SLE", "lupus erythematosus", "systemic lupus"],
+    "Rheumatoid Arthritis": ["RA", "rheumatoid"],
+    "Atopic Dermatitis": ["AD", "atopic eczema", "eczema"],
+    "Dermatomyositis": ["DM", "inflammatory myopathy"],
+    "Alopecia Areata": ["AA", "alopecia totalis", "alopecia universalis"],
+    "Giant Cell Arteritis": ["GCA", "temporal arteritis"],
+    "Takayasu arteritis": ["TAK", "Takayasu's arteritis", "large vessel vasculitis"],
+    "Juvenile Idiopathic Arthritis": ["JIA", "juvenile arthritis", "juvenile rheumatoid arthritis"],
+    "Adult-onset Still's Disease": ["AOSD", "Still's disease", "adult Still disease"],
+    "Graft-versus-Host Disease": ["GVHD", "graft versus host", "GvHD"],
+    "Inflammatory Bowel Disease": ["IBD", "Crohn's disease", "ulcerative colitis"],
+    "Psoriatic Arthritis": ["PsA", "psoriatic"],
+    "Ankylosing Spondylitis": ["AS", "axial spondyloarthritis", "axSpA"],
+    "Myasthenia Gravis": ["MG", "myasthenia"],
+    "Immune Thrombocytopenia": ["ITP", "immune thrombocytopenic purpura", "idiopathic thrombocytopenic purpura"],
+}
+
+# Map overly specific diseases to parent indications for market intel lookup
+DISEASE_PARENT_MAPPING = {
+    # SLE variants
+    "Systemic Lupus Erythematosus with alopecia universalis and arthritis": "Systemic Lupus Erythematosus",
+    "SLE with cutaneous manifestations": "Systemic Lupus Erythematosus",
+    "refractory systemic lupus erythematosus": "Systemic Lupus Erythematosus",
+    # Alopecia variants
+    "severe alopecia areata with atopic dermatitis in children": "Alopecia Areata",
+    "pediatric alopecia universalis": "Alopecia Areata",
+    "alopecia totalis": "Alopecia Areata",
+    # Dermatomyositis variants
+    "refractory dermatomyositis": "Dermatomyositis",
+    "anti-MDA5 antibody-positive dermatomyositis": "Dermatomyositis",
+    "Juvenile dermatomyositis-associated calcinosis": "Juvenile Dermatomyositis",
+    "refractory or severe juvenile dermatomyositis": "Juvenile Dermatomyositis",
+    # JIA variants
+    "juvenile idiopathic arthritis associated uveitis": "Juvenile Idiopathic Arthritis",
+    "Systemic juvenile idiopathic arthritis with lung disease": "Systemic Juvenile Idiopathic Arthritis",
+    # Vasculitis variants
+    "Takayasu arteritis refractory to TNF-α inhibitors": "Takayasu arteritis",
+    # Uveitis variants
+    "Uveitis associated with rheumatoid arthritis": "Uveitis",
+    "isolated noninfectious uveitis": "Uveitis",
+    "non-infectious inflammatory ocular diseases": "Uveitis",
+    # AOSD variants
+    "Adult-onset Still's disease (AOSD) and undifferentiated systemic autoinflammatory disease": "Adult-onset Still's Disease",
+    # Atopic Dermatitis variants
+    "atopic dermatitis": "Atopic Dermatitis",
+    "moderate-to-severe atopic dermatitis": "Atopic Dermatitis",
+    "moderate and severe atopic dermatitis": "Atopic Dermatitis",
+    # ITP variants
+    "immune thrombocytopenia (ITP)": "Immune Thrombocytopenia",
+    # Lupus variants
+    "refractory subacute cutaneous lupus erythematosus": "Cutaneous Lupus Erythematosus",
+    "Familial chilblain lupus with TREX1 mutation": "Cutaneous Lupus Erythematosus",
+    "Lupus erythematosus panniculitis": "Cutaneous Lupus Erythematosus",
+}
 
 
 # =============================================================================
@@ -237,7 +302,9 @@ class CaseSeriesDataExtractor:
         self.extraction_metrics = {
             'input_tokens': 0,
             'output_tokens': 0,
-            'thinking_tokens': 0
+            'thinking_tokens': 0,
+            'cache_creation_tokens': 0,
+            'cache_read_tokens': 0
         }
 
     def extract_multi_stage(
@@ -432,9 +499,11 @@ class CaseSeriesDataExtractor:
         if hasattr(response, 'usage'):
             self.extraction_metrics['input_tokens'] += response.usage.input_tokens
             self.extraction_metrics['output_tokens'] += response.usage.output_tokens
-            # Check for thinking tokens in extended thinking responses
+            # Track cache tokens
             if hasattr(response.usage, 'cache_creation_input_tokens'):
-                pass  # Cache tokens handled separately
+                self.extraction_metrics['cache_creation_tokens'] += response.usage.cache_creation_input_tokens
+            if hasattr(response.usage, 'cache_read_input_tokens'):
+                self.extraction_metrics['cache_read_tokens'] += response.usage.cache_read_input_tokens
 
     def _extract_text_response(self, response) -> str:
         """Extract text from response, handling extended thinking format."""
@@ -560,6 +629,11 @@ class DrugRepurposingCaseSeriesAgent:
         self._safety_categories: Optional[Dict[str, Dict[str, Any]]] = None
         self._scoring_weights: Optional[Dict[str, float]] = None
 
+        # Disease mappings (loaded from DB with fallback to constants)
+        self._disease_name_variants: Dict[str, List[str]] = {}
+        self._disease_parent_mappings: Dict[str, str] = {}
+        self._load_disease_mappings()
+
         # Output directory
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -567,10 +641,221 @@ class DrugRepurposingCaseSeriesAgent:
         # Cost tracking
         self.total_input_tokens = 0
         self.total_output_tokens = 0
+        self.total_cache_creation_tokens = 0
+        self.total_cache_read_tokens = 0
         self.search_count = 0
 
         logger.info("DrugRepurposingCaseSeriesAgent initialized")
-    
+
+    def _load_disease_mappings(self) -> None:
+        """
+        Load disease mappings from database with fallback to hardcoded constants.
+
+        This method:
+        1. Tries to load from database first
+        2. Falls back to DISEASE_NAME_VARIANTS and DISEASE_PARENT_MAPPING constants
+        3. Merges both sources (DB takes precedence for conflicts)
+        """
+        # Start with hardcoded constants as baseline
+        self._disease_name_variants = dict(DISEASE_NAME_VARIANTS)
+        self._disease_parent_mappings = dict(DISEASE_PARENT_MAPPING)
+
+        # Try to load from database and merge
+        if self.cs_db and self.cs_db.is_available:
+            try:
+                # Load name variants from DB
+                db_variants = self.cs_db.load_disease_name_variants()
+                if db_variants:
+                    for canonical, variants in db_variants.items():
+                        if canonical in self._disease_name_variants:
+                            # Merge with existing, avoiding duplicates
+                            existing = set(self._disease_name_variants[canonical])
+                            existing.update(variants)
+                            self._disease_name_variants[canonical] = list(existing)
+                        else:
+                            self._disease_name_variants[canonical] = variants
+                    logger.info(f"Merged {len(db_variants)} disease variant sets from database")
+
+                # Load parent mappings from DB
+                db_parents = self.cs_db.load_disease_parent_mappings()
+                if db_parents:
+                    # DB mappings override constants
+                    self._disease_parent_mappings.update(db_parents)
+                    logger.info(f"Merged {len(db_parents)} parent mappings from database")
+
+            except Exception as e:
+                logger.warning(f"Error loading disease mappings from database: {e}")
+
+        logger.info(f"Disease mappings loaded: {len(self._disease_name_variants)} variant sets, "
+                   f"{len(self._disease_parent_mappings)} parent mappings")
+
+    def _save_new_disease_mapping(
+        self,
+        specific_name: str,
+        parent_name: str,
+        relationship_type: str = 'subtype'
+    ) -> bool:
+        """
+        Save a newly discovered disease mapping to the database.
+
+        Called automatically when the agent discovers a new disease subtype
+        during extraction that should map to a parent disease.
+
+        Args:
+            specific_name: The specific disease subtype found
+            parent_name: The parent disease it should map to
+            relationship_type: Type of relationship (subtype, variant, refractory)
+
+        Returns:
+            True if saved successfully
+        """
+        if not self.cs_db or not self.cs_db.is_available:
+            return False
+
+        # Check if we already have this mapping
+        if specific_name.lower() in [k.lower() for k in self._disease_parent_mappings.keys()]:
+            return False  # Already exists
+
+        # Save to database
+        success = self.cs_db.save_disease_parent_mapping(
+            specific_name=specific_name,
+            parent_name=parent_name,
+            relationship_type=relationship_type,
+            source='auto',
+            confidence=0.8,  # Auto-discovered mappings get slightly lower confidence
+            created_by='agent'
+        )
+
+        if success:
+            # Also update in-memory mapping
+            self._disease_parent_mappings[specific_name] = parent_name
+            logger.info(f"Auto-saved new disease mapping: '{specific_name}' -> '{parent_name}'")
+
+        return success
+
+    def _infer_disease_mapping(self, disease_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Use LLM to infer parent disease and name variants for an unmapped disease.
+
+        This is called when a disease name is not found in the database mappings.
+        The LLM suggests the parent disease and alternative names, which are then
+        auto-saved to the database for future use.
+
+        Args:
+            disease_name: The disease name to analyze
+
+        Returns:
+            Dict with parent_disease, relationship_type, canonical_name, variants, confidence
+            or None if inference fails
+        """
+        # Skip inference for very short names (likely already abbreviations)
+        if len(disease_name) <= 3:
+            return None
+
+        try:
+            # Render the inference prompt template
+            prompt = self._prompts.render(
+                "case_series/infer_disease_mapping",
+                disease_name=disease_name
+            )
+
+            # Call Claude for inference
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=1000,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            response_text = response.content[0].text.strip()
+
+            # Extract JSON from response
+            json_match = re.search(r'\{[\s\S]*\}', response_text)
+            if not json_match:
+                logger.warning(f"No JSON found in disease inference response for '{disease_name}'")
+                return None
+
+            result = json.loads(json_match.group())
+
+            # Validate required fields
+            if 'canonical_name' not in result:
+                return None
+
+            logger.info(f"Inferred disease mapping for '{disease_name}': "
+                       f"parent='{result.get('parent_disease')}', "
+                       f"confidence={result.get('confidence', 0)}")
+
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse disease inference JSON for '{disease_name}': {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Disease inference failed for '{disease_name}': {e}")
+            return None
+
+    def _save_inferred_disease_mapping(self, inference_result: Dict[str, Any]) -> bool:
+        """
+        Save an inferred disease mapping to the database.
+
+        Args:
+            inference_result: The result from _infer_disease_mapping()
+
+        Returns:
+            True if saved successfully
+        """
+        if not self.cs_db or not self.cs_db.is_available:
+            return False
+
+        original = inference_result.get('original_disease', '')
+        parent = inference_result.get('parent_disease')
+        relationship = inference_result.get('relationship_type', 'variant')
+        canonical = inference_result.get('canonical_name', '')
+        variants = inference_result.get('variants', [])
+        confidence = inference_result.get('confidence', 0.8)
+
+        saved_any = False
+
+        # Save parent mapping if we have one
+        if parent and original:
+            success = self.cs_db.save_disease_parent_mapping(
+                specific_name=original,
+                parent_name=parent,
+                relationship_type=relationship or 'variant',
+                source='llm_inferred',
+                confidence=confidence * 0.9,  # Slightly lower confidence for LLM-inferred
+                created_by='agent_auto'
+            )
+            if success:
+                self._disease_parent_mappings[original] = parent
+                saved_any = True
+                logger.info(f"Auto-saved inferred parent mapping: '{original}' -> '{parent}'")
+
+        # Save name variants if we have them
+        if canonical and variants:
+            for variant in variants:
+                variant_name = variant.get('name', '')
+                variant_type = variant.get('type', 'synonym')
+                if variant_name and variant_name.lower() != canonical.lower():
+                    success = self.cs_db.save_disease_variant(
+                        canonical_name=canonical,
+                        variant_name=variant_name,
+                        variant_type=variant_type,
+                        source='llm_inferred',
+                        confidence=confidence * 0.85
+                    )
+                    if success:
+                        # Update in-memory mapping
+                        if canonical not in self._disease_name_variants:
+                            self._disease_name_variants[canonical] = []
+                        if variant_name not in self._disease_name_variants[canonical]:
+                            self._disease_name_variants[canonical].append(variant_name)
+                        saved_any = True
+
+            if saved_any:
+                logger.info(f"Auto-saved {len(variants)} inferred variants for '{canonical}'")
+
+        return saved_any
+
     # =========================================================================
     # MAIN ANALYSIS METHODS
     # =========================================================================
@@ -827,11 +1112,16 @@ class DrugRepurposingCaseSeriesAgent:
             return []
         return self.cs_db.get_historical_runs(limit=limit)
 
-    def load_historical_run(self, run_id: str) -> Optional[DrugAnalysisResult]:
+    def load_historical_run(
+        self,
+        run_id: str,
+        generate_visualizations: bool = True
+    ) -> Optional[DrugAnalysisResult]:
         """Load a historical run as a DrugAnalysisResult object.
 
         Args:
             run_id: UUID of the run to load
+            generate_visualizations: Whether to generate/update visualizations
 
         Returns:
             DrugAnalysisResult or None if not found
@@ -839,7 +1129,21 @@ class DrugRepurposingCaseSeriesAgent:
         if not self.cs_db:
             logger.warning("Case series database not available")
             return None
-        return self.cs_db.load_run_as_result(run_id)
+
+        result = self.cs_db.load_run_as_result(run_id)
+
+        # Generate visualizations if requested and result is valid
+        if result and generate_visualizations and result.opportunities:
+            try:
+                # Use run_id in filename for consistency
+                timestamp = result.analysis_date.strftime("%Y%m%d_%H%M%S") if result.analysis_date else datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{result.drug_name.lower().replace(' ', '_')}_{timestamp}.xlsx"
+                viz_paths = self.generate_visualizations(result, filename)
+                logger.info(f"Generated visualizations for historical run: {list(viz_paths.values())}")
+            except Exception as e:
+                logger.warning(f"Failed to generate visualizations for historical run (non-critical): {e}")
+
+        return result
 
     def get_run_details(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Get full details of a specific run including extractions and opportunities.
@@ -2277,6 +2581,12 @@ class DrugRepurposingCaseSeriesAgent:
                     drug_info=drug_info,
                     paper_metadata=paper
                 )
+                # Track tokens from multi-stage extraction
+                self.total_input_tokens += extractor.extraction_metrics.get('input_tokens', 0)
+                self.total_output_tokens += extractor.extraction_metrics.get('output_tokens', 0)
+                self.total_cache_creation_tokens += extractor.extraction_metrics.get('cache_creation_tokens', 0)
+                self.total_cache_read_tokens += extractor.extraction_metrics.get('cache_read_tokens', 0)
+
                 logger.info(f"Multi-stage extraction complete. Stages: {multi_stage_results.get('stages_completed', [])}")
                 logger.info(f"  - Efficacy endpoints: {len(multi_stage_results.get('detailed_efficacy_endpoints', []))}")
                 logger.info(f"  - Safety endpoints: {len(multi_stage_results.get('detailed_safety_endpoints', []))}")
@@ -2601,21 +2911,28 @@ class DrugRepurposingCaseSeriesAgent:
                 self._cache_stats['tokens_saved_by_cache'] += 3000
                 return cached
 
-        market_intel = MarketIntelligence(disease=disease)
+        # Determine parent disease for better search coverage
+        parent_disease = self._get_parent_disease(disease)
+        search_disease = parent_disease if parent_disease else disease
+
+        market_intel = MarketIntelligence(disease=disease, parent_disease=parent_disease)
         attributed_sources = []
 
         if not self.web_search:
             return market_intel
 
+        # Get disease name variants for better search coverage
+        disease_variants = self._get_disease_name_variants(search_disease)
+
         # 1. Get epidemiology data
         self.search_count += 1
         epi_results = self.web_search.search(
-            f"{disease} prevalence United States epidemiology patients",
-            max_results=5
+            f"{search_disease} prevalence United States epidemiology patients",
+            max_results=10
         )
 
         if epi_results:
-            epi_data = self._extract_epidemiology(disease, epi_results)
+            epi_data = self._extract_epidemiology(search_disease, epi_results)
             market_intel.epidemiology = epi_data
             # Track epidemiology sources
             for r in epi_results[:2]:  # Top 2 sources
@@ -2629,21 +2946,21 @@ class DrugRepurposingCaseSeriesAgent:
         # 2. Get FDA approved drugs specifically
         self.search_count += 1
         fda_results = self.web_search.search(
-            f'"{disease}" FDA approved drugs treatments biologics site:fda.gov OR site:drugs.com OR site:medscape.com',
-            max_results=5
+            f'"{search_disease}" FDA approved drugs treatments biologics site:fda.gov OR site:drugs.com OR site:medscape.com',
+            max_results=10
         )
 
         # 3. Get standard of care
         self.search_count += 1
         soc_results = self.web_search.search(
-            f"{disease} standard of care treatment guidelines first line second line therapy",
-            max_results=5
+            f"{search_disease} standard of care treatment guidelines first line second line therapy",
+            max_results=10
         )
 
         # Combine results for SOC extraction
         all_treatment_results = (fda_results or []) + (soc_results or [])
         if all_treatment_results:
-            soc_data = self._extract_standard_of_care(disease, all_treatment_results)
+            soc_data = self._extract_standard_of_care(search_disease, all_treatment_results, parent_disease=parent_disease)
             market_intel.standard_of_care = soc_data
             # Track SOC sources (FDA approvals, treatment guidelines)
             for r in (fda_results or [])[:2]:
@@ -2661,23 +2978,64 @@ class DrugRepurposingCaseSeriesAgent:
                         attribution='Treatment Paradigm'
                     ))
 
-        # 4. Get dedicated pipeline data (ClinicalTrials.gov focused)
+        # 4. Get pipeline data - ENHANCED with ClinicalTrials.gov API
+
+        # 4a. Query ClinicalTrials.gov API directly (primary source - free, structured data)
+        ct_gov_trials = self._fetch_clinicaltrials_gov(search_disease)
+        ct_gov_parsed = [self._parse_ct_gov_trial(t) for t in ct_gov_trials]
+
+        # 4b. Supplementary web search for additional context (mechanisms, news, etc.)
+        all_pipeline_results = []
+
         self.search_count += 1
-        pipeline_results = self.web_search.search(
-            f'"{disease}" clinical trial Phase 2 OR Phase 3 site:clinicaltrials.gov OR site:biopharmcatalyst.com',
+        pipeline_results_1 = self.web_search.search(
+            f'"{search_disease}" clinical trial Phase 2 OR Phase 3 site:clinicaltrials.gov',
+            max_results=10
+        )
+        all_pipeline_results.extend(pipeline_results_1 or [])
+
+        # Search for pipeline news/press releases
+        self.search_count += 1
+        pipeline_results_2 = self.web_search.search(
+            f'"{search_disease}" Phase 2 Phase 3 trial drug pipeline 2024 OR 2025',
+            max_results=8
+        )
+        all_pipeline_results.extend(pipeline_results_2 or [])
+
+        # Search BioPharma pipeline databases
+        self.search_count += 1
+        pipeline_results_3 = self.web_search.search(
+            f'"{search_disease}" pipeline drug development site:biopharmcatalyst.com OR site:evaluate.com',
             max_results=5
         )
+        all_pipeline_results.extend(pipeline_results_3 or [])
 
-        if pipeline_results:
-            pipeline_data = self._extract_pipeline_data(disease, pipeline_results)
+        if ct_gov_parsed or all_pipeline_results:
+            pipeline_data = self._extract_pipeline_data(
+                search_disease,
+                all_pipeline_results,
+                ct_gov_data=ct_gov_parsed  # Pass structured API data
+            )
             # Merge pipeline data into SOC
             market_intel.standard_of_care.pipeline_therapies = pipeline_data.get('therapies', [])
             market_intel.standard_of_care.num_pipeline_therapies = len(pipeline_data.get('therapies', []))
+            market_intel.standard_of_care.phase_3_count = pipeline_data.get('phase_3_count', 0)
+            market_intel.standard_of_care.phase_2_count = pipeline_data.get('phase_2_count', 0)
+            market_intel.standard_of_care.key_catalysts = pipeline_data.get('key_catalysts')
+            market_intel.standard_of_care.pipeline_data_quality = pipeline_data.get('data_completeness', 'Unknown')
             if pipeline_data.get('details'):
                 market_intel.standard_of_care.pipeline_details = pipeline_data['details']
-            # Track pipeline sources
-            market_intel.pipeline_sources = [r.get('url') for r in pipeline_results if r.get('url')][:3]
-            for r in pipeline_results[:2]:
+            # Track pipeline sources - include ClinicalTrials.gov as primary source
+            pipeline_source_urls = ['https://clinicaltrials.gov']  # Always include as source
+            pipeline_source_urls.extend([r.get('url') for r in all_pipeline_results if r.get('url')][:4])
+            market_intel.pipeline_sources = pipeline_source_urls
+            # Add ClinicalTrials.gov as attributed source
+            attributed_sources.append(AttributedSource(
+                url='https://clinicaltrials.gov',
+                title='ClinicalTrials.gov API',
+                attribution='Pipeline/Clinical Trials (Primary)'
+            ))
+            for r in all_pipeline_results[:2]:
                 if r.get('url'):
                     attributed_sources.append(AttributedSource(
                         url=r.get('url'),
@@ -2783,6 +3141,325 @@ class DrugRepurposingCaseSeriesAgent:
 
         return market_intel
 
+    def _get_parent_disease(self, disease: str, use_inference: bool = True) -> Optional[str]:
+        """
+        Get the parent/canonical disease name for a specific subtype.
+
+        Uses database-backed mappings (loaded on init) with fallback to constants.
+        If no mapping exists and use_inference=True, uses LLM to infer the parent
+        disease and auto-saves the mapping for future use.
+
+        Args:
+            disease: The disease name to look up
+            use_inference: Whether to use LLM inference if no mapping exists (default: True)
+
+        Returns:
+            Parent disease name or None if disease is already canonical
+        """
+        # Check exact match first (using instance variable loaded from DB + constants)
+        if disease in self._disease_parent_mappings:
+            return self._disease_parent_mappings[disease]
+
+        # Check case-insensitive match
+        disease_lower = disease.lower()
+        for specific, parent in self._disease_parent_mappings.items():
+            if specific.lower() == disease_lower:
+                return parent
+
+        # No mapping found - try LLM inference if enabled
+        if use_inference and len(disease) > 10:  # Only infer for reasonably long names
+            logger.info(f"No parent mapping found for '{disease}', attempting LLM inference...")
+            inference_result = self._infer_disease_mapping(disease)
+
+            if inference_result:
+                parent = inference_result.get('parent_disease')
+
+                # Save the inferred mapping to database
+                self._save_inferred_disease_mapping(inference_result)
+
+                if parent:
+                    return parent
+
+        return None
+
+    def _get_disease_name_variants(self, disease: str, use_inference: bool = True) -> List[str]:
+        """
+        Get alternative names/abbreviations for a disease.
+
+        Uses database-backed mappings (loaded on init) with fallback to constants.
+        If no variants exist and use_inference=True, uses LLM to infer variants
+        and auto-saves them for future use.
+
+        Args:
+            disease: The disease name to look up
+            use_inference: Whether to use LLM inference if no variants exist (default: True)
+
+        Returns:
+            List of disease name variants including the original
+        """
+        variants = [disease]
+
+        # Check exact match first (using instance variable loaded from DB + constants)
+        if disease in self._disease_name_variants:
+            variants.extend(self._disease_name_variants[disease])
+            return list(set(variants))  # Deduplicate
+
+        # Check case-insensitive match
+        disease_lower = disease.lower()
+        for canonical, alts in self._disease_name_variants.items():
+            if canonical.lower() == disease_lower:
+                variants.extend(alts)
+                return list(set(variants))  # Deduplicate
+
+        # No variants found - try LLM inference if enabled
+        # Note: We may have already called inference in _get_parent_disease,
+        # so check if we now have variants after that call
+        if use_inference and len(disease) > 5:
+            # Check if inference already ran and added variants
+            if disease in self._disease_name_variants:
+                variants.extend(self._disease_name_variants[disease])
+                return list(set(variants))
+
+            # Also check the canonical name from parent mapping
+            parent = self._disease_parent_mappings.get(disease)
+            if parent and parent in self._disease_name_variants:
+                variants.extend(self._disease_name_variants[parent])
+                return list(set(variants))
+
+            # Run inference specifically for variants
+            logger.info(f"No variants found for '{disease}', attempting LLM inference...")
+            inference_result = self._infer_disease_mapping(disease)
+
+            if inference_result:
+                # Save the inferred mapping
+                self._save_inferred_disease_mapping(inference_result)
+
+                # Extract variants from result
+                canonical = inference_result.get('canonical_name', disease)
+                inferred_variants = inference_result.get('variants', [])
+
+                for v in inferred_variants:
+                    variant_name = v.get('name', '')
+                    if variant_name:
+                        variants.append(variant_name)
+
+                # Also check if we now have variants in memory
+                if canonical in self._disease_name_variants:
+                    variants.extend(self._disease_name_variants[canonical])
+
+        return list(set(variants))  # Deduplicate
+
+    def _deduplicate_diseases(self, diseases: List[str]) -> List[str]:
+        """
+        Deduplicate disease list by normalizing names and keeping canonical versions.
+
+        This prevents redundant market intelligence lookups for the same disease
+        with slight naming variations (e.g., case differences, "refractory" prefixes).
+
+        Returns list of unique canonical disease names.
+        """
+        seen_normalized = {}
+        result = []
+
+        for disease in diseases:
+            # Normalize: lowercase, remove extra whitespace
+            normalized = ' '.join(disease.lower().split())
+
+            # Check if we've seen this or a parent disease
+            parent = self._get_parent_disease(disease)
+            check_key = normalized
+
+            if parent:
+                parent_normalized = ' '.join(parent.lower().split())
+                # If parent exists in seen, skip this variant
+                if parent_normalized in seen_normalized:
+                    logger.debug(f"Skipping '{disease}' - parent disease '{parent}' already processed")
+                    continue
+                check_key = parent_normalized
+
+            if check_key not in seen_normalized:
+                seen_normalized[check_key] = disease
+                result.append(disease)
+            else:
+                logger.debug(f"Skipping duplicate disease: '{disease}' (normalized: '{check_key}')")
+
+        if len(result) < len(diseases):
+            logger.info(f"Deduplicated diseases: {len(diseases)} -> {len(result)} unique")
+
+        return result
+
+    def _fetch_clinicaltrials_gov(
+        self,
+        disease: str,
+        phases: List[str] = None,
+        statuses: List[str] = None,
+        min_start_year: int = None,
+        include_completed_recent: bool = True
+    ) -> List[Dict]:
+        """
+        Query ClinicalTrials.gov API v2 directly for comprehensive trial data.
+
+        API Documentation: https://clinicaltrials.gov/api/v2/studies
+
+        Args:
+            disease: Disease name to search
+            phases: List of phases to include (default: ["PHASE2", "PHASE3"])
+            statuses: List of statuses to include (default: active/recruiting)
+            min_start_year: Minimum start year to include (default: 5 years ago)
+            include_completed_recent: Include trials completed in last 2 years (still relevant)
+
+        Returns:
+            List of study records with structured data
+        """
+        if phases is None:
+            phases = ["PHASE2", "PHASE3"]
+
+        # Default: only trials started in the last 5 years (active development)
+        if min_start_year is None:
+            min_start_year = datetime.now().year - 5
+
+        # Active trial statuses
+        active_statuses = [
+            "RECRUITING",
+            "ACTIVE_NOT_RECRUITING",
+            "ENROLLING_BY_INVITATION",
+            "NOT_YET_RECRUITING"
+        ]
+
+        # Also include recently completed trials (last 2 years) as they indicate active development
+        completed_statuses = ["COMPLETED"] if include_completed_recent else []
+
+        base_url = "https://clinicaltrials.gov/api/v2/studies"
+
+        all_trials = []
+        disease_variants = self._get_disease_name_variants(disease)
+
+        # Build filter expressions using filter.advanced (API v2 syntax)
+        # Phase and status filters must be combined in filter.advanced
+        phase_filter = " OR ".join([f"AREA[Phase]{p}" for p in phases])
+        status_filter = " OR ".join([f"AREA[OverallStatus]{s}" for s in active_statuses])
+        date_filter = f"AREA[StartDate]RANGE[{min_start_year}-01-01,MAX]"
+
+        for variant in disease_variants[:3]:  # Limit to avoid too many API calls
+            # First query: Active/recruiting trials (started in last 5 years)
+            # Combine all filters in filter.advanced
+            advanced_filter = f"({phase_filter}) AND ({status_filter}) AND {date_filter}"
+            params = {
+                "query.cond": variant,
+                "filter.advanced": advanced_filter,
+                "pageSize": 50,
+                "format": "json"
+            }
+
+            try:
+                response = requests.get(base_url, params=params, timeout=30)
+                if response.status_code == 200:
+                    data = response.json()
+                    studies = data.get('studies', [])
+                    all_trials.extend(studies)
+                elif response.status_code == 429:
+                    # Rate limited - wait and retry once
+                    time.sleep(2)
+                    response = requests.get(base_url, params=params, timeout=30)
+                    if response.status_code == 200:
+                        data = response.json()
+                        studies = data.get('studies', [])
+                        all_trials.extend(studies)
+                else:
+                    logger.warning(f"ClinicalTrials.gov API returned status {response.status_code} for {variant}")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"ClinicalTrials.gov API error for {variant}: {e}")
+                continue
+
+            # Second query: Recently completed trials (last 2 years) - still indicates active development
+            if include_completed_recent:
+                completed_min_year = datetime.now().year - 2
+                completed_date_filter = f"AREA[PrimaryCompletionDate]RANGE[{completed_min_year}-01-01,MAX]"
+                completed_advanced_filter = f"({phase_filter}) AND AREA[OverallStatus]COMPLETED AND {completed_date_filter}"
+                params_completed = {
+                    "query.cond": variant,
+                    "filter.advanced": completed_advanced_filter,
+                    "pageSize": 30,
+                    "format": "json"
+                }
+                try:
+                    response = requests.get(base_url, params=params_completed, timeout=30)
+                    if response.status_code == 200:
+                        data = response.json()
+                        studies = data.get('studies', [])
+                        all_trials.extend(studies)
+                except requests.exceptions.RequestException as e:
+                    logger.debug(f"ClinicalTrials.gov completed trials query error: {e}")
+
+        # Deduplicate by NCT ID
+        seen_ncts = set()
+        unique_trials = []
+        for trial in all_trials:
+            nct_id = trial.get('protocolSection', {}).get('identificationModule', {}).get('nctId')
+            if nct_id and nct_id not in seen_ncts:
+                seen_ncts.add(nct_id)
+                unique_trials.append(trial)
+
+        logger.info(f"ClinicalTrials.gov API: Found {len(unique_trials)} unique trials for {disease} (started after {min_start_year})")
+        return unique_trials
+
+    def _parse_ct_gov_trial(self, trial: Dict) -> Dict:
+        """Parse a ClinicalTrials.gov API response into a simplified format."""
+        protocol = trial.get('protocolSection', {})
+        identification = protocol.get('identificationModule', {})
+        status = protocol.get('statusModule', {})
+        design = protocol.get('designModule', {})
+        sponsor = protocol.get('sponsorCollaboratorsModule', {})
+        arms = protocol.get('armsInterventionsModule', {})
+
+        # Extract intervention/drug names
+        interventions = arms.get('interventions', [])
+        drug_names = []
+        for intervention in interventions:
+            if intervention.get('type') in ['DRUG', 'BIOLOGICAL']:
+                drug_names.append(intervention.get('name', 'Unknown'))
+
+        # Get phase
+        phases = design.get('phases', [])
+        phase_str = ", ".join(phases) if phases else "Unknown"
+        phase_str = phase_str.replace("PHASE", "Phase ")
+
+        # Get dates
+        start_date = status.get('startDateStruct', {}).get('date')
+        completion_date = status.get('primaryCompletionDateStruct', {}).get('date')
+
+        # Calculate if this represents active development
+        # Active = currently recruiting OR recently completed (last 2 years)
+        trial_status = status.get('overallStatus', 'Unknown')
+        is_active_development = trial_status in [
+            'RECRUITING', 'ACTIVE_NOT_RECRUITING',
+            'ENROLLING_BY_INVITATION', 'NOT_YET_RECRUITING'
+        ]
+
+        # For completed trials, check if completion was recent
+        if trial_status == 'COMPLETED' and completion_date:
+            try:
+                # Parse completion year
+                completion_year = int(completion_date.split('-')[0]) if '-' in completion_date else int(completion_date[-4:])
+                current_year = datetime.now().year
+                is_active_development = (current_year - completion_year) <= 2
+            except (ValueError, IndexError):
+                is_active_development = False
+
+        return {
+            'nct_id': identification.get('nctId'),
+            'title': identification.get('briefTitle'),
+            'official_title': identification.get('officialTitle'),
+            'phase': phase_str,
+            'status': trial_status,
+            'is_active_development': is_active_development,
+            'drug_names': drug_names,
+            'sponsor': sponsor.get('leadSponsor', {}).get('name'),
+            'start_date': start_date,
+            'completion_date': completion_date,
+            'enrollment': design.get('enrollmentInfo', {}).get('count')
+        }
+
     def _extract_epidemiology(self, disease: str, results: List[Dict]) -> EpidemiologyData:
         """Extract epidemiology data from search results."""
         # Include URLs in the search results for source citation
@@ -2817,7 +3494,7 @@ class DrugRepurposingCaseSeriesAgent:
             logger.error(f"Error extracting epidemiology: {e}")
             return EpidemiologyData()
 
-    def _extract_standard_of_care(self, disease: str, results: List[Dict]) -> StandardOfCareData:
+    def _extract_standard_of_care(self, disease: str, results: List[Dict], parent_disease: Optional[str] = None) -> StandardOfCareData:
         """Extract standard of care from search results - BRANDED INNOVATIVE DRUGS ONLY."""
         # Include URLs for source citation
         # Note: Tavily API returns 'content', not 'snippet'
@@ -2832,13 +3509,14 @@ class DrugRepurposingCaseSeriesAgent:
         prompt = self._prompts.render(
             "case_series/extract_treatments",
             disease=disease,
-            search_results=results_with_urls[:6000]
+            search_results=results_with_urls[:8000],  # Increased for more results
+            parent_disease=parent_disease  # Pass parent disease for context
         )
 
         try:
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=2000,
+                max_tokens=2500,  # Increased for more detailed output
                 messages=[{"role": "user", "content": prompt}]
             )
             self._track_tokens(response.usage)
@@ -2846,7 +3524,7 @@ class DrugRepurposingCaseSeriesAgent:
             content = self._clean_json_response(response.content[0].text.strip())
             data = json.loads(content)
 
-            # Build treatments with new fields
+            # Build treatments with new fields including approval confidence
             treatments = []
             approved_innovative_count = 0
             approved_innovative_names = []
@@ -2865,7 +3543,11 @@ class DrugRepurposingCaseSeriesAgent:
                     line_of_therapy=t.get('line_of_therapy'),
                     efficacy_range=t.get('efficacy_range'),
                     annual_cost_usd=t.get('annual_cost_usd'),
-                    notes=t.get('notes')
+                    notes=t.get('notes'),
+                    # New fields for approval confidence
+                    approval_year=t.get('approval_year'),
+                    approval_confidence=t.get('approval_confidence', 'Medium'),
+                    approval_evidence=t.get('approval_evidence')
                 ))
 
                 # Count branded innovative drugs that are FDA approved FOR THIS EXACT INDICATION
@@ -2889,13 +3571,17 @@ class DrugRepurposingCaseSeriesAgent:
                 unmet_need=data.get('unmet_need', False),
                 unmet_need_description=data.get('unmet_need_description'),
                 competitive_landscape=data.get('competitive_landscape'),
-                soc_source=data.get('soc_source')
+                soc_source=data.get('soc_source'),
+                # New fields for data quality tracking
+                recent_approvals=data.get('recent_approvals'),
+                data_quality=data.get('data_quality', 'Unknown'),
+                data_quality_notes=data.get('data_quality_notes')
             )
         except Exception as e:
             logger.error(f"Error extracting SOC: {e}")
             return StandardOfCareData()
 
-    def _extract_pipeline_data(self, disease: str, results: List[Dict]) -> Dict[str, Any]:
+    def _extract_pipeline_data(self, disease: str, results: List[Dict], ct_gov_data: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """Extract comprehensive pipeline data from ClinicalTrials.gov focused search."""
         results_with_urls = []
         for r in results:
@@ -2908,13 +3594,14 @@ class DrugRepurposingCaseSeriesAgent:
         prompt = self._prompts.render(
             "case_series/extract_pipeline",
             disease=disease,
-            search_results=results_with_urls[:5000]
+            search_results=results_with_urls[:8000],  # Increased for more results
+            ct_gov_data=ct_gov_data  # Pass API data if available
         )
 
         try:
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=1500,
+                max_tokens=2500,  # Increased for more detailed output
                 messages=[{"role": "user", "content": prompt}]
             )
             self._track_tokens(response.usage)
@@ -2922,7 +3609,7 @@ class DrugRepurposingCaseSeriesAgent:
             content = self._clean_json_response(response.content[0].text.strip())
             data = json.loads(content)
 
-            # Build pipeline therapy objects
+            # Build pipeline therapy objects with new fields
             therapies = []
             for t in data.get('pipeline_therapies', []):
                 therapies.append(PipelineTherapy(
@@ -2931,16 +3618,26 @@ class DrugRepurposingCaseSeriesAgent:
                     mechanism=t.get('mechanism'),
                     phase=t.get('phase', 'Unknown'),
                     trial_id=t.get('trial_id'),
-                    expected_completion=t.get('expected_completion')
+                    expected_completion=t.get('expected_completion'),
+                    # New fields
+                    trial_name=t.get('trial_name'),
+                    status=t.get('status'),
+                    regulatory_designations=t.get('regulatory_designations'),
+                    notes=t.get('notes')
                 ))
 
             return {
                 'therapies': therapies,
-                'details': data.get('pipeline_summary')
+                'details': data.get('pipeline_summary'),
+                'phase_3_count': data.get('phase_3_count', 0),
+                'phase_2_count': data.get('phase_2_count', 0),
+                'key_catalysts': data.get('key_catalysts'),
+                'data_completeness': data.get('data_completeness', 'Unknown'),
+                'data_completeness_notes': data.get('data_completeness_notes')
             }
         except Exception as e:
             logger.error(f"Error extracting pipeline data: {e}")
-            return {'therapies': [], 'details': None}
+            return {'therapies': [], 'details': None, 'phase_3_count': 0, 'phase_2_count': 0}
 
     def _extract_tam_analysis(
         self,
@@ -4380,9 +5077,10 @@ class DrugRepurposingCaseSeriesAgent:
 
         NOTE: This is the legacy method. Use _score_sample_size_v2 for case series.
         """
-        n = ext.patient_population.n_patients
-        if n is None:
+        # Handle None patient_population or n_patients
+        if ext.patient_population is None or ext.patient_population.n_patients is None:
             return 3.0  # Unknown sample size
+        n = ext.patient_population.n_patients
         if n >= 50:
             return 10.0
         elif n >= 20:
@@ -4414,7 +5112,10 @@ class DrugRepurposingCaseSeriesAgent:
         N = 1:   1  (single case report)
         N = 0:   1  (unknown, treat as single case)
         """
-        n = ext.patient_population.n_patients if ext.patient_population else 0
+        # Handle None values for n_patients
+        n = 0
+        if ext.patient_population and ext.patient_population.n_patients is not None:
+            n = ext.patient_population.n_patients
 
         if n >= 20:
             return 10.0
@@ -4673,7 +5374,10 @@ class DrugRepurposingCaseSeriesAgent:
         total_responders = 0
 
         for ext in extractions:
-            n = ext.patient_population.n_patients if ext.patient_population else 0
+            # Handle None values for n_patients
+            n = 0
+            if ext.patient_population and ext.patient_population.n_patients is not None:
+                n = ext.patient_population.n_patients
             total_patients += n
 
             resp_pct = ext.efficacy.responders_pct
@@ -4750,13 +5454,26 @@ class DrugRepurposingCaseSeriesAgent:
             self.total_input_tokens += usage.input_tokens
         if hasattr(usage, 'output_tokens'):
             self.total_output_tokens += usage.output_tokens
+        if hasattr(usage, 'cache_creation_input_tokens'):
+            self.total_cache_creation_tokens += usage.cache_creation_input_tokens
+        if hasattr(usage, 'cache_read_input_tokens'):
+            self.total_cache_read_tokens += usage.cache_read_input_tokens
 
     def _calculate_cost(self) -> float:
-        """Calculate estimated cost in USD."""
-        # Claude Sonnet pricing (approximate)
-        input_cost = self.total_input_tokens * 0.003 / 1000
-        output_cost = self.total_output_tokens * 0.015 / 1000
-        return round(input_cost + output_cost, 4)
+        """
+        Calculate estimated cost in USD.
+
+        Claude Sonnet 4 pricing (as of 2025):
+        - Input: $3 per million tokens
+        - Output: $15 per million tokens
+        - Cache writes: $3.75 per million tokens (25% premium)
+        - Cache reads: $0.30 per million tokens (90% discount)
+        """
+        input_cost = self.total_input_tokens * 3.0 / 1_000_000
+        output_cost = self.total_output_tokens * 15.0 / 1_000_000
+        cache_write_cost = self.total_cache_creation_tokens * 3.75 / 1_000_000
+        cache_read_cost = self.total_cache_read_tokens * 0.30 / 1_000_000
+        return round(input_cost + output_cost + cache_write_cost + cache_read_cost, 4)
 
     def _clean_json_response(self, text: str) -> str:
         """Clean JSON response from Claude."""
@@ -4765,6 +5482,489 @@ class DrugRepurposingCaseSeriesAgent:
         text = re.sub(r'^```\s*', '', text)
         text = re.sub(r'\s*```$', '', text)
         return text.strip()
+
+    # =========================================================================
+    # VISUALIZATION METHODS
+    # =========================================================================
+
+    def generate_visualizations(
+        self,
+        result: DrugAnalysisResult,
+        excel_filename: Optional[str] = None
+    ) -> Dict[str, str]:
+        """
+        Generate interactive HTML visualizations from analysis results.
+
+        Creates two charts:
+        1. Priority Matrix: Clinical Score vs Evidence Score (bubble chart)
+        2. Market Opportunity: Competitive Landscape vs Priority Score
+
+        Args:
+            result: DrugAnalysisResult to visualize
+            excel_filename: Optional Excel filename to derive viz filenames from
+
+        Returns:
+            Dict with paths to generated HTML files
+        """
+        try:
+            import plotly.graph_objects as go
+            import pandas as pd
+        except ImportError:
+            logger.error("plotly and pandas required for visualizations. Install with: pip install plotly pandas")
+            raise
+
+        # Prepare data from result
+        analysis_df = self._prepare_visualization_data(result)
+
+        if analysis_df.empty:
+            logger.warning("No data available for visualizations")
+            return {}
+
+        # Determine output directory and filenames
+        if excel_filename:
+            # Use same base name as Excel file
+            base_name = Path(excel_filename).stem
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            base_name = f"{result.drug_name.lower().replace(' ', '_')}_{timestamp}"
+
+        viz_dir = self.output_dir / 'visualizations'
+        viz_dir.mkdir(parents=True, exist_ok=True)
+
+        viz_paths = {}
+
+        # Generate Priority Matrix
+        try:
+            fig1 = self._create_priority_matrix(analysis_df, result.drug_name)
+            path1 = viz_dir / f"{base_name}_priority_matrix.html"
+            fig1.write_html(str(path1))
+            viz_paths['priority_matrix'] = str(path1)
+            logger.info(f"✅ Generated Priority Matrix: {path1}")
+        except Exception as e:
+            logger.error(f"Error generating priority matrix: {e}")
+
+        # Generate Market Opportunity Chart
+        try:
+            fig2 = self._create_market_opportunity(analysis_df, result.drug_name)
+            path2 = viz_dir / f"{base_name}_market_opportunity.html"
+            fig2.write_html(str(path2))
+            viz_paths['market_opportunity'] = str(path2)
+            logger.info(f"✅ Generated Market Opportunity Chart: {path2}")
+        except Exception as e:
+            logger.error(f"Error generating market opportunity chart: {e}")
+
+        return viz_paths
+
+    def _prepare_visualization_data(self, result: DrugAnalysisResult) -> 'pd.DataFrame':
+        """Prepare data for visualizations from DrugAnalysisResult."""
+        import pandas as pd
+
+        # Group opportunities by disease
+        disease_data = {}
+        for opp in result.opportunities:
+            disease = opp.extraction.disease_normalized or opp.extraction.disease
+
+            if disease not in disease_data:
+                disease_data[disease] = {
+                    'opportunities': [],
+                    'total_patients': 0,
+                    'n_studies': 0
+                }
+
+            disease_data[disease]['opportunities'].append(opp)
+            disease_data[disease]['n_studies'] += 1
+
+            # Add patient count
+            if opp.extraction.patient_population and opp.extraction.patient_population.n_patients:
+                disease_data[disease]['total_patients'] += opp.extraction.patient_population.n_patients
+
+        # Build dataframe
+        rows = []
+        for disease, data in disease_data.items():
+            opps = data['opportunities']
+
+            # Calculate average scores
+            avg_clinical = sum(o.scores.clinical_signal for o in opps if o.scores) / len(opps) if opps else 0
+            avg_evidence = sum(o.scores.evidence_quality for o in opps if o.scores) / len(opps) if opps else 0
+            avg_market = sum(o.scores.market_opportunity for o in opps if o.scores) / len(opps) if opps else 0
+            avg_overall = sum(o.scores.overall_priority for o in opps if o.scores) / len(opps) if opps else 0
+
+            # Get market intelligence from best opportunity
+            best_opp = max(opps, key=lambda o: o.scores.overall_priority if o.scores else 0)
+            mi = best_opp.market_intelligence
+
+            rows.append({
+                'Disease': disease,
+                '# Studies': data['n_studies'],
+                'Total Patients': data['total_patients'],
+                'Clinical Score (avg)': round(avg_clinical, 1),
+                'Evidence Score (avg)': round(avg_evidence, 1),
+                'Market Score (avg)': round(avg_market, 1),
+                'Overall Score (avg)': round(avg_overall, 1),
+                '# Approved Competitors': mi.standard_of_care.num_approved_drugs if mi and mi.standard_of_care else 0,
+                'Unmet Need': 'Yes' if mi and mi.standard_of_care and mi.standard_of_care.unmet_need else 'No',
+                'TAM Estimate': mi.tam_estimate if mi else None
+            })
+
+        return pd.DataFrame(rows)
+
+    def _create_priority_matrix(self, df: 'pd.DataFrame', drug_name: str):
+        """Create priority matrix visualization with filtering."""
+        import plotly.graph_objects as go
+        import pandas as pd
+
+        # Prepare data
+        df = df.copy()
+        df['disease_short'] = df['Disease'].apply(lambda x: self._shorten_disease(x, max_len=25))
+        df['n_patients'] = df['Total Patients'].fillna(0).astype(int)
+        df['bubble_size'] = df['n_patients'].apply(lambda x: max(10, min(80, 10 + x * 2)))
+
+        # Sort by overall score descending
+        df = df.sort_values('Overall Score (avg)', ascending=False)
+
+        # Create figure with single trace (all data)
+        fig = go.Figure()
+
+        # Add main scatter trace
+        fig.add_trace(go.Scatter(
+            x=df['Clinical Score (avg)'],
+            y=df['Evidence Score (avg)'],
+            mode='markers+text',
+            marker=dict(
+                size=df['bubble_size'],
+                color=df['Overall Score (avg)'],
+                colorscale='Viridis',  # Better color scale: purple (low) to yellow (high)
+                cmin=df['Overall Score (avg)'].min(),
+                cmax=df['Overall Score (avg)'].max(),
+                line=dict(width=2, color='white'),
+                opacity=0.8,
+                showscale=True,
+                colorbar=dict(
+                    title="Overall<br>Score",
+                    thickness=15,
+                    len=0.7
+                )
+            ),
+            text=df['disease_short'],
+            textposition='top center',
+            textfont=dict(size=10, color='#333'),
+            customdata=df[['Disease', 'Overall Score (avg)', 'n_patients', '# Studies']].values,
+            hovertemplate=(
+                "<b>%{customdata[0]}</b><br>"
+                "Clinical Score: %{x:.1f}<br>"
+                "Evidence Score: %{y:.1f}<br>"
+                "Overall Score: %{customdata[1]:.1f}<br>"
+                "Total Patients: %{customdata[2]}<br>"
+                "# Studies: %{customdata[3]}<br>"
+                "<extra></extra>"
+            ),
+            name='All Opportunities',
+            visible=True
+        ))
+
+        # Add filtered traces for top N opportunities
+        for top_n in [10, 20, 30]:
+            df_filtered = df.head(top_n)
+            fig.add_trace(go.Scatter(
+                x=df_filtered['Clinical Score (avg)'],
+                y=df_filtered['Evidence Score (avg)'],
+                mode='markers+text',
+                marker=dict(
+                    size=df_filtered['bubble_size'],
+                    color=df_filtered['Overall Score (avg)'],
+                    colorscale='Viridis',
+                    cmin=df['Overall Score (avg)'].min(),
+                    cmax=df['Overall Score (avg)'].max(),
+                    line=dict(width=2, color='white'),
+                    opacity=0.8,
+                    showscale=True,
+                    colorbar=dict(
+                        title="Overall<br>Score",
+                        thickness=15,
+                        len=0.7
+                    )
+                ),
+                text=df_filtered['disease_short'],
+                textposition='top center',
+                textfont=dict(size=10, color='#333'),
+                customdata=df_filtered[['Disease', 'Overall Score (avg)', 'n_patients', '# Studies']].values,
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    "Clinical Score: %{x:.1f}<br>"
+                    "Evidence Score: %{y:.1f}<br>"
+                    "Overall Score: %{customdata[1]:.1f}<br>"
+                    "Total Patients: %{customdata[2]}<br>"
+                    "# Studies: %{customdata[3]}<br>"
+                    "<extra></extra>"
+                ),
+                name=f'Top {top_n}',
+                visible=False
+            ))
+
+        # Create dropdown menu for filtering
+        buttons = [
+            dict(label='All Opportunities',
+                 method='update',
+                 args=[{'visible': [True, False, False, False]}]),
+            dict(label='Top 10',
+                 method='update',
+                 args=[{'visible': [False, True, False, False]}]),
+            dict(label='Top 20',
+                 method='update',
+                 args=[{'visible': [False, False, True, False]}]),
+            dict(label='Top 30',
+                 method='update',
+                 args=[{'visible': [False, False, False, True]}])
+        ]
+
+        fig.update_layout(
+            title=dict(
+                text=f'<b>{drug_name.upper()} Repurposing Opportunities</b><br>'
+                     f'<sup>Priority Matrix: Clinical Signal vs Evidence Quality</sup>',
+                x=0.5,
+                font=dict(size=18)
+            ),
+            xaxis=dict(
+                title='Clinical Score (Efficacy + Safety)',
+                range=[4, 10],
+                dtick=1,
+                gridcolor='lightgray'
+            ),
+            yaxis=dict(
+                title='Evidence Score (Sample Size + Quality)',
+                range=[3, 10],
+                dtick=1,
+                gridcolor='lightgray'
+            ),
+            plot_bgcolor='white',
+            height=700,
+            updatemenus=[
+                dict(
+                    buttons=buttons,
+                    direction='down',
+                    pad={'r': 10, 't': 10},
+                    showactive=True,
+                    x=0.98,
+                    xanchor='right',
+                    y=1.15,
+                    yanchor='top',
+                    bgcolor='white',
+                    bordercolor='#ccc',
+                    borderwidth=1
+                )
+            ],
+            annotations=[
+                dict(
+                    text="Bubble size = Total patients<br>Color = Overall priority score (purple=low, yellow=high)",
+                    xref="paper", yref="paper",
+                    x=0.02, y=0.98,
+                    showarrow=False,
+                    font=dict(size=10, color='gray'),
+                    align='left'
+                ),
+                dict(
+                    text="Filter:",
+                    xref="paper", yref="paper",
+                    x=0.88, y=1.15,
+                    showarrow=False,
+                    font=dict(size=12, color='#333'),
+                    xanchor='right'
+                )
+            ]
+        )
+
+        return fig
+
+    def _create_market_opportunity(self, df: 'pd.DataFrame', drug_name: str):
+        """Create market opportunity visualization with filtering."""
+        import plotly.graph_objects as go
+        import pandas as pd
+
+        # Prepare data
+        df = df.copy()
+        df['disease_short'] = df['Disease'].apply(lambda x: self._shorten_disease(x, max_len=25))
+        df['n_patients'] = df['Total Patients'].fillna(0).astype(int)
+        df['bubble_size'] = df['n_patients'].apply(lambda x: max(10, min(80, 10 + x * 2)))
+        df['competitors'] = df.get('# Approved Competitors', pd.Series([0] * len(df))).fillna(0).astype(int)
+
+        # Sort by overall score descending
+        df = df.sort_values('Overall Score (avg)', ascending=False)
+
+        # Create figure
+        fig = go.Figure()
+
+        # Add main scatter trace
+        fig.add_trace(go.Scatter(
+            x=df['competitors'],
+            y=df['Overall Score (avg)'],
+            mode='markers+text',
+            marker=dict(
+                size=df['bubble_size'],
+                color=df['Clinical Score (avg)'],
+                colorscale='Plasma',  # Purple to yellow/orange gradient
+                cmin=df['Clinical Score (avg)'].min(),
+                cmax=df['Clinical Score (avg)'].max(),
+                line=dict(width=2, color='white'),
+                opacity=0.8,
+                showscale=True,
+                colorbar=dict(
+                    title="Clinical<br>Score",
+                    thickness=15,
+                    len=0.7
+                )
+            ),
+            text=df['disease_short'],
+            textposition='top center',
+            textfont=dict(size=10, color='#333'),
+            customdata=df[['Disease', 'Clinical Score (avg)', 'n_patients', 'Unmet Need']].values,
+            hovertemplate=(
+                "<b>%{customdata[0]}</b><br>"
+                "Overall Score: %{y:.1f}<br>"
+                "Clinical Score: %{customdata[1]:.1f}<br>"
+                "# Competitors: %{x}<br>"
+                "Total Patients: %{customdata[2]}<br>"
+                "Unmet Need: %{customdata[3]}<br>"
+                "<extra></extra>"
+            ),
+            name='All Opportunities',
+            visible=True
+        ))
+
+        # Add filtered traces for top N opportunities
+        for top_n in [10, 20, 30]:
+            df_filtered = df.head(top_n)
+            fig.add_trace(go.Scatter(
+                x=df_filtered['competitors'],
+                y=df_filtered['Overall Score (avg)'],
+                mode='markers+text',
+                marker=dict(
+                    size=df_filtered['bubble_size'],
+                    color=df_filtered['Clinical Score (avg)'],
+                    colorscale='Plasma',
+                    cmin=df['Clinical Score (avg)'].min(),
+                    cmax=df['Clinical Score (avg)'].max(),
+                    line=dict(width=2, color='white'),
+                    opacity=0.8,
+                    showscale=True,
+                    colorbar=dict(
+                        title="Clinical<br>Score",
+                        thickness=15,
+                        len=0.7
+                    )
+                ),
+                text=df_filtered['disease_short'],
+                textposition='top center',
+                textfont=dict(size=10, color='#333'),
+                customdata=df_filtered[['Disease', 'Clinical Score (avg)', 'n_patients', 'Unmet Need']].values,
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    "Overall Score: %{y:.1f}<br>"
+                    "Clinical Score: %{customdata[1]:.1f}<br>"
+                    "# Competitors: %{x}<br>"
+                    "Total Patients: %{customdata[2]}<br>"
+                    "Unmet Need: %{customdata[3]}<br>"
+                    "<extra></extra>"
+                ),
+                name=f'Top {top_n}',
+                visible=False
+            ))
+
+        # Create dropdown menu for filtering
+        buttons = [
+            dict(label='All Opportunities',
+                 method='update',
+                 args=[{'visible': [True, False, False, False]}]),
+            dict(label='Top 10',
+                 method='update',
+                 args=[{'visible': [False, True, False, False]}]),
+            dict(label='Top 20',
+                 method='update',
+                 args=[{'visible': [False, False, True, False]}]),
+            dict(label='Top 30',
+                 method='update',
+                 args=[{'visible': [False, False, False, True]}])
+        ]
+
+        fig.update_layout(
+            title=dict(
+                text=f'<b>{drug_name.upper()} Market Opportunity Analysis</b><br>'
+                     f'<sup>Competitive Landscape vs Priority Score</sup>',
+                x=0.5,
+                font=dict(size=18)
+            ),
+            xaxis=dict(
+                title='Number of Approved Competitors',
+                dtick=1,
+                gridcolor='lightgray'
+            ),
+            yaxis=dict(
+                title='Overall Priority Score',
+                range=[5, 10],
+                dtick=1,
+                gridcolor='lightgray'
+            ),
+            plot_bgcolor='white',
+            height=700,
+            updatemenus=[
+                dict(
+                    buttons=buttons,
+                    direction='down',
+                    pad={'r': 10, 't': 10},
+                    showactive=True,
+                    x=0.98,
+                    xanchor='right',
+                    y=1.15,
+                    yanchor='top',
+                    bgcolor='white',
+                    bordercolor='#ccc',
+                    borderwidth=1
+                )
+            ],
+            annotations=[
+                dict(
+                    text="Bubble size = Total patients<br>Color = Clinical score (purple=low, orange=high)<br>"
+                         "Sweet spot: High priority + Low competition",
+                    xref="paper", yref="paper",
+                    x=0.02, y=0.98,
+                    showarrow=False,
+                    font=dict(size=10, color='gray'),
+                    align='left'
+                ),
+                dict(
+                    text="Filter:",
+                    xref="paper", yref="paper",
+                    x=0.88, y=1.15,
+                    showarrow=False,
+                    font=dict(size=12, color='#333'),
+                    xanchor='right'
+                )
+            ]
+        )
+
+        return fig
+
+    @staticmethod
+    def _shorten_disease(name: str, max_len: int = 30) -> str:
+        """Shorten disease names for display."""
+        if len(str(name)) <= max_len:
+            return str(name)
+
+        # Common abbreviations
+        abbrevs = {
+            'Transplantation-associated Thrombotic Microangiopathy': 'TA-TMA',
+            'Membranoproliferative Glomerulonephritis': 'MPGN',
+            'Autoimmune Hemolytic Anemia': 'AIHA',
+            'C3 Glomerulopathy': 'C3G',
+            'Cold Agglutinin Disease': 'CAD',
+            'Atypical Hemolytic Uremic Syndrome': 'aHUS',
+            'Paroxysmal Nocturnal Hemoglobinuria': 'PNH',
+        }
+
+        for full, short in abbrevs.items():
+            if full.lower() in name.lower():
+                return short
+
+        return str(name)[:max_len-3] + '...'
 
     # =========================================================================
     # EXPORT METHODS
@@ -4891,8 +6091,24 @@ class DrugRepurposingCaseSeriesAgent:
                 writer, sheet_name='Analysis Summary', index=False
             )
 
-    def export_to_excel(self, result: DrugAnalysisResult, filename: Optional[str] = None) -> str:
-        """Export analysis result to Excel with multiple sheets."""
+    def export_to_excel(
+        self,
+        result: DrugAnalysisResult,
+        filename: Optional[str] = None,
+        generate_visualizations: bool = True,
+        generate_text_report: bool = True
+    ) -> str:
+        """Export analysis result to Excel with multiple sheets.
+
+        Args:
+            result: DrugAnalysisResult to export
+            filename: Optional filename (auto-generated if None)
+            generate_visualizations: Whether to generate interactive HTML visualizations
+            generate_text_report: Whether to generate analytical text report
+
+        Returns:
+            Path to generated Excel file
+        """
         try:
             import pandas as pd
         except ImportError:
@@ -4905,9 +6121,9 @@ class DrugRepurposingCaseSeriesAgent:
 
         filepath = self.output_dir / filename
 
-        # Calculate estimated cost from token usage
-        input_cost = result.total_input_tokens * 0.003 / 1000  # $3/1M input tokens
-        output_cost = result.total_output_tokens * 0.015 / 1000  # $15/1M output tokens
+        # Calculate estimated cost from token usage (using correct pricing)
+        input_cost = result.total_input_tokens * 3.0 / 1_000_000  # $3/1M input tokens
+        output_cost = result.total_output_tokens * 15.0 / 1_000_000  # $15/1M output tokens
         estimated_cost = input_cost + output_cost
 
         with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
@@ -4993,6 +6209,68 @@ class DrugRepurposingCaseSeriesAgent:
                         'Year': ext.source.year
                     })
                 pd.DataFrame(opp_data).to_excel(writer, sheet_name='Opportunities', index=False)
+
+            # Score Breakdown sheet - detailed calculation transparency
+            score_breakdown_data = []
+            for opp in result.opportunities:
+                ext = opp.extraction
+                scores = opp.scores
+
+                # Get breakdown dicts
+                clinical_bd = scores.clinical_breakdown or {}
+                evidence_bd = scores.evidence_breakdown or {}
+                market_bd = scores.market_breakdown or {}
+
+                # Format safety categories and regulatory flags
+                safety_cats = clinical_bd.get('safety_categories', [])
+                safety_cats_str = ', '.join(safety_cats) if safety_cats else 'None detected'
+                reg_flags = clinical_bd.get('regulatory_flags', [])
+                reg_flags_str = ', '.join(reg_flags) if reg_flags else 'None'
+
+                score_breakdown_data.append({
+                    'Rank': opp.rank,
+                    'Disease': ext.disease_normalized or ext.disease,
+                    'PMID': ext.source.pmid if ext.source else None,
+
+                    # Overall Scores
+                    'Overall Priority Score': f"{scores.overall_priority:.2f}",
+                    'Clinical Signal (50%)': f"{scores.clinical_signal:.2f}",
+                    'Evidence Quality (25%)': f"{scores.evidence_quality:.2f}",
+                    'Market Opportunity (25%)': f"{scores.market_opportunity:.2f}",
+
+                    # Clinical Signal Breakdown (50% of total)
+                    'Clinical - Response Rate (40%)': f"{scores.response_rate_score:.2f}",
+                    'Clinical - Safety Profile (40%)': f"{scores.safety_profile_score:.2f}",
+                    'Clinical - Organ Domain (20%)': f"{scores.organ_domain_score:.2f}",
+                    'Clinical - # Efficacy Endpoints': clinical_bd.get('efficacy_endpoint_count', 'N/A'),
+                    'Clinical - Efficacy Concordance': f"{clinical_bd.get('efficacy_concordance', 0):.1%}" if clinical_bd.get('efficacy_concordance') else 'N/A',
+                    'Clinical - Safety Categories': safety_cats_str,
+                    'Clinical - Regulatory Flags': reg_flags_str,
+                    'Clinical - Response Rate Detail': f"Quality-weighted: {clinical_bd.get('response_rate_quality_weighted', 'N/A')}",
+
+                    # Evidence Quality Breakdown (25% of total)
+                    'Evidence - Sample Size (35%)': f"{scores.sample_size_score:.2f}",
+                    'Evidence - Publication Venue (25%)': f"{scores.publication_venue_score:.2f}",
+                    'Evidence - Follow-up Duration (25%)': f"{scores.followup_duration_score:.2f}",
+                    'Evidence - Extraction Completeness (15%)': f"{scores.extraction_completeness_score:.2f}",
+                    'Evidence - Sample Size (n)': evidence_bd.get('sample_size', 'N/A'),
+                    'Evidence - Venue': evidence_bd.get('venue', 'N/A'),
+                    'Evidence - Follow-up (months)': evidence_bd.get('followup_months', 'N/A'),
+
+                    # Market Opportunity Breakdown (25% of total)
+                    'Market - Competitors (33%)': f"{scores.competitors_score:.2f}",
+                    'Market - Market Size (33%)': f"{scores.market_size_score:.2f}",
+                    'Market - Unmet Need (33%)': f"{scores.unmet_need_score:.2f}",
+                    'Market - # Approved Drugs': market_bd.get('num_approved_drugs', 'N/A'),
+                    'Market - TAM Estimate': market_bd.get('tam_estimate', 'N/A'),
+                    'Market - Unmet Need?': market_bd.get('unmet_need', 'N/A'),
+
+                    # Calculation Formula
+                    'Formula': f"Overall = (Clinical×0.5) + (Evidence×0.25) + (Market×0.25) = ({scores.clinical_signal:.2f}×0.5) + ({scores.evidence_quality:.2f}×0.25) + ({scores.market_opportunity:.2f}×0.25) = {scores.overall_priority:.2f}"
+                })
+
+            if score_breakdown_data:
+                pd.DataFrame(score_breakdown_data).to_excel(writer, sheet_name='Score Breakdown', index=False)
 
             # Market Intelligence sheet - enhanced with TAM and pipeline details
             market_data = []
@@ -5138,6 +6416,9 @@ class DrugRepurposingCaseSeriesAgent:
                 disease = ext.disease_normalized or ext.disease
                 pmid = ext.source.pmid if ext.source else None
 
+                # Get study-level N as fallback for per-event N
+                study_n = ext.patient_population.n_patients if ext.patient_population else None
+
                 # Get detailed endpoints if available
                 detailed_eps = getattr(ext, 'detailed_safety_endpoints', []) or []
                 for ep in detailed_eps:
@@ -5149,18 +6430,32 @@ class DrugRepurposingCaseSeriesAgent:
                     else:
                         continue
 
+                    # Extract values with correct field names (matching schema)
+                    patients_affected_n = ep_dict.get('patients_affected_n')
+                    patients_affected_pct = ep_dict.get('patients_affected_pct')
+
+                    # Determine total patients: use study N as fallback
+                    total_patients_n = study_n
+
+                    # Calculate incidence percentage if not provided
+                    # Priority: 1) patients_affected_pct, 2) calculate from n/total, 3) None
+                    incidence_pct = patients_affected_pct
+                    if incidence_pct is None and patients_affected_n is not None and total_patients_n is not None and total_patients_n > 0:
+                        incidence_pct = round((patients_affected_n / total_patients_n) * 100, 1)
+
                     safety_data.append({
                         'Disease': disease,
                         'PMID': pmid,
                         'Event Name': ep_dict.get('event_name'),
                         'Event Category': ep_dict.get('event_category'),
                         'Is Serious (SAE)': ep_dict.get('is_serious', False),
-                        'Grade': ep_dict.get('grade'),
-                        'Patients Affected (n)': ep_dict.get('n_patients_affected'),
-                        'Total Patients (n)': ep_dict.get('n_total_patients'),
-                        'Incidence (%)': ep_dict.get('incidence_pct'),
+                        'Severity Grade': ep_dict.get('severity_grade'),
+                        'Patients Affected (n)': patients_affected_n,
+                        'Total Patients (n)': total_patients_n,
+                        'Incidence (%)': incidence_pct,
                         'Related to Drug': ep_dict.get('relatedness'),
                         'Outcome': ep_dict.get('outcome'),
+                        'Action Taken': ep_dict.get('action_taken'),
                         'Time to Onset': ep_dict.get('time_to_onset'),
                         'Notes': ep_dict.get('notes')
                     })
@@ -5169,6 +6464,27 @@ class DrugRepurposingCaseSeriesAgent:
                 pd.DataFrame(safety_data).to_excel(writer, sheet_name='Safety Endpoints', index=False)
 
         logger.info(f"Exported to Excel: {filepath}")
+
+        # Generate visualizations if requested
+        if generate_visualizations:
+            try:
+                viz_paths = self.generate_visualizations(result, filename)
+                logger.info(f"Generated visualizations: {list(viz_paths.values())}")
+            except Exception as e:
+                logger.warning(f"Failed to generate visualizations (non-critical): {e}")
+
+        # Generate text report if requested
+        if generate_text_report:
+            try:
+                report_text, report_path = self.generate_analytical_report(
+                    result=result,
+                    auto_save=True,
+                    max_tokens=8000
+                )
+                logger.info(f"Generated analytical report: {report_path}")
+            except Exception as e:
+                logger.warning(f"Failed to generate text report (non-critical): {e}")
+
         return str(filepath)
 
     def export_to_pdf(
