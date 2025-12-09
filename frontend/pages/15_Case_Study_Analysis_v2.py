@@ -1451,8 +1451,8 @@ with tab6:
 
                             # Get response rate
                             response_rate = "N/A"
-                            if ext and ext.efficacy_endpoints:
-                                primary_endpoints = [e for e in ext.efficacy_endpoints if e.endpoint_category == 'primary']
+                            if ext and ext.detailed_efficacy_endpoints:
+                                primary_endpoints = [e for e in ext.detailed_efficacy_endpoints if e.endpoint_category == 'primary']
                                 if primary_endpoints and primary_endpoints[0].response_rate:
                                     response_rate = f"{primary_endpoints[0].response_rate:.1f}%"
 
