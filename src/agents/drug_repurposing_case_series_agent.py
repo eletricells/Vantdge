@@ -945,6 +945,7 @@ class DrugRepurposingCaseSeriesAgent:
                         total_extractions += 1
 
                         # Save ALL extractions to database (even irrelevant ones for auditing)
+                        ext_id = None  # Initialize to avoid UnboundLocalError
                         if self.cs_db and self._current_run_id:
                             ext_id = self.cs_db.save_extraction(
                                 self._current_run_id, extraction, drug_name
