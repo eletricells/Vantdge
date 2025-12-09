@@ -402,7 +402,7 @@ class CaseSeriesReportGenerator:
     def generate_report(
         self,
         data: Dict[str, Any],
-        max_tokens: int = 8000,
+        max_tokens: int = 16000,  # Use full Claude Sonnet 4 output capacity
         temperature: float = 0.0
     ) -> str:
         """
@@ -413,7 +413,7 @@ class CaseSeriesReportGenerator:
         data : dict
             Formatted data from format_data_from_excel() or format_data_from_result()
         max_tokens : int
-            Maximum tokens for the response
+            Maximum tokens for the response (default: 16000 for Claude Sonnet 4)
         temperature : float
             Temperature for generation (0.0 = deterministic)
 
@@ -509,7 +509,7 @@ class CaseSeriesReportGenerator:
         excel_path: str = None,
         result = None,
         output_path: str = None,
-        max_tokens: int = 8000
+        max_tokens: int = 16000  # Use full Claude Sonnet 4 output capacity
     ) -> tuple[str, str]:
         """
         Complete workflow: format data, generate report, save to file.
@@ -523,7 +523,7 @@ class CaseSeriesReportGenerator:
         output_path : str, optional
             Where to save the report. If None, saves to data/reports/
         max_tokens : int
-            Maximum tokens for generation
+            Maximum tokens for generation (default: 16000 for Claude Sonnet 4)
 
         Returns:
         --------

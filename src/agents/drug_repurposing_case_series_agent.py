@@ -6492,7 +6492,7 @@ class DrugRepurposingCaseSeriesAgent:
                 report_text, report_path = self.generate_analytical_report(
                     result=result,
                     auto_save=True,
-                    max_tokens=8000
+                    max_tokens=16000  # Use full Claude Sonnet 4 output capacity
                 )
                 logger.info(f"Generated analytical report: {report_path}")
             except Exception as e:
@@ -6548,7 +6548,7 @@ class DrugRepurposingCaseSeriesAgent:
         result: DrugAnalysisResult = None,
         excel_path: str = None,
         output_path: str = None,
-        max_tokens: int = 8000,
+        max_tokens: int = 16000,  # Use full Claude Sonnet 4 output capacity
         auto_save: bool = True
     ) -> tuple[str, Optional[str]]:
         """
