@@ -181,7 +181,8 @@ def render_market_opportunity(
     drug_name: str = "Drug",
     competitors_col: str = "# Approved Competitors",
     overall_score_col: str = "Overall Score (avg)",
-    tam_col: str = "TAM Estimate",
+    clinical_score_col: str = "Clinical Score (avg)",
+    total_patients_col: str = "Total Patients",
     unmet_need_col: str = "Unmet Need",
     disease_col: str = "Disease",
     height: int = 550,
@@ -200,8 +201,10 @@ def render_market_opportunity(
         Column name for number of approved competitors
     overall_score_col : str
         Column name for overall priority score
-    tam_col : str
-        Column name for TAM (can be string like "$172.8M" or numeric)
+    clinical_score_col : str
+        Column name for clinical score (used for color gradient)
+    total_patients_col : str
+        Column name for total patients (used for bubble size)
     unmet_need_col : str
         Column name for unmet need (Yes/No)
     disease_col : str
@@ -212,88 +215,62 @@ def render_market_opportunity(
         Whether to show the highlighted "sweet spot" zone
     """
 
+    # Prepare data
+    df_plot = df.copy()
+    df_plot['disease_short'] = df_plot[disease_col].apply(shorten_disease)
+    df_plot['n_patients'] = df_plot.get(total_patients_col, pd.Series([0] * len(df_plot))).fillna(0).astype(int)
+    df_plot['bubble_size'] = df_plot['n_patients'].apply(lambda x: max(20, min(80, 10 + x * 2)))
+
+    # Get clinical scores for color mapping
+    clinical_scores = df_plot.get(clinical_score_col, pd.Series([5.0] * len(df_plot))).fillna(5.0)
+
     fig = go.Figure()
 
-    for _, row in df.iterrows():
-        disease_short = shorten_disease(row[disease_col])
-
-        # Parse TAM - handle both string ("$172.8M") and numeric formats
-        tam_value = row.get(tam_col, '$50M')
-        if pd.isna(tam_value):
-            tam_millions = 50
-            tam_display = 'N/A'
-        elif isinstance(tam_value, str):
-            try:
-                tam_millions = float(
-                    tam_value.replace('$', '')
-                    .replace('M', '')
-                    .replace('B', '000')
-                    .replace(',', '')
-                )
-                tam_display = tam_value
-            except ValueError:
-                tam_millions = 50
-                tam_display = tam_value
-        else:
-            # Assume numeric in dollars
-            tam_millions = tam_value / 1_000_000
-            tam_display = f"${tam_millions:.0f}M"
-
-        # Bubble size based on TAM (min 20, max 80)
-        bubble_size = max(20, min(80, tam_millions / 2))
-
-        # Color based on unmet need
-        unmet_need = row.get(unmet_need_col, 'No')
-        if unmet_need == 'Yes':
-            color = '#e74c3c'  # Red for high unmet need
-        else:
-            color = '#3498db'  # Blue for lower unmet need
-
-        fig.add_trace(go.Scatter(
-            x=[row[competitors_col]],
-            y=[row[overall_score_col]],
-            mode='markers+text',
-            marker=dict(
-                size=bubble_size,
-                color=color,
-                opacity=0.7,
-                line=dict(width=2, color='white')
-            ),
-            text=[disease_short],
-            textposition='top center',
-            textfont=dict(size=10),
-            hovertemplate=(
-                f"<b>{row[disease_col]}</b><br>"
-                f"Approved Competitors: {row[competitors_col]}<br>"
-                f"Overall Score: {row[overall_score_col]:.1f}<br>"
-                f"TAM: {tam_display}<br>"
-                f"Unmet Need: {unmet_need}<br>"
-                "<extra></extra>"
-            ),
-            showlegend=False
-        ))
-
-    # Add legend markers for unmet need
+    # Add main scatter trace with clinical score color gradient
     fig.add_trace(go.Scatter(
-        x=[None], y=[None], mode='markers',
-        marker=dict(size=15, color='#e74c3c'),
-        name='Unmet Need: Yes'
-    ))
-    fig.add_trace(go.Scatter(
-        x=[None], y=[None], mode='markers',
-        marker=dict(size=15, color='#3498db'),
-        name='Unmet Need: No'
+        x=df_plot[competitors_col],
+        y=df_plot[overall_score_col],
+        mode='markers+text',
+        marker=dict(
+            size=df_plot['bubble_size'],
+            color=clinical_scores,
+            colorscale='Plasma',  # Purple to yellow/orange gradient
+            cmin=clinical_scores.min(),
+            cmax=clinical_scores.max(),
+            line=dict(width=2, color='white'),
+            opacity=0.8,
+            showscale=True,
+            colorbar=dict(
+                title="Clinical<br>Score",
+                thickness=15,
+                len=0.7
+            )
+        ),
+        text=df_plot['disease_short'],
+        textposition='top center',
+        textfont=dict(size=10, color='#333'),
+        customdata=df_plot[[disease_col, clinical_score_col, 'n_patients', unmet_need_col]].values,
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>"
+            "Overall Score: %{y:.1f}<br>"
+            "Clinical Score: %{customdata[1]:.1f}<br>"
+            "# Competitors: %{x}<br>"
+            "Total Patients: %{customdata[2]}<br>"
+            "Unmet Need: %{customdata[3]}<br>"
+            "<extra></extra>"
+        ),
+        showlegend=False
     ))
 
     # Determine axis ranges from data
-    max_competitors = df[competitors_col].max() if competitors_col in df.columns else 3
-    min_score = df[overall_score_col].min() if overall_score_col in df.columns else 6
-    max_score = df[overall_score_col].max() if overall_score_col in df.columns else 9
+    max_competitors = df_plot[competitors_col].max() if competitors_col in df_plot.columns else 3
+    min_score = df_plot[overall_score_col].min() if overall_score_col in df_plot.columns else 6
+    max_score = df_plot[overall_score_col].max() if overall_score_col in df_plot.columns else 9
 
     layout_args = dict(
         title=dict(
-            text=f'<b>{drug_name.upper()} - Market Opportunity Assessment</b><br>'
-                 f'<sup>Competitive Landscape vs Priority Score (Bubble Size = TAM)</sup>',
+            text=f'<b>{drug_name.upper()} Market Opportunity Analysis</b><br>'
+                 f'<sup>Competitive Landscape vs Priority Score (Bubble Size = Total Patients)</sup>',
             x=0.5,
             font=dict(size=16)
         ),
@@ -310,13 +287,7 @@ def render_market_opportunity(
         ),
         plot_bgcolor='white',
         height=height,
-        legend=dict(
-            orientation='h',
-            yanchor='bottom',
-            y=-0.15,
-            xanchor='center',
-            x=0.5
-        )
+        showlegend=False
     )
 
     # Add sweet spot zone if requested

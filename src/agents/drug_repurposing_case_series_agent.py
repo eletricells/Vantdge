@@ -6158,8 +6158,8 @@ class DrugRepurposingCaseSeriesAgent:
                     organ_domains_matched = self._get_matched_organ_domains(ext)
 
                     # Get score breakdowns if available
-                    clinical_breakdown = opp.scores.clinical_breakdown if opp.scores else {}
-                    evidence_breakdown = opp.scores.evidence_breakdown if opp.scores else {}
+                    clinical_breakdown = (opp.scores.clinical_breakdown if opp.scores and opp.scores.clinical_breakdown else {})
+                    evidence_breakdown = (opp.scores.evidence_breakdown if opp.scores and opp.scores.evidence_breakdown else {})
 
                     opp_data.append({
                         'Rank': opp.rank,
