@@ -62,18 +62,16 @@ with col1:
     st.markdown("""
     ## Welcome!
 
-    This AI-powered system helps BigPharma BD teams evaluate drug development opportunities by:
+    **Case Study Analysis v2** identifies drug repurposing opportunities through:
 
-    - 🔬 **Clinical Analysis**: Evaluates trial data, probability of success, and clinical risks
-    - 💼 **Investment Synthesis**: Generates actionable ACQUIRE/MONITOR/PASS recommendations
-    - 📊 **Executive Summaries**: Creates board-ready investment theses
-    - 🎯 **Custom Prompts**: Fine-tune agent behavior for your specific needs
+    - 📋 **Approved Indication Discovery**: Extracts FDA-approved uses from DailyMed and Drugs.com
+    - 🔍 **Case Series Search**: Finds off-label evidence via PubMed and web search
+    - 🤖 **AI-Powered Extraction**: Structures clinical data with Claude
+    - 📊 **Scoring & Prioritization**: Ranks opportunities by clinical strength (50%), evidence quality (25%), and market potential (25%)
 
     ### Getting Started
 
-    Navigate using the sidebar:
-    - **Analysis** → Run investment analyses
-    - **Agent Prompts** → Customize AI agent behavior
+    Navigate to **Case Study Analysis v2** in the sidebar to discover repurposing opportunities.
     """)
 
 with col2:
@@ -81,123 +79,22 @@ with col2:
     ### 📊 System Status
 
     **Active Agents:**
-    - ✅ Clinical Agent
-    - ✅ Manager Agent
-    - 🔨 Commercial Agent (Coming)
-    - 🔨 Preclinical Agent (Coming)
+    - ✅ Case Study Analysis v2
+
+    **WIP Agents:**
+    - 🔨 Drug Extraction
+    - 🔨 Drug Browser
+    - 🔨 Clinical Data Extractor
+    - 🔨 Literature Search
+    - 🔨 Prompt Manager
+    - 🔨 Case Study Analysis (v1)
 
     **Features:**
-    - ✅ ClinicalTrials.gov API
-    - ✅ Web Search (Tavily)
     - ✅ PubMed Integration
-    - ✅ Custom Prompts
-    - ✅ Multi-iteration Refinement
+    - ✅ Web Search (Tavily)
+    - ✅ DailyMed API
+    - ✅ Drugs.com Scraping
     """)
-
-st.markdown("---")
-
-# Feature cards
-st.markdown("## 🎯 Key Features")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("""
-    <div class="feature-card">
-        <h3>🔬 Clinical Analysis</h3>
-        <ul>
-            <li>Trial design assessment</li>
-            <li>Probability of success</li>
-            <li>Risk/opportunity identification</li>
-            <li>Competitive benchmarking</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown("""
-    <div class="feature-card">
-        <h3>💼 Investment Thesis</h3>
-        <ul>
-            <li>ACQUIRE/MONITOR/PASS recommendations</li>
-            <li>Deal structure suggestions</li>
-            <li>Peak sales forecasts</li>
-            <li>Executive summaries</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown("""
-    <div class="feature-card">
-        <h3>⚙️ Customizable</h3>
-        <ul>
-            <li>Edit agent prompts</li>
-            <li>Adjust confidence thresholds</li>
-            <li>Control iteration depth</li>
-            <li>Fine-tune analysis rigor</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("---")
-
-# Quick examples
-st.markdown("## 📚 Example Analyses")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown("""
-    ### KRAS Inhibitor
-    **Target:** Amgen - Sotorasib
-    **Indication:** KRAS G12C-mutated NSCLC
-    **Phase:** Phase 2
-
-    *Example of successful precision oncology program*
-    """)
-
-    st.markdown("""
-    ### RET Inhibitor
-    **Target:** Blueprint Medicines - Pralsetinib
-    **Indication:** RET-altered cancer
-    **Phase:** Phase 2
-
-    *Example of targeted therapy in rare mutations*
-    """)
-
-with col2:
-    st.markdown("""
-    ### Cancer Immunotherapy
-    **Target:** BioNTech - BNT111
-    **Indication:** Melanoma
-    **Phase:** Phase 2
-
-    *Example of novel immunotherapy approach*
-    """)
-
-    st.markdown("""
-    ### Custom Analysis
-    Use the Analysis page to evaluate any drug program with:
-    - Custom target and indication
-    - Adjustable parameters
-    - Iterative refinement
-    """)
-
-st.markdown("---")
-
-# Footer
-st.markdown("""
-### 🚀 Ready to Start?
-
-1. **Go to the Analysis page** (sidebar) to run your first analysis
-2. **Customize prompts** (Agent Prompts page) to fine-tune behavior
-3. **Iterate and refine** to get the best insights
-
----
-
-*Phase 2 MVP - Clinical Agent + Manager Agent + Custom Prompts*
-""")
 
 # Sidebar navigation help
 with st.sidebar:
