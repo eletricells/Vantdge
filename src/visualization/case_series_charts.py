@@ -219,7 +219,16 @@ def render_market_opportunity(
     df_plot = df.copy()
     df_plot['disease_short'] = df_plot[disease_col].apply(shorten_disease)
     df_plot['n_patients'] = df_plot.get(total_patients_col, pd.Series([0] * len(df_plot))).fillna(0).astype(int)
-    df_plot['bubble_size'] = df_plot['n_patients'].apply(lambda x: max(20, min(80, 10 + x * 2)))
+
+    # Calculate bubble sizes with better scaling
+    # Use square root scaling for better visual differentiation
+    max_patients = df_plot['n_patients'].max()
+    if max_patients > 0:
+        df_plot['bubble_size'] = df_plot['n_patients'].apply(
+            lambda x: 15 + (x / max_patients) ** 0.5 * 50  # Range: 15-65
+        )
+    else:
+        df_plot['bubble_size'] = 30  # Default size if no patient data
 
     # Get clinical scores for color mapping
     clinical_scores = df_plot.get(clinical_score_col, pd.Series([5.0] * len(df_plot))).fillna(5.0)
