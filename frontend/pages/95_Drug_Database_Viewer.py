@@ -139,15 +139,29 @@ try:
             st.error("Drug not found")
             st.stop()
 
-        # Get clinical trials
+        # Get clinical trials (industry-sponsored only)
         with db.cursor() as cur:
             cur.execute("""
                 SELECT nct_id, trial_title, trial_phase, trial_status, conditions, sponsors
-                FROM drug_clinical_trials 
-                WHERE drug_id = %s 
+                FROM drug_clinical_trials
+                WHERE drug_id = %s
                 ORDER BY trial_phase DESC
-                LIMIT 50
+                LIMIT 100
             """, (selected_drug_id,))
+            all_trials = [dict(row) for row in cur.fetchall()]
+            
+            # Filter to industry-sponsored trials only
+            trials = []
+            for trial in all_trials:
+                sponsors = trial.get("sponsors", {})
+                if isinstance(sponsors, dict):
+                    lead_sponsor = sponsors.get("lead", "")
+                    # Exclude academic/individual sponsors
+                    if lead_sponsor and not any(indicator in lead_sponsor.lower() for indicator in [
+                        "university", "hospital", "medical center", "institute",
+                        "college", "foundation", "national", "dr.", "dr ", "md"
+                    ]):
+                        trials.append(trial)
 
         # Get data sources
         with db.cursor() as cur:
