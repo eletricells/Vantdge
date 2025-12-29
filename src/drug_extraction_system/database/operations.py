@@ -317,6 +317,20 @@ class DrugDatabaseOperations:
             """, (drug_id,))
             drug["identifiers"] = {r["identifier_type"]: r["identifier_value"] for r in cur.fetchall()}
 
+            # Get efficacy data
+            cur.execute("""
+                SELECT * FROM drug_efficacy_data WHERE drug_id = %s
+                ORDER BY trial_name, endpoint_name
+            """, (drug_id,))
+            drug["efficacy_data"] = [dict(r) for r in cur.fetchall()]
+
+            # Get safety data
+            cur.execute("""
+                SELECT * FROM drug_safety_data WHERE drug_id = %s
+                ORDER BY drug_arm_rate DESC NULLS LAST
+            """, (drug_id,))
+            drug["safety_data"] = [dict(r) for r in cur.fetchall()]
+
             return drug
 
     def log_process_start(self, batch_id: UUID, csv_file: str, total_drugs: int) -> int:
@@ -395,4 +409,183 @@ class DrugDatabaseOperations:
             result = cur.fetchone()
             self.db.commit()
             return result is not None
+
+    def store_efficacy_data(self, drug_id: int, efficacy_results: List[Any]) -> int:
+        """
+        Store efficacy data for a drug.
+
+        Args:
+            drug_id: Drug ID
+            efficacy_results: List of EfficacyResult dataclasses or dicts
+
+        Returns:
+            Number of records inserted
+        """
+        self.db.ensure_connected()
+        inserted = 0
+
+        with self.db.cursor() as cur:
+            for result in efficacy_results:
+                # Convert dataclass to dict if needed
+                if hasattr(result, '__dict__') and hasattr(result, 'trial_name'):
+                    data = {
+                        'trial_name': result.trial_name,
+                        'endpoint_name': result.endpoint_name,
+                        'endpoint_type': result.endpoint_type,
+                        'drug_arm_name': result.drug_arm_name,
+                        'drug_arm_n': result.drug_arm_n,
+                        'drug_arm_result': result.drug_arm_result,
+                        'drug_arm_result_unit': result.drug_arm_result_unit,
+                        'comparator_arm_name': result.comparator_arm_name,
+                        'comparator_arm_n': result.comparator_arm_n,
+                        'comparator_arm_result': result.comparator_arm_result,
+                        'p_value': result.p_value,
+                        'confidence_interval': result.confidence_interval,
+                        'timepoint': result.timepoint,
+                        'trial_phase': result.trial_phase,
+                        'nct_id': result.nct_id,
+                        'population': result.population,
+                        'indication_name': result.indication_name,
+                        'confidence_score': result.confidence_score,
+                    }
+                else:
+                    data = result
+
+                try:
+                    cur.execute("""
+                        INSERT INTO drug_efficacy_data (
+                            drug_id, trial_name, endpoint_name, endpoint_type,
+                            drug_arm_name, drug_arm_n, drug_arm_result, drug_arm_result_unit,
+                            comparator_arm_name, comparator_arm_n, comparator_arm_result,
+                            p_value, confidence_interval, timepoint, trial_phase, nct_id,
+                            population, indication_name, confidence_score, data_source
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'openfda'
+                        )
+                    """, (
+                        drug_id,
+                        data.get('trial_name'),
+                        data.get('endpoint_name'),
+                        data.get('endpoint_type'),
+                        data.get('drug_arm_name'),
+                        data.get('drug_arm_n'),
+                        data.get('drug_arm_result'),
+                        data.get('drug_arm_result_unit'),
+                        data.get('comparator_arm_name'),
+                        data.get('comparator_arm_n'),
+                        data.get('comparator_arm_result'),
+                        data.get('p_value'),
+                        data.get('confidence_interval'),
+                        data.get('timepoint'),
+                        data.get('trial_phase'),
+                        data.get('nct_id'),
+                        data.get('population'),
+                        data.get('indication_name'),
+                        data.get('confidence_score', 0.85),
+                    ))
+                    inserted += 1
+                except Exception as e:
+                    logger.warning(f"Failed to insert efficacy record: {e}")
+
+            self.db.commit()
+
+        logger.info(f"Stored {inserted} efficacy records for drug_id={drug_id}")
+        return inserted
+
+    def store_safety_data(self, drug_id: int, safety_results: List[Any]) -> int:
+        """
+        Store safety data for a drug.
+
+        Args:
+            drug_id: Drug ID
+            safety_results: List of SafetyResult dataclasses or dicts
+
+        Returns:
+            Number of records inserted
+        """
+        self.db.ensure_connected()
+        inserted = 0
+
+        with self.db.cursor() as cur:
+            for result in safety_results:
+                # Convert dataclass to dict if needed
+                if hasattr(result, '__dict__') and hasattr(result, 'adverse_event'):
+                    data = {
+                        'adverse_event': result.adverse_event,
+                        'system_organ_class': result.system_organ_class,
+                        'severity': result.severity,
+                        'is_serious': result.is_serious,
+                        'drug_arm_name': result.drug_arm_name,
+                        'drug_arm_n': result.drug_arm_n,
+                        'drug_arm_count': result.drug_arm_count,
+                        'drug_arm_rate': result.drug_arm_rate,
+                        'drug_arm_rate_unit': result.drug_arm_rate_unit,
+                        'comparator_arm_name': result.comparator_arm_name,
+                        'comparator_arm_n': result.comparator_arm_n,
+                        'comparator_arm_count': result.comparator_arm_count,
+                        'comparator_arm_rate': result.comparator_arm_rate,
+                        'timepoint': result.timepoint,
+                        'trial_context': result.trial_context,
+                        'is_boxed_warning': result.is_boxed_warning,
+                        'warning_category': result.warning_category,
+                        'population': result.population,
+                        'indication_name': result.indication_name,
+                        'confidence_score': result.confidence_score,
+                    }
+                else:
+                    data = result
+
+                try:
+                    cur.execute("""
+                        INSERT INTO drug_safety_data (
+                            drug_id, adverse_event, system_organ_class, severity, is_serious,
+                            drug_arm_name, drug_arm_n, drug_arm_count, drug_arm_rate, drug_arm_rate_unit,
+                            comparator_arm_name, comparator_arm_n, comparator_arm_count, comparator_arm_rate,
+                            timepoint, trial_context, is_boxed_warning, warning_category,
+                            population, indication_name, confidence_score, data_source
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'openfda'
+                        )
+                    """, (
+                        drug_id,
+                        data.get('adverse_event'),
+                        data.get('system_organ_class'),
+                        data.get('severity'),
+                        data.get('is_serious', False),
+                        data.get('drug_arm_name'),
+                        data.get('drug_arm_n'),
+                        data.get('drug_arm_count'),
+                        data.get('drug_arm_rate'),
+                        data.get('drug_arm_rate_unit', '%'),
+                        data.get('comparator_arm_name'),
+                        data.get('comparator_arm_n'),
+                        data.get('comparator_arm_count'),
+                        data.get('comparator_arm_rate'),
+                        data.get('timepoint'),
+                        data.get('trial_context'),
+                        data.get('is_boxed_warning', False),
+                        data.get('warning_category'),
+                        data.get('population'),
+                        data.get('indication_name'),
+                        data.get('confidence_score', 0.85),
+                    ))
+                    inserted += 1
+                except Exception as e:
+                    logger.warning(f"Failed to insert safety record: {e}")
+
+            self.db.commit()
+
+        logger.info(f"Stored {inserted} safety records for drug_id={drug_id}")
+        return inserted
+
+    def clear_efficacy_safety_data(self, drug_id: int) -> None:
+        """Clear existing efficacy and safety data for a drug before re-extraction."""
+        self.db.ensure_connected()
+
+        with self.db.cursor() as cur:
+            cur.execute("DELETE FROM drug_efficacy_data WHERE drug_id = %s", (drug_id,))
+            cur.execute("DELETE FROM drug_safety_data WHERE drug_id = %s", (drug_id,))
+            self.db.commit()
+
+        logger.info(f"Cleared efficacy/safety data for drug_id={drug_id}")
 
