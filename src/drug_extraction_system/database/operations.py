@@ -589,3 +589,128 @@ class DrugDatabaseOperations:
 
         logger.info(f"Cleared efficacy/safety data for drug_id={drug_id}")
 
+    def store_indications(self, drug_id: int, indications: List[Dict]) -> int:
+        """
+        Store indications for a drug.
+
+        Args:
+            drug_id: Drug ID
+            indications: List of indication dictionaries
+
+        Returns:
+            Number of records inserted
+        """
+        self.db.ensure_connected()
+        inserted = 0
+
+        with self.db.cursor() as cur:
+            for ind in indications:
+                try:
+                    # Get disease name from various possible fields
+                    disease_name = (
+                        ind.get('disease_name') or
+                        ind.get('standardized_name') or
+                        ind.get('raw_text', '')[:500]  # Truncate if raw text
+                    )
+
+                    if not disease_name:
+                        continue
+
+                    # Check if indication already exists
+                    cur.execute("""
+                        SELECT indication_id FROM drug_indications
+                        WHERE drug_id = %s AND disease_name = %s
+                    """, (drug_id, disease_name))
+
+                    if cur.fetchone():
+                        continue  # Skip duplicate
+
+                    cur.execute("""
+                        INSERT INTO drug_indications (
+                            drug_id, disease_name, mesh_id, population, severity,
+                            line_of_therapy, combination_therapy, approval_status,
+                            approval_date, special_conditions, confidence_score
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        drug_id,
+                        disease_name,
+                        ind.get('mesh_id'),
+                        ind.get('population'),
+                        ind.get('severity'),
+                        ind.get('line_of_therapy'),
+                        ind.get('combination_therapy'),
+                        ind.get('approval_status', 'approved'),
+                        ind.get('approval_date'),
+                        ind.get('special_conditions'),
+                        ind.get('confidence_score', 0.85),
+                    ))
+                    inserted += 1
+                except Exception as e:
+                    logger.warning(f"Failed to insert indication: {e}")
+
+            self.db.commit()
+
+        logger.info(f"Stored {inserted} indications for drug_id={drug_id}")
+        return inserted
+
+    def store_clinical_trials(self, drug_id: int, trials: List[Dict]) -> int:
+        """
+        Store clinical trials for a drug.
+
+        Args:
+            drug_id: Drug ID
+            trials: List of trial dictionaries
+
+        Returns:
+            Number of records inserted
+        """
+        self.db.ensure_connected()
+        inserted = 0
+
+        with self.db.cursor() as cur:
+            for trial in trials:
+                try:
+                    nct_id = trial.get('nct_id')
+                    if not nct_id:
+                        continue
+
+                    # Check if trial already exists
+                    cur.execute("""
+                        SELECT trial_id FROM drug_clinical_trials
+                        WHERE drug_id = %s AND nct_id = %s
+                    """, (drug_id, nct_id))
+
+                    if cur.fetchone():
+                        continue  # Skip duplicate
+
+                    # Serialize sponsors and conditions as JSON
+                    sponsors = trial.get('sponsors', {})
+                    conditions = trial.get('conditions', [])
+
+                    cur.execute("""
+                        INSERT INTO drug_clinical_trials (
+                            drug_id, nct_id, trial_title, trial_phase,
+                            trial_status, sponsors, conditions,
+                            start_date, completion_date, enrollment
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        drug_id,
+                        nct_id,
+                        trial.get('title'),
+                        trial.get('phase'),
+                        trial.get('status'),
+                        Json(sponsors) if sponsors else None,
+                        Json(conditions) if conditions else None,
+                        trial.get('start_date'),
+                        trial.get('completion_date'),
+                        trial.get('enrollment'),
+                    ))
+                    inserted += 1
+                except Exception as e:
+                    logger.warning(f"Failed to insert trial {trial.get('nct_id')}: {e}")
+
+            self.db.commit()
+
+        logger.info(f"Stored {inserted} clinical trials for drug_id={drug_id}")
+        return inserted
+
