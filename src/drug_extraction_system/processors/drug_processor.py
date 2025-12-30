@@ -18,6 +18,7 @@ from src.drug_extraction_system.extractors.data_enricher import DataEnricher
 from src.drug_extraction_system.parsers.indication_parser import IndicationParser
 from src.drug_extraction_system.parsers.dosing_parser import DosingParser
 from src.drug_extraction_system.parsers.target_moa_parser import TargetMoAParser
+from src.drug_extraction_system.services.pipeline_dosing_extractor import PipelineDosingExtractor
 from src.drug_extraction_system.database.connection import DatabaseConnection
 from src.drug_extraction_system.database.operations import DrugDatabaseOperations
 from src.drug_extraction_system.config import get_config
@@ -100,6 +101,7 @@ class DrugProcessor:
         self.indication_parser = IndicationParser() if not skip_parsing else None
         self.dosing_parser = DosingParser() if not skip_parsing else None
         self.target_moa_parser = TargetMoAParser() if not skip_parsing else None
+        self.pipeline_dosing_extractor = PipelineDosingExtractor() if not skip_parsing else None
 
         # Thresholds from config
         self.success_threshold = self.config.processing.completeness_threshold
@@ -160,6 +162,10 @@ class DrugProcessor:
                 extracted = self._parse_structured_data(extracted)
             else:
                 logger.info(f"Skipping Phase 2 parsing for '{drug_name}' (skip_parsing=True)")
+
+            # Step 5b: Extract dosing for investigational drugs (no FDA labels)
+            if not self.skip_parsing and self.pipeline_dosing_extractor:
+                extracted = self._extract_pipeline_dosing(extracted)
 
             # Step 6: Determine processing status
             result.completeness_score = extracted.completeness_score
@@ -340,6 +346,68 @@ class DrugProcessor:
                         logger.info(f"Parsed {len(data.dosing_regimens)} dosing regimens for {drug_name}")
                 except Exception as e:
                     logger.warning(f"Failed to parse dosing for {drug_name}: {e}")
+
+        return data
+
+    def _extract_pipeline_dosing(self, data: ExtractedDrugData) -> ExtractedDrugData:
+        """
+        Extract dosing for investigational drugs using web search.
+
+        Only runs if:
+        - Drug is investigational (no FDA label)
+        - No dosing regimens were found from regular parsing
+        - Drug has indications to search for
+        """
+        drug_name = data.generic_name or data.brand_name or "unknown"
+
+        # Skip if drug already has dosing regimens
+        if data.dosing_regimens:
+            logger.debug(f"Skipping pipeline dosing for '{drug_name}' - already has {len(data.dosing_regimens)} regimens")
+            return data
+
+        # Skip if drug is approved (should have FDA label dosing)
+        if data.approval_status == "approved":
+            logger.debug(f"Skipping pipeline dosing for '{drug_name}' - approved drug should have FDA label dosing")
+            return data
+
+        # Skip if no indications to search for
+        if not data.indications:
+            logger.debug(f"Skipping pipeline dosing for '{drug_name}' - no indications available")
+            return data
+
+        logger.info(f"Extracting pipeline dosing for investigational drug '{drug_name}'")
+
+        try:
+            # Extract dosing using web search
+            dosing_regimens = self.pipeline_dosing_extractor.extract_all_dosing(
+                drug_name=drug_name,
+                indications=data.indications,
+                deduplicate=True
+            )
+
+            if dosing_regimens:
+                # Convert to the expected format
+                data.dosing_regimens = [
+                    {
+                        "indication_name": dr.get('indication_name'),
+                        "dose_amount": dr.get('dose_amount'),
+                        "dose_unit": dr.get('dose_unit'),
+                        "frequency": dr.get('frequency_raw'),
+                        "route": dr.get('route_raw'),
+                        "population": dr.get('population'),
+                        "regimen_phase": dr.get('regimen_phase'),
+                        "confidence_score": dr.get('confidence', 0.8),
+                        "data_source": "web_search",
+                    }
+                    for dr in dosing_regimens
+                ]
+                data.data_sources.append("web_search_dosing")
+                logger.info(f"Extracted {len(dosing_regimens)} dosing regimens for '{drug_name}' via web search")
+            else:
+                logger.info(f"No dosing regimens found via web search for '{drug_name}'")
+
+        except Exception as e:
+            logger.warning(f"Failed to extract pipeline dosing for '{drug_name}': {e}")
 
         return data
 
@@ -746,6 +814,23 @@ class DrugProcessor:
                     frequency_standard = frequency[:20]  # varchar(20)
                     route = reg.get('route') or ''
                     route_standard = route[:10]  # varchar(10)
+
+                    # Validate dose_amount - must be numeric (skip regimens with invalid values)
+                    dose_amount = reg.get('dose_amount')
+                    if dose_amount is not None:
+                        # Try to convert to numeric - skip if it fails
+                        try:
+                            # Handle string values like "unknown", "high dose", etc.
+                            if isinstance(dose_amount, str):
+                                dose_amount = dose_amount.strip()
+                                # Skip non-numeric strings
+                                if not dose_amount or not dose_amount.replace('.', '', 1).replace('-', '', 1).isdigit():
+                                    logger.debug(f"Skipping regimen with invalid dose_amount: '{dose_amount}'")
+                                    continue
+                                dose_amount = float(dose_amount)
+                        except (ValueError, TypeError):
+                            logger.debug(f"Skipping regimen with unparseable dose_amount: '{dose_amount}'")
+                            continue
 
                     cur.execute("""
                         INSERT INTO drug_dosing_regimens (
