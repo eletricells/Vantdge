@@ -1,0 +1,132 @@
+{# Extract treatment failure rates for a disease - PER PAPER #}
+
+Extract treatment failure/inadequate response rates for {{ disease_name }}.
+
+For EACH source paper that contains failure rate data, extract the estimate separately.
+
+=== SOURCE DOCUMENTS ===
+{% for source in sources %}
+--- Source {{ loop.index }}: {{ source.title }} ---
+PMID: {{ source.pmid or 'N/A' }}
+{% if source.journal %}Journal: {{ source.journal }} ({{ source.year }}){% endif %}
+{% if source.url %}URL: {{ source.url }}{% endif %}
+
+{{ source.content }}
+
+{% endfor %}
+
+=== EXTRACTION INSTRUCTIONS ===
+
+For EACH source paper that mentions treatment failure, inadequate response, or discontinuation:
+
+1. **Classify the failure type** (CRITICAL - do not conflate these):
+   - primary_nonresponse: Never achieved adequate response to treatment
+   - secondary_loss_of_response: Initial response then lost efficacy over time
+   - intolerance: Stopped due to side effects/tolerability despite efficacy
+   - discontinuation_any_reason: All-cause discontinuation (includes non-medical reasons)
+
+2. **Capture the clinical endpoint**:
+   - Specific measure (ACR50, SLEDAI, remission, PASI90, etc.)
+   - How the endpoint was defined
+   - Timepoint of assessment (week 24, 6 months, etc.)
+
+3. **Note the denominator carefully**:
+   - Who was included in the analysis
+   - Sample size (N)
+   - Analysis type (ITT vs per-protocol vs as-treated)
+
+4. **IMPORTANT - Separate switching from discontinuation**:
+   - Switch rate: patients moving to another therapy (still addressable market)
+   - Full discontinuation: patients stopping all treatment (lost from market)
+   - These have VERY different implications for market sizing
+
+5. **Standardize timepoints where possible**:
+   - Note if rate is at fixed timepoint vs cumulative vs median time
+   - 6-month and 12-month rates are most useful for market sizing
+
+6. **Assign quality tier**:
+   - Tier 1: RCTs (ITT analysis), large registries (CORRONA, CorEvitas, >5000 patients), systematic reviews with meta-analysis
+   - Tier 2: Real-world cohort studies (N>500), claims analyses, post-hoc RCT analyses
+   - Tier 3: Small case series (<100), expert opinion, conference abstracts
+
+**Key terms to look for**:
+- "Inadequate response" / "insufficient response"
+- "Treatment failure" / "refractory"
+- "Biologic-eligible" / "biologic-indicated"
+- "Drug survival" / "persistence" / "retention"
+- "Switching" / "cycling" / "discontinuation"
+- "Primary/secondary non-response"
+- "Loss of response"
+
+=== OUTPUT FORMAT ===
+
+Return JSON with an array of per-source estimates:
+{
+  "source_estimates": [
+    {
+      "source_index": 1,
+      "title": "<paper title>",
+      "pmid": "<PMID if available>",
+      "journal": "<journal name>",
+      "publication_year": <year>,
+      "authors": "<first author et al.>",
+      "quality_tier": "Tier 1/Tier 2/Tier 3",
+
+      "failure_type": "primary_nonresponse/secondary_loss_of_response/intolerance/discontinuation_any_reason",
+      "fail_rate_pct": <percentage, 0-100>,
+      "confidence_interval": "<95% CI if reported, e.g., '31-39%'>",
+
+      "clinical_endpoint": "<specific measure, e.g., 'ACR50 non-response'>",
+      "endpoint_definition": "<how endpoint was defined>",
+      "failure_definition": "<how failure was defined in this study>",
+      "failure_reason": "<inadequate response, intolerance, both>",
+
+      "line_of_therapy": "1L/2L/any",
+      "specific_therapy": "<drug/regimen that failed, e.g., 'methotrexate monotherapy'>",
+      "time_to_failure": "<time period, e.g., '6 months'>",
+      "timepoint_type": "fixed/median/cumulative",
+
+      "patient_population": "<who was studied, e.g., 'moderate-severe RA, MTX-naive'>",
+      "denominator_n": <sample size>,
+      "analysis_type": "ITT/per_protocol/as_treated",
+
+      "switch_rate_pct": <% who switched to another therapy, if reported>,
+      "switch_destination": "<what they switched to, e.g., 'TNF inhibitor'>",
+      "full_discontinuation_pct": <% who stopped all treatment>,
+
+      "methodology": "<RCT, registry, claims, etc.>",
+      "notes": "<important caveats, subgroup differences, etc.>"
+    }
+  ],
+  "sources_without_failure_data": [
+    {
+      "source_index": 2,
+      "title": "<paper title>",
+      "reason": "<why no failure data, e.g., 'efficacy study without failure rates'>"
+    }
+  ],
+  "consensus": {
+    "median_fail_1L_pct": <median of 1L failure estimates>,
+    "range_1L": "<low% - high%>",
+    "standardized_timepoint": "<common timepoint used for comparison>",
+    "primary_failure_type": "<most common type: primary_nonresponse, secondary_loss, intolerance>",
+    "primary_reason": "<most common reason>",
+
+    "switch_rate_1L": <median switch rate if multiple estimates>,
+    "discontinuation_rate_1L": <median discontinuation rate>,
+
+    "median_fail_2L_pct": <median of 2L failure estimates if available, else null>,
+    "confidence": "High/Medium/Low",
+    "confidence_rationale": "<why this confidence level, e.g., '3 Tier-1 registry studies with consistent definitions'>",
+    "notes": "<synthesis, discrepancies, important caveats>"
+  }
+}
+
+Rules:
+- Extract from EVERY source with failure/response data - don't skip sources
+- CRITICAL: Distinguish between failure types - primary non-response is NOT the same as secondary loss of response
+- Distinguish between 1L and 2L failure rates
+- Note if rate is for specific severity (moderate vs severe) or patient subset
+- Separate switching (addressable) from full discontinuation (lost)
+- If failure rate varies by subgroup, note the range
+- Consider both efficacy failure AND tolerability/safety discontinuations

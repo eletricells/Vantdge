@@ -200,6 +200,21 @@ Description: {result.get('description', 'N/A')}
         return "\n".join(output)
 
 
+def create_web_searcher() -> Optional[WebSearchTool]:
+    """
+    Factory function to create a WebSearchTool with API key from environment.
+
+    Returns:
+        WebSearchTool instance or None if API key not configured
+    """
+    import os
+    api_key = os.environ.get("TAVILY_API_KEY")
+    if not api_key:
+        logger.warning("TAVILY_API_KEY not set - web search disabled")
+        return None
+    return WebSearchTool(api_key=api_key)
+
+
 def get_tool_definition() -> dict:
     """
     Get tool definition for Claude tool use.

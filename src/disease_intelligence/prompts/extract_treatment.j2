@@ -1,0 +1,83 @@
+{# Extract treatment paradigm for a disease #}
+
+Extract the treatment paradigm for {{ disease_name }} in the United States.
+
+=== SOURCE DOCUMENTS ===
+{% for source in sources %}
+--- Source {{ loop.index }}: {{ source.title }} ---
+{% if source.journal %}{{ source.journal }} ({{ source.year }}){% endif %}
+{% if source.url %}URL: {{ source.url }}{% endif %}
+
+{{ source.content }}
+
+{% endfor %}
+
+=== EXTRACTION INSTRUCTIONS ===
+
+Extract the standard treatment paradigm organized by line of therapy:
+
+**First-Line (1L)**: Initial treatment for newly diagnosed or treatment-naive patients
+- Typically conventional therapies, immunosuppressants, or standard DMARDs
+- Include drug names and classes
+
+**Second-Line (2L)**: Treatment for patients who failed or are intolerant to 1L
+- Often biologics or targeted therapies
+- Include WAC (Wholesale Acquisition Cost) if mentioned
+
+**Third-Line (3L)**: If applicable, treatment after 2L failure
+
+=== OUTPUT FORMAT ===
+
+Return JSON:
+{
+  "treatment_paradigm": {
+    "first_line": {
+      "description": "<1-2 sentence summary of 1L approach>",
+      "drugs": [
+        {
+          "drug_name": "<brand name>",
+          "generic_name": "<generic/INN name>",
+          "drug_class": "<class, e.g., 'Immunosuppressant', 'JAK inhibitor'>",
+          "is_standard_of_care": true/false,
+          "notes": "<dosing or usage notes if relevant>"
+        }
+      ]
+    },
+    "second_line": {
+      "description": "<1-2 sentence summary of 2L approach>",
+      "drugs": [
+        {
+          "drug_name": "<brand name>",
+          "generic_name": "<generic name>",
+          "drug_class": "<class>",
+          "wac_monthly": <monthly WAC in USD if known, else null>,
+          "wac_source": "<source for WAC>",
+          "is_standard_of_care": true/false
+        }
+      ]
+    },
+    "third_line": {
+      "description": "<summary or null if not applicable>",
+      "drugs": []
+    },
+    "paradigm_summary": "<2-3 sentence overall treatment approach>",
+    "guideline_source": "<e.g., 'ACR 2023', 'EULAR 2024'>"
+  },
+  "segmentation": {
+    "pct_treated": <percentage of patients receiving any treatment, 0-100>,
+    "severity_breakdown": {
+      "mild": <percentage if applicable>,
+      "moderate": <percentage>,
+      "severe": <percentage>
+    },
+    "notes": "<any segmentation caveats>"
+  },
+  "data_quality": "High/Medium/Low",
+  "extraction_notes": "<any important context>"
+}
+
+Rules:
+- Focus on US treatment patterns and FDA-approved therapies
+- Distinguish between branded biologics and generic immunosuppressants
+- For 2L drugs, try to find WAC or annual cost data
+- Note if treatment varies significantly by disease severity or subtype

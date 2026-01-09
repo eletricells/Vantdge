@@ -1,0 +1,110 @@
+{# Extract prevalence/epidemiology data for a disease - PER PAPER #}
+
+Extract prevalence and epidemiology data for {{ disease_name }} in the United States.
+
+For EACH source paper that contains prevalence data, extract the estimate separately.
+
+=== SOURCE DOCUMENTS ===
+{% for source in sources %}
+--- Source {{ loop.index }}: {{ source.title }} ---
+PMID: {{ source.pmid or 'N/A' }}
+{% if source.journal %}Journal: {{ source.journal }} ({{ source.year }}){% endif %}
+{% if source.url %}URL: {{ source.url }}{% endif %}
+
+{{ source.content }}
+
+{% endfor %}
+
+=== EXTRACTION INSTRUCTIONS ===
+
+For EACH source paper that mentions prevalence or patient counts:
+
+1. **Identify estimate type**:
+   - prevalence: proportion with disease at a point in time
+   - incidence: new cases per year
+   - point_prevalence: single time point
+   - period_prevalence: over a defined period
+
+2. **Extract the specific estimate**:
+   - Total patient count OR prevalence rate
+   - 95% confidence interval if reported
+   - Whether rate is age-adjusted or crude
+
+3. **Capture methodology details**:
+   - Data source (claims, registry, survey, etc.)
+   - Study population size (N) - the denominator used
+   - Database name if applicable (MarketScan, Optum, NHANES, etc.)
+
+4. **Note temporal context**:
+   - Data year (when data was collected, NOT publication year)
+   - Whether estimate accounts for population growth
+
+5. **Assign quality tier**:
+   - Tier 1: CDC, NIH GARD, systematic reviews with meta-analysis, national registries (CORRONA, etc.)
+   - Tier 2: Large claims databases (>10M lives), patient advocacy organizations, state registries
+   - Tier 3: Single-center studies, older estimates (pre-2015), extrapolations from non-US data
+
+**Prevalence Rate Conversion**:
+If a source provides prevalence as a rate (e.g., "72 per 100,000"):
+- Use current US population: 340,000,000
+- Formula: (rate / 100,000) × 340,000,000
+- For age-specific rates, use appropriate population denominator
+- Show your calculation in calculation_notes
+
+=== OUTPUT FORMAT ===
+
+Return JSON with an array of per-source estimates:
+{
+  "source_estimates": [
+    {
+      "source_index": 1,
+      "title": "<paper title>",
+      "pmid": "<PMID if available>",
+      "journal": "<journal name>",
+      "publication_year": <year>,
+      "authors": "<first author et al.>",
+      "url": "<URL if available>",
+      "quality_tier": "Tier 1/Tier 2/Tier 3",
+
+      "estimate_type": "prevalence/incidence/point_prevalence/period_prevalence",
+      "total_patients": <integer, US patient count>,
+      "adult_patients": <integer or null>,
+      "pediatric_patients": <integer or null>,
+      "prevalence_rate": "<original rate if given, e.g., '72 per 100,000'>",
+      "confidence_interval": "<95% CI if reported, e.g., '68-76 per 100,000'>",
+      "rate_type": "crude/age_adjusted/age_specific",
+      "data_year": <year the data refers to, not publication year>,
+      "geography": "<US national, specific states, etc.>",
+      "methodology": "<how estimated: registry, claims, survey, etc.>",
+      "study_population_n": <sample size/denominator if reported>,
+      "database_name": "<MarketScan, Optum, NHANES, etc. if applicable>",
+      "calculation_notes": "<how you derived the number if calculated>",
+      "notes": "<important caveats or context>"
+    }
+  ],
+  "sources_without_prevalence": [
+    {
+      "source_index": 2,
+      "title": "<paper title>",
+      "reason": "<why no prevalence extracted, e.g., 'treatment study, no epidemiology data'>"
+    }
+  ],
+  "consensus": {
+    "median_estimate": <median of all estimates>,
+    "range_low": <lowest estimate>,
+    "range_high": <highest estimate>,
+    "recommended_estimate": <best estimate to use>,
+    "recommended_rationale": "<why this estimate is preferred>",
+    "confidence": "High/Medium/Low",
+    "confidence_rationale": "<why this confidence level>",
+    "notes": "<synthesis of findings, discrepancies noted>"
+  }
+}
+
+Rules:
+- Extract from EVERY source that has prevalence data - don't skip sources
+- If a source is clearly not about epidemiology (e.g., treatment study), list it in sources_without_prevalence
+- IMPORTANT: Distinguish between prevalence (existing cases) and incidence (new cases per year)
+- Calculate median only from PREVALENCE estimates (not incidence)
+- Prefer US-specific national data; note if estimate is extrapolated from regional or global data
+- Note significant discrepancies between sources and potential reasons

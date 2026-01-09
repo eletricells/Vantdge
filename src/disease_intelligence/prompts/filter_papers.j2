@@ -1,0 +1,108 @@
+{# Filter papers for relevance to disease intelligence data needs #}
+
+You are filtering literature for {{ disease_name }} to extract {{ data_type }} data.
+
+=== PAPERS TO EVALUATE ===
+{% for paper in papers %}
+[{{ loop.index }}] {{ paper.title }}
+{% if paper.authors %}Authors: {{ paper.authors }}{% endif %}
+{% if paper.journal %}Journal: {{ paper.journal }} ({{ paper.year }}){% endif %}
+{% if paper.abstract %}
+Abstract: {{ paper.abstract[:800] }}...
+{% endif %}
+---
+{% endfor %}
+
+=== FILTERING CRITERIA ===
+{% if data_type == "prevalence" %}
+**INCLUDE papers that report:**
+- US prevalence or incidence data (national or large regional)
+- Population-based epidemiology studies
+- Claims database analyses with patient counts (MarketScan, Optum, etc.)
+- Registry reports with prevalence estimates (CORRONA, CorEvitas, etc.)
+- Systematic reviews/meta-analyses of epidemiology data
+- CDC, NIH GARD, or patient advocacy organization statistics
+
+**EXCLUDE:**
+- Non-US data only (unless explicitly extrapolating to US)
+- Clinical trials without epidemiology context
+- Case reports or small case series (<50 patients)
+- Studies older than 2010, UNLESS:
+  - It's the only US population-based estimate
+  - It's from CDC, NIH GARD, or national registry
+  - It's a seminal paper cited by many subsequent studies
+
+{% elif data_type == "treatment" %}
+**INCLUDE papers that report:**
+- Treatment guidelines from major societies (ACR, EULAR, AAD, AAN, etc.)
+- Standard of care recommendations with evidence grading
+- Treatment algorithms with line-of-therapy sequencing
+- Real-world treatment pattern analyses (claims, registries)
+- Comparative effectiveness reviews
+
+**EXCLUDE:**
+- Single drug efficacy studies (Phase 2/3 trials) without treatment context
+- Non-US treatment patterns (unless comparing to US)
+- Guidelines older than 2019 (treatment landscape changes rapidly)
+- Narrative reviews without systematic methodology
+
+{% elif data_type == "failure_rates" %}
+**INCLUDE papers that report:**
+- Inadequate response rates to specific therapies
+- Treatment failure or discontinuation rates with clear definitions
+- Drug survival/persistence/retention analyses
+- Registry or claims-based treatment pattern studies
+- Systematic reviews of treatment response
+- RCT data with response rate denominators
+- Switching patterns between therapies
+
+**EXCLUDE:**
+- Studies reporting ONLY efficacy (response rates) without failure context
+- Studies without clear denominator or population definition
+- Conference abstracts (unless no full publication exists)
+- Studies in highly selected populations not generalizable to practice
+
+{% endif %}
+
+=== OUTPUT FORMAT ===
+
+Return a JSON object with relevance scoring:
+
+{
+  "included_papers": [
+    {
+      "index": 1,
+      "relevance_score": 0.95,
+      "rationale": "CDC MMWR with national prevalence estimate",
+      "expected_data": ["total_patients", "prevalence_rate", "confidence_interval"],
+      "quality_prediction": "Tier 1"
+    },
+    {
+      "index": 3,
+      "relevance_score": 0.75,
+      "rationale": "Claims database analysis, large N but single payer",
+      "expected_data": ["total_patients", "methodology"],
+      "quality_prediction": "Tier 2"
+    }
+  ],
+  "excluded_papers": [
+    {
+      "index": 2,
+      "reason": "Phase 3 RCT, no epidemiology data",
+      "potentially_useful_for": "efficacy benchmarks"
+    }
+  ],
+  "source_quality_assessment": "High/Medium/Low",
+  "coverage_gaps": ["No Tier 1 sources found", "Missing pediatric data"]
+}
+
+**Scoring guidance:**
+- 0.9-1.0: Directly answers the data need with high-quality methodology
+- 0.7-0.9: Relevant data but methodology limitations or indirect
+- 0.5-0.7: Partially relevant, may have useful supporting data
+- <0.5: Exclude
+
+**Quality tier predictions:**
+- Tier 1: CDC, NIH GARD, systematic reviews, national registries, large RCTs
+- Tier 2: Claims databases, patient advocacy data, state registries, cohort studies
+- Tier 3: Single-center studies, older estimates, case series
