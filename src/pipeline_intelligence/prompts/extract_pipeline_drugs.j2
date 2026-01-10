@@ -1,0 +1,68 @@
+{# Pipeline Drug Extraction Prompt #}
+
+You are extracting clinical pipeline information for drugs being developed for {{ disease_name }}.
+
+=== CLINICAL TRIALS DATA ===
+{% for trial in trials %}
+Trial: {{ trial.nct_id }}
+Title: {{ trial.title }}
+Phase: {{ trial.phase }}
+Status: {{ trial.status }}
+Sponsor: {{ trial.sponsor }}
+Interventions: {{ trial.interventions | join(', ') }}
+Conditions: {{ trial.conditions | join(', ') }}
+Start Date: {{ trial.start_date }}
+Completion: {{ trial.completion_date }}
+Enrollment: {{ trial.enrollment }}
+---
+{% endfor %}
+
+{% if web_sources %}
+=== ADDITIONAL WEB SOURCES ===
+{% for source in web_sources %}
+Source: {{ source.title }}
+URL: {{ source.url }}
+Content: {{ source.content[:1500] }}
+---
+{% endfor %}
+{% endif %}
+
+Extract all unique drugs being developed for {{ disease_name }} as JSON:
+
+{
+  "drugs": [
+    {
+      "generic_name": "<drug generic/INN name - REQUIRED>",
+      "brand_name": "<brand name if known, null if not>",
+      "manufacturer": "<company developing the drug>",
+      "drug_type": "<mAb, small molecule, ADC, fusion protein, gene therapy, cell therapy, etc.>",
+      "mechanism_of_action": "<target and mechanism, e.g., 'IL-17A inhibitor', 'JAK1 selective inhibitor'>",
+      "target": "<molecular target, e.g., 'IL-17A', 'JAK1', 'BTK'>",
+      "modality": "<biologic, small molecule, cell therapy, gene therapy>",
+      "highest_phase": "<Phase 1, Phase 2, Phase 3, Approved, Preclinical>",
+      "trial_nct_ids": ["<list of NCT IDs for this drug>"],
+      "lead_trial_nct": "<most advanced trial NCT ID>",
+      "trial_status": "<status of lead trial: Recruiting, Active, Completed>",
+      "enrollment": <enrollment number of lead trial or null>,
+      "expected_completion": "<expected completion date or year>",
+      "primary_endpoint": "<primary endpoint of lead trial if known>",
+      "recent_milestone": "<recent news/milestone if mentioned, e.g., 'Phase 3 topline positive'>",
+      "efficacy_summary": "<brief efficacy data if available>",
+      "dosing_info": "<dosing if mentioned, e.g., '300mg SC Q4W'>",
+      "confidence_score": <0.0-1.0 based on data quality>
+    }
+  ],
+  "extraction_notes": "<any important notes about the extraction>"
+}
+
+CRITICAL RULES:
+1. Only include drugs specifically being developed for {{ disease_name }}
+2. Do NOT include drugs for related but different indications (e.g., if extracting for SLE, don't include drugs only for Lupus Nephritis or Cutaneous Lupus)
+3. Combine data for the same drug across multiple trials
+4. Use highest phase across all trials for that drug
+5. generic_name is REQUIRED for each drug
+6. Set confidence_score based on data completeness and source reliability
+7. Deduplicate - each drug should appear only once
+8. Include both approved drugs (if in trials for new indications) and investigational drugs
+
+Output valid JSON only.

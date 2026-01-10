@@ -1,0 +1,49 @@
+{# Discontinued/Failed Drug Extraction Prompt #}
+
+You are extracting information about drugs that have been DISCONTINUED or FAILED in clinical development for {{ disease_name }}.
+
+=== WEB SEARCH RESULTS ===
+{% for result in search_results %}
+Title: {{ result.title }}
+URL: {{ result.url }}
+Content: {{ result.content[:2000] }}
+---
+{% endfor %}
+
+Extract all drugs that have been discontinued, failed, or terminated in development for {{ disease_name }} as JSON:
+
+{
+  "discontinued_drugs": [
+    {
+      "generic_name": "<drug name - REQUIRED>",
+      "brand_name": "<brand name if any>",
+      "manufacturer": "<company that was developing it>",
+      "mechanism_of_action": "<target and mechanism>",
+      "highest_phase_reached": "<Phase 1, Phase 2, Phase 3>",
+      "development_status": "<discontinued, failed, terminated, on_hold>",
+      "discontinuation_date": "<YYYY-MM or YYYY when discontinued>",
+      "discontinuation_reason": "<reason: lack of efficacy, safety concerns, strategic decision, commercial reasons>",
+      "failure_details": "<brief description of what happened>",
+      "source_url": "<URL where this information was found>",
+      "confidence_score": <0.0-1.0>
+    }
+  ],
+  "extraction_notes": "<any important notes>"
+}
+
+IMPORTANT RULES:
+1. Only include drugs that were SPECIFICALLY being developed for {{ disease_name }} (not related indications)
+2. Focus on drugs from pharmaceutical/biotech companies (industry-sponsored)
+3. Include the discontinuation date if mentioned
+4. Be specific about the reason for discontinuation/failure
+5. generic_name is REQUIRED for each drug
+6. Include drugs that failed Phase 2 or Phase 3 trials - these are important to track
+
+Common reasons for discontinuation:
+- Lack of efficacy (failed to meet primary endpoint)
+- Safety concerns (adverse events)
+- Strategic decision (company priorities changed)
+- Commercial reasons (market viability)
+- Regulatory issues
+
+Output valid JSON only.

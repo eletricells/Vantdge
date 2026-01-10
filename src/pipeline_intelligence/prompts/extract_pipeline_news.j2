@@ -1,0 +1,59 @@
+{# Pipeline News Extraction Prompt #}
+
+You are extracting recent pipeline news and milestones for drugs being developed for {{ disease_name }}.
+
+=== WEB SEARCH RESULTS ===
+{% for result in search_results %}
+Title: {{ result.title }}
+URL: {{ result.url }}
+Content: {{ result.content[:2000] }}
+---
+{% endfor %}
+
+{% if known_drugs %}
+=== KNOWN PIPELINE DRUGS ===
+{% for drug in known_drugs %}
+- {{ drug.generic_name }} ({{ drug.manufacturer }}) - {{ drug.highest_phase }}
+{% endfor %}
+{% endif %}
+
+Extract pipeline updates and news as JSON:
+
+{
+  "updates": [
+    {
+      "drug_name": "<generic or brand name>",
+      "manufacturer": "<company>",
+      "update_type": "<phase_advancement, topline_results, regulatory_filing, approval, discontinuation, partnership>",
+      "headline": "<brief 1-line summary of the news>",
+      "details": "<2-3 sentence details>",
+      "phase_mentioned": "<Phase 1, Phase 2, Phase 3, Approved, or null>",
+      "efficacy_data": "<any efficacy numbers mentioned, e.g., 'ACR50 45% vs 15% placebo'>",
+      "safety_data": "<any safety highlights mentioned>",
+      "timeline": "<any timeline mentioned, e.g., 'FDA decision expected Q2 2026'>",
+      "source_url": "<URL from the search result>",
+      "date_mentioned": "<date if mentioned in article, YYYY-MM-DD format>",
+      "confidence_score": <0.0-1.0>
+    }
+  ],
+  "new_drugs_discovered": [
+    {
+      "generic_name": "<name>",
+      "manufacturer": "<company>",
+      "mechanism_of_action": "<if mentioned>",
+      "phase": "<current phase>",
+      "notes": "<any other info>"
+    }
+  ],
+  "market_insights": "<any broader market/competitive insights mentioned>"
+}
+
+CRITICAL RULES:
+1. Only include updates specifically for {{ disease_name }} (not related indications)
+2. Verify the news is about drug development for this indication
+3. Include specific data points when mentioned (response rates, p-values, timelines)
+4. Flag discontinued or failed programs
+5. Identify any new drugs not in the known list
+6. Be conservative with confidence_score - only high if data is explicit
+
+Output valid JSON only.
