@@ -6,24 +6,32 @@ For each paper, determine if it contains ORIGINAL CLINICAL DATA that would be us
 
 For EACH paper, systematically evaluate these criteria:
 
-INCLUSION CRITERIA (all must be YES to include):
-1. PATIENT COUNT: Does it mention a specific number of patients treated?
-   - YES: "n=5", "15 patients received", "a 42-year-old woman"
-   - NO: "patients were treated", no specific count mentioned
+INCLUSION CRITERIA (evaluate each, be PERMISSIVE):
+1. PATIENT DATA: Does it involve treating patients with the drug?
+   - YES: Any mention of patients treated, cases described, clinical experience
+   - YES: Single case ("a patient", "a woman"), case series ("5 patients"), cohort ("n=50")
+   - NO: Only theoretical discussion, only mechanism/binding studies
 
-2. CLINICAL OUTCOMES: Does it report efficacy/outcome data?
-   - YES: Response rates, remission, improvement scores, disease activity changes
-   - NO: Only describes treatment protocol, only pharmacokinetics
+2. CLINICAL OUTCOMES: Does it report ANY treatment outcomes?
+   - YES: Response rates, improvement, remission, efficacy, outcomes, benefit, response
+   - YES: Even qualitative outcomes like "improved", "responded", "effective"
+   - NO: Only study protocol, only pharmacokinetics without efficacy
 
 3. OFF-LABEL USE: Is this about a non-approved indication?
-   - YES: Disease is NOT in the approved indications list
-   - NO: Disease is an approved indication ({{ exclude_indications }})
+   - YES: Disease is NOT in the approved indications list below
+   - NO: Disease is CLEARLY one of: {{ exclude_indications }}
+   - WHEN IN DOUBT: Mark YES (include for further analysis)
 
-4. ORIGINAL DATA: Is this original patient data (not a review)?
-   - YES: Case report, case series, retrospective study, cohort study
-   - NO: Review article, meta-analysis, guidelines, editorial
+4. ORIGINAL DATA: Is this primary/original patient data?
+   - YES: Case report, case series, retrospective study, cohort study, clinical trial
+   - YES: "our experience", "we treated", "patients received"
+   - NO: ONLY if explicitly a "review article", "meta-analysis", "systematic review", "guidelines"
 
-DECISION: Include ONLY if criteria 1-4 are ALL answered YES.
+DECISION RULES:
+- Include if criteria 1, 2, and 4 are YES, AND criterion 3 is YES or UNCLEAR
+- When uncertain about any criterion, LEAN TOWARD INCLUDING the paper
+- Better to include borderline papers (they will be filtered during extraction)
+- Only exclude papers that CLEARLY fail multiple criteria
 
 For each paper, provide your reasoning in the "reason" field, referencing which criteria were met or failed.
 
@@ -54,8 +62,28 @@ EXCLUDE these paper types (even if they have patient data):
 - In vitro or animal studies only
 
 KEY DISTINCTION: We want to INCLUDE investigator-initiated/academic research (even if randomized) but EXCLUDE manufacturer-sponsored commercial trials.
-Signs of manufacturer-sponsored trials: formal trial acronyms (all caps names like BEACON, BREVITY), "sponsored by [pharma company]", large Phase 3 sample sizes (>200 patients), multiple international sites.
-Signs of investigator-sponsored trials: single academic center, "investigator-initiated", smaller sample sizes, no formal trial name, funded by grants/foundations.
+
+CRITICAL EXCLUSION PATTERNS (check abstract/title carefully):
+
+**INDUSTRY SPONSORSHIP DETECTION** - EXCLUDE if ANY of these appear:
+- "FUNDING:" or "Funded by" followed by a pharmaceutical company name
+- "Supported by" followed by a company name (Pfizer, Eli Lilly, AbbVie, Novartis, Roche, BMS, Merck, GSK, AstraZeneca, Sanofi, Gilead, Amgen, Biogen, Regeneron, etc.)
+- "sponsored by [pharma company]"
+- Formal trial acronyms in ALL CAPS (BEACON, BREVITY, RA-BEAM, OPAL, ORAL, SELECT, etc.)
+- "Phase 2" or "Phase 3" with >100 patients and multiple centers
+- "registration trial" or "pivotal trial"
+
+**PROTOCOL PAPER DETECTION** - EXCLUDE if paper describes a planned study without results:
+- Title contains "study design", "protocol", "rationale" without mentioning results
+- Abstract says "will be conducted", "is planned", "will evaluate", "aims to assess"
+- No efficacy results mentioned (no response rates, no outcomes, no "achieved", no "showed")
+- Only describes methodology, endpoints, sample size calculations
+- Registered trial mentioned but no results reported
+
+Signs of investigator-sponsored trials (INCLUDE these):
+- Single academic center, "investigator-initiated", smaller sample sizes (<50 patients)
+- No formal trial name, funded by grants/foundations/NIH
+- University or hospital as the only affiliation
 
 {{ papers_text }}
 
@@ -68,7 +96,16 @@ Return ONLY a JSON object with this exact format:
     ]
 }
 
-Evaluate ALL {{ batch_size }} papers. Be thorough but strict - only include papers with actual patient treatment data.
+PATIENT COUNT EXTRACTION (CRITICAL):
+For each included paper, extract patient_count from the title/abstract:
+- "10 patients with X" → patient_count: 10
+- "a series of 15 patients" → patient_count: 15
+- "n=20" → patient_count: 20
+- "a case of" or "a patient with" → patient_count: 1
+- "5/8 patients responded" → patient_count: 8 (use denominator)
+- If unclear, use null
+
+Evaluate ALL {{ batch_size }} papers. When in doubt, include borderline papers for downstream filtering.
 
 {% include 'case_series/_partials/json_rules.j2' %}
 

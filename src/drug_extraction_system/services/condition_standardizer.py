@@ -91,6 +91,18 @@ CONDITION_NORMALIZATIONS = {
     
     # Other
     "lupus nephritis": "Lupus Nephritis",
+
+    # Systemic Lupus Erythematosus (SLE)
+    "sle": "Systemic Lupus Erythematosus",
+    "systemic lupus erythematosus": "Systemic Lupus Erythematosus",
+    "systemic lupus erythematosus (sle)": "Systemic Lupus Erythematosus",
+    "lupus": "Systemic Lupus Erythematosus",
+    "lupus erythematosus": "Systemic Lupus Erythematosus",
+    "systemic lupus": "Systemic Lupus Erythematosus",
+    "active systemic lupus erythematosus": "Systemic Lupus Erythematosus",
+    "moderate to severe sle": "Systemic Lupus Erythematosus",
+    "moderate to severe systemic lupus erythematosus": "Systemic Lupus Erythematosus",
+
     "multiple sclerosis": "Multiple Sclerosis",
     "crohn's disease": "Crohn's Disease",
     "giant cell arteritis": "Giant Cell Arteritis",
@@ -128,40 +140,105 @@ CONDITION_NORMALIZATIONS = {
 
 # Therapeutic area mappings based on condition
 THERAPEUTIC_AREAS = {
+    # Dermatology
     "Plaque Psoriasis": "Dermatology",
     "Pediatric Plaque Psoriasis": "Dermatology",
     "Pustular Psoriasis": "Dermatology",
     "Nail Psoriasis": "Dermatology",
+    "Hidradenitis Suppurativa": "Dermatology",
+    "Atopic Dermatitis": "Dermatology",
+    "Vitiligo": "Dermatology",
+    "Alopecia Areata": "Dermatology",
+    "Pemphigus Vulgaris": "Dermatology",
+    "Bullous Pemphigoid": "Dermatology",
+
+    # Rheumatology
     "Psoriatic Arthritis": "Rheumatology",
     "Juvenile Psoriatic Arthritis": "Rheumatology",
     "Ankylosing Spondylitis": "Rheumatology",
     "Axial Spondyloarthritis": "Rheumatology",
     "Non-radiographic Axial Spondyloarthritis": "Rheumatology",
-    "Hidradenitis Suppurativa": "Dermatology",
     "Rheumatoid Arthritis": "Rheumatology",
     "Juvenile Idiopathic Arthritis": "Rheumatology",
-    "Uveitis": "Ophthalmology",
-    "Non-infectious Uveitis": "Ophthalmology",
-    "Paroxysmal Nocturnal Hemoglobinuria": "Hematology",
-    "IgA Nephropathy": "Nephrology",
-    "C3 Glomerulopathy": "Nephrology",
-    "Atypical Hemolytic Uremic Syndrome": "Hematology",
-    "Lupus Nephritis": "Nephrology",
-    "Multiple Sclerosis": "Neurology",
-    "Crohn's Disease": "Gastroenterology",
     "Giant Cell Arteritis": "Rheumatology",
     "Polymyalgia Rheumatica": "Rheumatology",
+    "Systemic Lupus Erythematosus": "Rheumatology",
+    "Systemic Lupus Erythematosus (SLE)": "Rheumatology",
+    "Sjogren Syndrome": "Rheumatology",
+    "Sjogren Disease": "Rheumatology",
+    "Sjogrens Syndrome": "Rheumatology",
+    "Primary Sjogren's Syndrome": "Rheumatology",
+    "Diffuse Cutaneous Systemic Sclerosis": "Rheumatology",
+    "Systemic Sclerosis": "Rheumatology",
+    "Scleroderma": "Rheumatology",
+    "Dermatomyositis": "Rheumatology",
+    "Polymyositis": "Rheumatology",
+    "Vasculitis": "Rheumatology",
+    "ANCA-associated Vasculitis": "Rheumatology",
+
+    # Ophthalmology
+    "Uveitis": "Ophthalmology",
+    "Non-infectious Uveitis": "Ophthalmology",
     "Dry Eye Disease": "Ophthalmology",
-    "Healthy Volunteers": "Clinical Pharmacology",
-    "Type 1 Diabetes Mellitus": "Endocrinology",
     "Age-related Macular Degeneration": "Ophthalmology",
-    "Myasthenia Gravis": "Neurology",
+    "Thyroid Eye Disease": "Ophthalmology",
+    "Diabetic Retinopathy": "Ophthalmology",
+    "Diabetic Macular Edema": "Ophthalmology",
+
+    # Hematology
+    "Paroxysmal Nocturnal Hemoglobinuria": "Hematology",
+    "Atypical Hemolytic Uremic Syndrome": "Hematology",
     "Cold Agglutinin Disease": "Hematology",
     "Immune Thrombocytopenia": "Hematology",
-    "Atopic Dermatitis": "Dermatology",
-    "Thyroid Eye Disease": "Ophthalmology",
-    "Graves' Disease": "Endocrinology",
+    "Primary Immune Thrombocytopenia": "Hematology",
+    "Warm Autoimmune Hemolytic Anemia": "Hematology",
+    "Thrombotic Thrombocytopenic Purpura": "Hematology",
+
+    # Nephrology
+    "IgA Nephropathy": "Nephrology",
+    "C3 Glomerulopathy": "Nephrology",
+    "Lupus Nephritis": "Nephrology",
+    "Membranous Nephropathy": "Nephrology",
+    "Focal Segmental Glomerulosclerosis": "Nephrology",
+    "Chronic Kidney Disease": "Nephrology",
+
+    # Neurology
+    "Multiple Sclerosis": "Neurology",
+    "Relapse Remitting Multiple Sclerosis": "Neurology",
+    "Myasthenia Gravis": "Neurology",
     "Chronic Inflammatory Demyelinating Polyneuropathy": "Neurology",
+    "Guillain-Barre Syndrome": "Neurology",
+    "Neuromyelitis Optica": "Neurology",
+    "Alzheimer's Disease": "Neurology",
+    "Parkinson's Disease": "Neurology",
+
+    # Gastroenterology
+    "Crohn's Disease": "Gastroenterology",
+    "Ulcerative Colitis": "Gastroenterology",
+    "Inflammatory Bowel Disease": "Gastroenterology",
+    "Celiac Disease": "Gastroenterology",
+    "Primary Biliary Cholangitis": "Gastroenterology",
+    "Autoimmune Hepatitis": "Gastroenterology",
+
+    # Pulmonology
+    "Idiopathic Pulmonary Fibrosis": "Pulmonology",
+    "Asthma": "Pulmonology",
+    "COPD": "Pulmonology",
+    "Chronic Obstructive Pulmonary Disease": "Pulmonology",
+
+    # Endocrinology
+    "Type 1 Diabetes Mellitus": "Endocrinology",
+    "Type 2 Diabetes Mellitus": "Endocrinology",
+    "Graves' Disease": "Endocrinology",
+
+    # Oncology
+    "Non-Small Cell Lung Cancer": "Oncology",
+    "Breast Cancer": "Oncology",
+    "Melanoma": "Oncology",
+    "Colorectal Cancer": "Oncology",
+
+    # Other
+    "Healthy Volunteers": "Clinical Pharmacology",
 }
 
 

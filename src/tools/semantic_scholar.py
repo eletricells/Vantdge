@@ -352,7 +352,12 @@ class SemanticScholarAPI:
 
         try:
             data = response.json()
-            citations = [item.get("citingPaper", {}) for item in data.get("data", [])]
+            # Filter out None entries (citingPaper can be null in API response)
+            citations = [
+                item.get("citingPaper") or {}
+                for item in (data.get("data") or [])
+                if item.get("citingPaper") is not None
+            ]
             logger.info(f"Found {len(citations)} papers citing {paper_id}")
             return citations
         except Exception as e:
@@ -398,7 +403,12 @@ class SemanticScholarAPI:
 
         try:
             data = response.json()
-            references = [item.get("citedPaper", {}) for item in data.get("data", [])]
+            # Filter out None entries (citedPaper can be null in API response)
+            references = [
+                item.get("citedPaper") or {}
+                for item in (data.get("data") or [])
+                if item.get("citedPaper") is not None
+            ]
             logger.info(f"Found {len(references)} references in {paper_id}")
             return references
         except Exception as e:

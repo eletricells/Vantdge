@@ -6,10 +6,57 @@ Approved Indications (exclude these): {{ approved_indications }}
 Title: {{ title }}
 Abstract: {{ abstract }}
 
-Return ONLY the disease/indication name in a simple format (e.g., "vitiligo", "alopecia areata", "chronic graft-versus-host disease").
-If multiple diseases are mentioned, return the PRIMARY one being treated.
-If this is about an APPROVED indication, return "APPROVED_INDICATION".
-If you cannot determine the disease, return "UNKNOWN".
+Return JSON with disease information:
+{
+    "disease": "canonical disease name (e.g., 'Dermatomyositis', 'Rheumatoid Arthritis')",
+    "disease_subtype": "subtype if applicable (e.g., 'Amyopathic', 'Anti-MDA5', 'Seropositive') or null",
+    "disease_category": "therapeutic area (e.g., 'Inflammatory Myopathies', 'Rheumatic Diseases')",
+    "disease_raw": "exact text as written in paper",
+    "status": "RELEVANT" or "APPROVED_INDICATION" or "UNKNOWN"
+}
 
-Disease:
+DISEASE/SUBTYPE SEPARATION GUIDE:
+Always separate the base disease from its subtype:
+- "amyopathic dermatomyositis" → disease: "Dermatomyositis", disease_subtype: "Amyopathic"
+- "anti-MDA5 dermatomyositis" → disease: "Dermatomyositis", disease_subtype: "Anti-MDA5"
+- "juvenile dermatomyositis" → disease: "Dermatomyositis", disease_subtype: "Juvenile"
+- "seropositive rheumatoid arthritis" → disease: "Rheumatoid Arthritis", disease_subtype: "Seropositive"
+- "lupus nephritis class IV" → disease: "Lupus Nephritis", disease_subtype: "Class IV"
+- "relapsing-remitting MS" or "RRMS" → disease: "Multiple Sclerosis", disease_subtype: "Relapsing-Remitting"
+- "generalized myasthenia gravis" → disease: "Myasthenia Gravis", disease_subtype: "Generalized"
+- "plaque psoriasis" → disease: "Psoriasis", disease_subtype: "Plaque"
 
+CRITICAL - DISEASE SPECIFICITY RULES:
+NEVER use broad categories as the disease name. Always extract the SPECIFIC condition being treated:
+
+BAD (too broad):
+- "Immune-Related Adverse Events" → Extract the SPECIFIC irAE (colitis, pneumonitis, hepatitis, etc.)
+- "Adverse Events" → Extract what condition is being treated
+- "Complications" → Extract the specific complication
+- "Side Effects" → Extract what is being treated
+
+GOOD (specific):
+- irAE colitis → disease: "Colitis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- irAE hepatitis → disease: "Hepatitis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- irAE pneumonitis → disease: "Pneumonitis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- irAE myocarditis → disease: "Myocarditis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- Graft-versus-host disease → disease: "Graft-versus-Host Disease", disease_subtype: "Acute" or "Chronic"
+- Cytokine release syndrome → disease: "Cytokine Release Syndrome"
+
+Disease categories include:
+- Inflammatory Myopathies (DM, PM, IBM)
+- Rheumatic Diseases (RA, PsA, AS, gout, OA)
+- Dermatologic Diseases (psoriasis, AD, vitiligo, hidradenitis)
+- Respiratory Diseases (asthma, COPD, IPF)
+- Neurological Diseases (MS, NMOSD, MG, ALS)
+- Gastrointestinal Diseases (Crohn's, UC, celiac)
+- Hematologic Diseases (ITP, PNH, CAD, myelofibrosis)
+- Vasculitis (AAV, GCA, Behcet's)
+- Lupus (SLE, lupus nephritis, cutaneous lupus)
+- Autoimmune Diseases (Sjogren's, SSc)
+
+If multiple diseases are mentioned, extract the PRIMARY one being treated.
+If this is about an APPROVED indication, set status="APPROVED_INDICATION".
+If you cannot determine the disease, set status="UNKNOWN".
+
+{% include 'case_series/_partials/json_rules.j2' %}

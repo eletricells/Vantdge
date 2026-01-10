@@ -163,7 +163,9 @@ class BaseAPIClient(ABC):
             return None
         except requests.exceptions.HTTPError as e:
             logger.error(f"[{self.name}] HTTP error: {e}")
-            if self.circuit_breaker:
+            # Don't count 404 (Not Found) as circuit breaker failure
+            # 404 is expected when searching for drugs that don't exist
+            if self.circuit_breaker and response.status_code != 404:
                 self.circuit_breaker.record_failure()
             return None
         except requests.exceptions.RequestException as e:

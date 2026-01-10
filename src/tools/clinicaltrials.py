@@ -324,6 +324,124 @@ Primary Outcomes: {len(summary['primary_outcomes'])} defined
         logger.error(f"All {max_retries} retries exhausted for {drug_name}")
         return []
 
+    def search_pivotal_trials(
+        self,
+        drug_name: str,
+        conditions: List[str],
+        max_results: int = 50,
+        max_retries: int = 3,
+        phase_filter: str = "PHASE2|PHASE3",
+        sponsor_filter: str = "INDUSTRY",
+        status_filter: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for pivotal trials using proper CT.gov API filters.
+
+        Uses structured field search with:
+        - Intervention field for drug name
+        - Condition field for disease (searches all provided condition terms)
+        - Phase filter for Phase 2/3
+        - Sponsor filter for industry-sponsored trials
+
+        Args:
+            drug_name: Generic name of drug (searched in intervention field)
+            conditions: List of condition terms to search (disease name + synonyms)
+            max_results: Maximum number of results
+            max_retries: Maximum number of retry attempts
+            phase_filter: Phase filter (default: "PHASE2|PHASE3")
+            sponsor_filter: Sponsor type filter (default: "INDUSTRY", use None for all)
+            status_filter: Optional status filter (e.g., "COMPLETED")
+
+        Returns:
+            List of trial summaries with parsed data
+        """
+        import time
+
+        all_trials = []
+        seen_ncts = set()
+
+        # Build the advanced filter for phase and sponsor
+        filter_parts = []
+
+        if phase_filter:
+            # Format: AREA[Phase](PHASE2 OR PHASE3)
+            phases = phase_filter.split("|")
+            phase_expr = " OR ".join(phases)
+            filter_parts.append(f"AREA[Phase]({phase_expr})")
+
+        if sponsor_filter:
+            # Format: AREA[LeadSponsorClass]INDUSTRY
+            filter_parts.append(f"AREA[LeadSponsorClass]{sponsor_filter}")
+
+        if status_filter:
+            # Format: AREA[OverallStatus]COMPLETED
+            filter_parts.append(f"AREA[OverallStatus]{status_filter}")
+
+        advanced_filter = " AND ".join(filter_parts) if filter_parts else None
+
+        # Search for each condition term
+        for condition in conditions:
+            if len(all_trials) >= max_results:
+                break
+
+            params = {
+                "query.intr": drug_name,
+                "query.cond": condition,
+                "pageSize": max_results,
+                "format": "json"
+            }
+
+            if advanced_filter:
+                params["filter.advanced"] = advanced_filter
+
+            if self.api_key:
+                params["api_key"] = self.api_key
+
+            for attempt in range(max_retries):
+                try:
+                    self._ensure_rate_limit()
+
+                    response = self.session.get(
+                        f"{self.BASE_URL}/studies",
+                        params=params,
+                        timeout=self.timeout
+                    )
+                    response.raise_for_status()
+
+                    data = response.json()
+                    studies = data.get("studies", [])
+
+                    logger.info(
+                        f"CT.gov structured search: intr='{drug_name}' cond='{condition}' "
+                        f"filter='{advanced_filter}' -> {len(studies)} trials"
+                    )
+
+                    # Parse and deduplicate
+                    parsed = self._parse_studies_for_landscape(studies)
+                    for trial in parsed:
+                        nct_id = trial.get('nct_id')
+                        if nct_id and nct_id not in seen_ncts:
+                            seen_ncts.add(nct_id)
+                            all_trials.append(trial)
+
+                    break  # Success
+
+                except requests.exceptions.HTTPError as e:
+                    if e.response.status_code == 429:
+                        wait_time = (attempt + 1) * 2
+                        logger.warning(f"Rate limited, waiting {wait_time}s")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        logger.warning(f"Search failed for condition '{condition}': {e}")
+                        break
+                except requests.exceptions.RequestException as e:
+                    logger.warning(f"Search failed for condition '{condition}': {e}")
+                    break
+
+        logger.info(f"Total unique pivotal trials found: {len(all_trials)}")
+        return all_trials[:max_results]
+
     def search_by_intervention(
         self,
         drug_name: str,
@@ -334,7 +452,7 @@ Primary Outcomes: {len(summary['primary_outcomes'])} defined
         """
         Search trials by drug/intervention name with retry logic.
 
-        DEPRECATED: Use search_trials() instead for better fuzzy matching.
+        DEPRECATED: Use search_trials() or search_pivotal_trials() instead.
 
         Args:
             drug_name: Name of drug or intervention
@@ -619,6 +737,146 @@ Primary Outcomes: {len(summary['primary_outcomes'])} defined
             return statuses[0]
         else:
             return "Unknown"
+
+    def get_trial_publications(self, nct_id: str) -> List[Dict[str, Any]]:
+        """
+        Get publications linked to a trial, prioritizing original trial results.
+
+        Prioritization order:
+        1. RESULT type publications
+        2. Publications with trial name/acronym in citation (e.g., "BLISS-52")
+        3. Publications with primary results keywords
+        4. Older publications (lower PMID = older = original results)
+
+        Args:
+            nct_id: NCT identifier
+
+        Returns:
+            List of publication references with pmid, type, citation, is_original
+        """
+        try:
+            data = self.get_study_details(nct_id)
+            if not data:
+                return []
+
+            protocol = data.get('protocolSection', {})
+            refs_module = protocol.get('referencesModule', {})
+            refs = refs_module.get('references', [])
+
+            # Get trial title for acronym extraction
+            id_module = protocol.get('identificationModule', {})
+            brief_title = id_module.get('briefTitle', '')
+            official_title = id_module.get('officialTitle', '')
+
+            # Extract trial acronyms (e.g., BLISS-52, TULIP-1, MUSE)
+            import re
+            trial_acronyms = set()
+            for title in [brief_title, official_title]:
+                # Match patterns like BLISS-52, TULIP-1, MUSE, BEL114333
+                matches = re.findall(r'\b([A-Z]{3,}[-]?\d*)\b', title.upper())
+                trial_acronyms.update(matches)
+                # Also match study IDs like BEL114333
+                matches = re.findall(r'\b([A-Z]{2,3}\d{5,})\b', title.upper())
+                trial_acronyms.update(matches)
+
+            publications = []
+            for ref in refs:
+                pmid = ref.get('pmid')
+                if pmid:
+                    citation = ref.get('citation', '')
+                    pub_type = ref.get('type', 'UNKNOWN')
+                    citation_upper = citation.upper()
+
+                    # Determine if this is likely an original results paper
+                    is_original = False
+
+                    # Check for trial acronym in citation
+                    for acronym in trial_acronyms:
+                        if acronym in citation_upper:
+                            is_original = True
+                            break
+
+                    # Check for primary results keywords
+                    primary_keywords = [
+                        'efficacy and safety', 'phase 3', 'phase iii', 'phase 2', 'phase ii',
+                        'randomised', 'randomized', 'double-blind', 'placebo-controlled',
+                        'primary endpoint', 'primary outcome', 'pivotal trial'
+                    ]
+                    citation_lower = citation.lower()
+                    if any(kw in citation_lower for kw in primary_keywords):
+                        is_original = True
+
+                    publications.append({
+                        'pmid': str(pmid),
+                        'type': pub_type,
+                        'citation': citation,
+                        'nct_id': nct_id,
+                        'is_original': is_original
+                    })
+
+            # Sort: RESULT type first, then original papers, then by PMID (older first)
+            def sort_key(pub):
+                type_score = 0 if pub['type'] == 'RESULT' else 1
+                original_score = 0 if pub.get('is_original') else 1
+                try:
+                    pmid_score = int(pub['pmid'])
+                except:
+                    pmid_score = 99999999
+                return (type_score, original_score, pmid_score)
+
+            publications.sort(key=sort_key)
+
+            logger.info(f"Found {len(publications)} publications for {nct_id}")
+            originals = sum(1 for p in publications if p.get('is_original'))
+            if originals:
+                logger.debug(f"  {originals} identified as likely original results")
+
+            return publications
+
+        except Exception as e:
+            logger.error(f"Error getting publications for {nct_id}: {e}")
+            return []
+
+    def get_primary_result_publications(self, nct_id: str, trial_name: str = None) -> List[str]:
+        """
+        Get PMIDs of primary results publications for a trial.
+
+        Filters publications to find the most likely primary results papers.
+
+        Args:
+            nct_id: NCT identifier
+            trial_name: Optional trial name (e.g., "BLISS-52") to match
+
+        Returns:
+            List of PMIDs likely to be primary results papers
+        """
+        pubs = self.get_trial_publications(nct_id)
+        if not pubs:
+            return []
+
+        primary_pmids = []
+        keywords = ['efficacy', 'safety', 'phase 3', 'phase iii', 'randomized', 'randomised',
+                    'double-blind', 'placebo-controlled', 'primary endpoint', 'results']
+
+        for pub in pubs:
+            citation = pub.get('citation', '').lower()
+
+            # Check if citation contains keywords indicating primary results
+            matches = sum(1 for kw in keywords if kw in citation)
+
+            # Also check if trial name matches
+            if trial_name and trial_name.lower() in citation:
+                matches += 3
+
+            # Check for NCT ID in citation
+            if nct_id.lower() in citation:
+                matches += 2
+
+            if matches >= 2:
+                primary_pmids.append(pub['pmid'])
+
+        logger.info(f"Found {len(primary_pmids)} primary result publications for {nct_id}")
+        return primary_pmids
 
     def close(self):
         """Close the HTTP session"""

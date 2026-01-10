@@ -19,6 +19,7 @@ from src.drug_extraction_system.api_clients.mesh_client import MeSHClient
 from src.drug_extraction_system.api_clients.clinicaltrials_client import ClinicalTrialsClient
 from src.drug_extraction_system.utils.drug_key_generator import DrugKeyGenerator
 from src.drug_extraction_system.services.drug_type_classifier import DrugTypeClassifier
+from src.drug_extraction_system.parsers.dosing_parser import DosingParser
 from src.tools.dailymed import DailyMedAPI
 
 logger = logging.getLogger(__name__)
@@ -314,11 +315,23 @@ class ApprovedDrugExtractor:
             if indications_text:
                 result.indications = [{"raw_text": indications_text, "source": "openFDA"}]
 
-        # Dosing: Always populate if primary source, otherwise only if empty
+        # Dosing: Parse with DosingParser for structured data
         if is_primary or not result.dosing_regimens:
             dosing_text = label_data.get("dosage_and_administration")
             if dosing_text:
-                result.dosing_regimens = [{"raw_text": dosing_text, "source": "openFDA"}]
+                try:
+                    parser = DosingParser()
+                    parsed_regimens = parser.parse(dosing_text, result.generic_name or drug_name)
+                    if parsed_regimens:
+                        # Convert dataclasses to dicts for storage
+                        result.dosing_regimens = [r.__dict__ for r in parsed_regimens]
+                        logger.info(f"Parsed {len(parsed_regimens)} dosing regimens for {result.generic_name}")
+                    else:
+                        # Fallback to raw text if parsing fails
+                        result.dosing_regimens = [{"raw_text": dosing_text, "source": "openFDA"}]
+                except Exception as e:
+                    logger.warning(f"Dosing parsing failed, using raw text: {e}")
+                    result.dosing_regimens = [{"raw_text": dosing_text, "source": "openFDA"}]
 
     def _fetch_clinical_trials(
         self,

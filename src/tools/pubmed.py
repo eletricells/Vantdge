@@ -452,9 +452,20 @@ class PubMedAPI:
             title_elem = article_data.find(".//ArticleTitle")
             title = title_elem.text if title_elem is not None else "No title"
 
-            # Abstract
-            abstract_elem = article_data.find(".//Abstract/AbstractText")
-            abstract = abstract_elem.text if abstract_elem is not None else "No abstract available"
+            # Abstract - handle structured abstracts with multiple sections
+            abstract_parent = article_data.find(".//Abstract")
+            if abstract_parent is not None:
+                abstract_parts = []
+                for abstract_elem in abstract_parent.findall("AbstractText"):
+                    label = abstract_elem.get("Label", "")
+                    text = abstract_elem.text or ""
+                    if label:
+                        abstract_parts.append(f"{label}: {text}")
+                    else:
+                        abstract_parts.append(text)
+                abstract = " ".join(abstract_parts) if abstract_parts else "No abstract available"
+            else:
+                abstract = "No abstract available"
 
             # Authors
             authors = []

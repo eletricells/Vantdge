@@ -40,6 +40,36 @@ SUPPLEMENTARY MATERIALS:
 - "Extended Data" may have individual patient data
 - "Online supplement" may have additional efficacy endpoints
 
+PATIENT COUNT EXTRACTION (CRITICAL - DO NOT RETURN NULL IF COUNT IS STATED):
+Extract patient_count from ANY of these sources:
+
+FROM ABSTRACT/INTRO:
+- "10 patients with X were treated" → patient_count: 10
+- "a series of 15 patients" → patient_count: 15
+- "n=20 patients" or "N=20" → patient_count: 20
+- "enrolled 25 patients" → patient_count: 25
+- "a cohort of 30 patients" → patient_count: 30
+
+FROM METHODS SECTION:
+- "We included 12 consecutive patients"
+- "Study population consisted of 8 patients"
+- "Participants: 18 adults with..."
+
+FROM TABLES:
+- Look for "N" column headers or "Total" rows
+- Baseline characteristics table typically states total N
+
+FROM RESPONSE DENOMINATORS:
+- "8/10 patients responded" → patient_count: 10
+- "Response in 5 of 7 (71%)" → patient_count: 7
+
+SINGLE PATIENT (case report):
+- "A 45-year-old woman with X" → patient_count: 1
+- "We report a case" → patient_count: 1
+- "A patient with X" → patient_count: 1
+
+NEVER return patient_count: null if ANY count is mentioned in the text.
+
 Return JSON:
 {
     "baseline_tables": ["Table 1 description", ...],
@@ -47,11 +77,11 @@ Return JSON:
     "safety_tables": ["Table 3 description", ...],
     "efficacy_figures": ["Figure 1 description", ...],
     "results_sections": ["section heading or description", ...],
-    "patient_count": number or null,
+    "patient_count": number (REQUIRED - extract from text),
+    "patient_count_source": "where you found the count (e.g., 'Abstract: n=15 patients', 'Table 1 header')",
     "study_type": "Case Report" or "Case Series" or "Retrospective Study",
     "has_quantitative_outcomes": true/false,
     "notes": "any important observations"
 }
 
 {% include 'case_series/_partials/json_rules.j2' %}
-

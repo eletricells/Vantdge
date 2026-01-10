@@ -349,35 +349,61 @@ class CaseSeriesDatabase:
                 elif hasattr(patient_pop, 'prior_treatments') and patient_pop.prior_treatments:
                     prior_treatments = patient_pop.prior_treatments if isinstance(patient_pop.prior_treatments, str) else ', '.join(patient_pop.prior_treatments)
 
+                # Get individual score data if available
+                individual_score_val = None
+                score_breakdown = None
+                if extraction.individual_score:
+                    individual_score_val = extraction.individual_score.total_score
+                    score_breakdown = extraction.individual_score.model_dump()
+
+                # Get biomarkers data if available
+                biomarkers_data = None
+                if extraction.biomarkers:
+                    biomarkers_data = [bm.model_dump() for bm in extraction.biomarkers]
+
                 cur.execute("""
                     INSERT INTO cs_extractions (
-                        run_id, pmid, paper_title, paper_year, drug_name, disease, is_off_label, is_relevant,
+                        run_id, pmid, paper_title, paper_year, drug_name, disease, disease_normalized, is_off_label, is_relevant,
                         n_patients, age_description, gender_distribution, disease_severity, prior_treatments,
                         dosing_regimen, treatment_duration, concomitant_medications,
                         response_rate, responders_n, responders_pct, time_to_response, duration_of_response,
                         primary_endpoint, primary_endpoint_result, efficacy_summary, efficacy_signal,
                         adverse_events, serious_adverse_events, sae_count, sae_percentage, discontinuations_n,
                         safety_summary, safety_profile, evidence_level, study_design, follow_up_duration,
-                        key_findings, full_extraction
+                        key_findings, full_extraction,
+                        individual_score, score_breakdown, biomarkers_data, follow_up_weeks, response_definition_quality,
+                        metric_type, metric_type_confidence
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s,
                         %s, %s, %s,
                         %s, %s, %s, %s, %s,
                         %s, %s, %s, %s,
                         %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s,
+                        %s, %s,
+                        %s, %s, %s, %s, %s,
                         %s, %s
                     )
                     ON CONFLICT (pmid, drug_name, disease) DO UPDATE SET
                         run_id = EXCLUDED.run_id,
                         is_relevant = EXCLUDED.is_relevant,
+                        disease_normalized = EXCLUDED.disease_normalized,
                         full_extraction = EXCLUDED.full_extraction,
+                        individual_score = EXCLUDED.individual_score,
+                        score_breakdown = EXCLUDED.score_breakdown,
+                        biomarkers_data = EXCLUDED.biomarkers_data,
+                        follow_up_weeks = EXCLUDED.follow_up_weeks,
+                        response_definition_quality = EXCLUDED.response_definition_quality,
+                        metric_type = EXCLUDED.metric_type,
+                        metric_type_confidence = EXCLUDED.metric_type_confidence,
                         extracted_at = CURRENT_TIMESTAMP
                     RETURNING id
                 """, (
                     run_id, source.pmid, source.title, source.year, drug_name,
-                    extraction.disease, extraction.is_off_label, extraction.is_relevant,
+                    extraction.disease,
+                    getattr(extraction, 'disease_normalized', None),  # Normalized disease name
+                    extraction.is_off_label, extraction.is_relevant,
                     patient_pop.n_patients if patient_pop else None,
                     patient_pop.age_description if patient_pop else None,
                     patient_pop.sex_distribution if patient_pop else None,  # Model uses sex_distribution
@@ -406,12 +432,21 @@ class CaseSeriesDatabase:
                     safety.safety_summary if safety else None,
                     safety.safety_profile.value if safety and safety.safety_profile else None,
                     extraction.evidence_level.value if extraction.evidence_level else None,
-                    # CaseSeriesSource doesn't have study_type, use evidence_level instead
-                    extraction.evidence_level.value if extraction.evidence_level else None,
+                    # Use study_design if set, otherwise fallback to evidence_level
+                    extraction.study_design or (extraction.evidence_level.value if extraction.evidence_level else None),
                     extraction.follow_up_duration,
                     extraction.key_findings,
                     # Use mode='json' to serialize datetime objects as ISO strings
-                    Json(extraction.model_dump(mode='json'))
+                    Json(extraction.model_dump(mode='json')),
+                    # New scoring columns
+                    individual_score_val,
+                    Json(score_breakdown) if score_breakdown else None,
+                    Json(biomarkers_data) if biomarkers_data else None,
+                    extraction.follow_up_weeks,
+                    extraction.response_definition_quality,
+                    # Metric type columns
+                    efficacy.metric_type if efficacy else 'Efficacy Response',
+                    efficacy.metric_type_confidence if efficacy else 'Medium'
                 ))
                 extraction_id = cur.fetchone()[0]
                 conn.commit()
@@ -695,6 +730,24 @@ class CaseSeriesDatabase:
                 if hasattr(extraction, 'safety') and extraction.safety and extraction.safety.safety_profile:
                     safety_profile_val = extraction.safety.safety_profile.value
 
+                # Get aggregate score data if available
+                agg_score = None
+                best_paper_pmid = None
+                best_paper_score = None
+                consistency_level = None
+                study_count = None
+                total_patients_agg = None
+                response_rate_cv = None
+                if opportunity.aggregate_score:
+                    agg = opportunity.aggregate_score
+                    agg_score = agg.aggregate_score
+                    best_paper_pmid = agg.best_paper_pmid
+                    best_paper_score = agg.best_paper_score
+                    consistency_level = agg.consistency_level
+                    study_count = agg.study_count
+                    total_patients_agg = agg.total_patients
+                    response_rate_cv = agg.response_rate_cv
+
                 cur.execute("""
                     INSERT INTO cs_opportunities (
                         run_id, drug_name, disease,
@@ -703,15 +756,24 @@ class CaseSeriesDatabase:
                         score_efficacy, score_safety, score_evidence, score_market, score_feasibility,
                         score_total, rank,
                         market_tam, market_prevalence, market_unmet_needs,
-                        recommendation, key_findings, pmids
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        recommendation, key_findings, pmids,
+                        aggregate_score, best_paper_pmid, best_paper_score,
+                        consistency_level, study_count, response_rate_cv
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (run_id, drug_name, disease) DO UPDATE SET
                         score_total = EXCLUDED.score_total,
-                        rank = EXCLUDED.rank
+                        rank = EXCLUDED.rank,
+                        aggregate_score = EXCLUDED.aggregate_score,
+                        best_paper_pmid = EXCLUDED.best_paper_pmid,
+                        best_paper_score = EXCLUDED.best_paper_score,
+                        consistency_level = EXCLUDED.consistency_level,
+                        study_count = EXCLUDED.study_count,
+                        total_patients = EXCLUDED.total_patients,
+                        response_rate_cv = EXCLUDED.response_rate_cv
                 """, (
                     run_id, drug_name, extraction.disease,
-                    n_patients,
-                    1,  # paper_count - single paper per extraction
+                    total_patients_agg or n_patients,  # Use aggregate total if available
+                    study_count or 1,  # paper_count from aggregate or single paper
                     response_rate,
                     efficacy_signal_val,
                     safety_profile_val,
@@ -726,12 +788,237 @@ class CaseSeriesDatabase:
                     market_tam, market_prevalence, market_unmet_needs,
                     None,  # recommendation
                     extraction.key_findings,
-                    Json([extraction.source.pmid] if extraction.source and extraction.source.pmid else [])
+                    Json([extraction.source.pmid] if extraction.source and extraction.source.pmid else []),
+                    agg_score, best_paper_pmid, best_paper_score,
+                    consistency_level, study_count, response_rate_cv
                 ))
                 conn.commit()
         except Exception as e:
             conn.rollback()
             logger.error(f"Error saving opportunity: {e}")
+        finally:
+            conn.close()
+
+    # =====================================================
+    # SCORE EXPLANATIONS
+    # =====================================================
+
+    def save_score_explanation(
+        self,
+        run_id: str,
+        drug_name: str,
+        disease: str,
+        parent_disease: Optional[str],
+        explanation: str,
+        input_summary: Optional[Dict[str, Any]] = None,
+        model: str = "claude-3-haiku",
+        tokens: int = 0,
+    ) -> None:
+        """
+        Save a score explanation to the database.
+
+        Args:
+            run_id: Analysis run ID
+            drug_name: Drug being analyzed
+            disease: Disease name
+            parent_disease: Parent disease name (None if this IS the parent)
+            explanation: Generated explanation text
+            input_summary: Input data used for generation
+            model: Model used to generate
+            tokens: Tokens used for generation
+        """
+        if not self.is_available:
+            return
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO cs_score_explanations (
+                        run_id, drug_name, disease, parent_disease,
+                        aggregate_explanation, explanation_model,
+                        input_summary, generation_tokens
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (run_id, drug_name, disease) DO UPDATE SET
+                        aggregate_explanation = EXCLUDED.aggregate_explanation,
+                        explanation_model = EXCLUDED.explanation_model,
+                        input_summary = EXCLUDED.input_summary,
+                        generation_tokens = EXCLUDED.generation_tokens,
+                        generated_at = CURRENT_TIMESTAMP
+                """, (
+                    run_id, drug_name, disease, parent_disease,
+                    explanation, model,
+                    Json(input_summary) if input_summary else None, tokens
+                ))
+                conn.commit()
+                logger.debug(f"Saved explanation for {disease}")
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error saving explanation for {disease}: {e}")
+        finally:
+            conn.close()
+
+    def load_score_explanations(self, run_id: str) -> Dict[str, str]:
+        """
+        Load all score explanations for a run.
+
+        Args:
+            run_id: Analysis run ID
+
+        Returns:
+            Dict mapping disease -> explanation text
+        """
+        if not self.is_available:
+            return {}
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT disease, aggregate_explanation
+                    FROM cs_score_explanations
+                    WHERE run_id = %s
+                    AND aggregate_explanation IS NOT NULL
+                """, (run_id,))
+
+                result = {}
+                for row in cur.fetchall():
+                    result[row['disease']] = row['aggregate_explanation']
+
+                logger.info(f"Loaded {len(result)} explanations for run {run_id}")
+                return result
+        except Exception as e:
+            logger.error(f"Error loading explanations: {e}")
+            return {}
+        finally:
+            conn.close()
+
+    def save_paper_explanation(
+        self,
+        run_id: str,
+        pmid: str,
+        explanation: str,
+    ) -> None:
+        """
+        Save a per-paper score explanation to the extraction record.
+
+        Args:
+            run_id: Analysis run ID
+            pmid: Paper PMID
+            explanation: Brief explanation text
+        """
+        if not self.is_available:
+            return
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE cs_extractions
+                    SET score_explanation = %s
+                    WHERE run_id = %s AND pmid = %s
+                """, (explanation, run_id, pmid))
+                conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error saving paper explanation for PMID {pmid}: {e}")
+        finally:
+            conn.close()
+
+    def update_extraction_parent_disease(
+        self,
+        run_id: str,
+        pmid: str,
+        parent_disease: Optional[str],
+    ) -> None:
+        """
+        Update the parent disease for an extraction.
+
+        Args:
+            run_id: Analysis run ID
+            pmid: Paper PMID
+            parent_disease: Parent disease name
+        """
+        if not self.is_available:
+            return
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE cs_extractions
+                    SET parent_disease = %s
+                    WHERE run_id = %s AND pmid = %s
+                """, (parent_disease, run_id, pmid))
+                conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error updating parent disease for PMID {pmid}: {e}")
+        finally:
+            conn.close()
+
+    def update_opportunity_parent_disease(
+        self,
+        run_id: str,
+        drug_name: str,
+        disease: str,
+        parent_disease: Optional[str],
+    ) -> None:
+        """
+        Update the parent disease for an opportunity.
+
+        Args:
+            run_id: Analysis run ID
+            drug_name: Drug name
+            disease: Disease name
+            parent_disease: Parent disease name
+        """
+        if not self.is_available:
+            return
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE cs_opportunities
+                    SET parent_disease = %s
+                    WHERE run_id = %s AND drug_name = %s AND disease = %s
+                """, (parent_disease, run_id, drug_name, disease))
+                conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error updating parent disease for {disease}: {e}")
+        finally:
+            conn.close()
+
+    def get_hierarchical_opportunities(
+        self,
+        run_id: str,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get opportunities organized by parent-child hierarchy.
+
+        Args:
+            run_id: Analysis run ID
+
+        Returns:
+            List of dicts with parent and children opportunities
+        """
+        if not self.is_available:
+            return []
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM v_cs_hierarchical_opportunities
+                    WHERE run_id = %s
+                    ORDER BY avg_score DESC, child_score DESC NULLS LAST
+                """, (run_id,))
+                return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting hierarchical opportunities: {e}")
+            return []
         finally:
             conn.close()
 
@@ -1360,6 +1647,234 @@ class CaseSeriesDatabase:
             logger.error(f"Error bulk saving parent mappings: {e}")
         return count
 
+    # =====================================================
+    # PAPER DISCOVERY - Save all discovered papers with filter status
+    # =====================================================
+
+    def save_paper_discovery(
+        self,
+        drug_name: str,
+        generic_name: Optional[str],
+        papers: List[Dict[str, Any]],
+        approved_indications: List[str],
+        sources_searched: List[str],
+        duplicates_removed: int = 0,
+    ) -> Optional[str]:
+        """
+        Save a paper discovery session with all papers and their filter status.
+
+        Args:
+            drug_name: Name of the drug
+            generic_name: Generic name of the drug
+            papers: List of paper dicts with keys:
+                - pmid, doi, title, abstract, year, journal, source
+                - would_pass_filter, filter_reason, disease, patient_count
+            approved_indications: List of approved indications for the drug
+            sources_searched: List of sources that were searched
+            duplicates_removed: Number of duplicates removed during deduplication
+
+        Returns:
+            discovery_id if successful, None otherwise
+        """
+        if not self.is_available:
+            return None
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                # Create discovery session
+                cur.execute("""
+                    INSERT INTO cs_paper_discoveries (
+                        drug_name, generic_name, approved_indications,
+                        sources_searched, total_papers, papers_passing_filter,
+                        duplicates_removed
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING discovery_id
+                """, (
+                    drug_name,
+                    generic_name,
+                    Json(approved_indications),
+                    Json(sources_searched),
+                    len(papers),
+                    sum(1 for p in papers if p.get('would_pass_filter')),
+                    duplicates_removed,
+                ))
+                discovery_id = str(cur.fetchone()[0])
+
+                # Deduplicate papers by pmid+doi to avoid unique constraint violation
+                seen_keys = set()
+                unique_papers = []
+                for paper in papers:
+                    # Create key from pmid and doi (coalesce to empty string like the index)
+                    key = (paper.get('pmid') or '', paper.get('doi') or '')
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        unique_papers.append(paper)
+                    else:
+                        logger.debug(f"Skipping duplicate paper: pmid={key[0]}, doi={key[1]}")
+
+                if len(unique_papers) < len(papers):
+                    logger.info(f"Deduplicated {len(papers)} papers to {len(unique_papers)} unique papers")
+
+                # Save each unique paper
+                for paper in unique_papers:
+                    cur.execute("""
+                        INSERT INTO cs_discovery_papers (
+                            discovery_id, pmid, doi, title, abstract, year,
+                            journal, source, disease, patient_count,
+                            would_pass_filter, filter_reason
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        discovery_id,
+                        paper.get('pmid'),
+                        paper.get('doi'),
+                        paper.get('title'),
+                        paper.get('abstract'),
+                        paper.get('year'),
+                        paper.get('journal'),
+                        paper.get('source'),
+                        paper.get('disease'),
+                        paper.get('patient_count'),
+                        paper.get('would_pass_filter', False),
+                        paper.get('filter_reason'),
+                    ))
+
+                conn.commit()
+                logger.info(f"Saved paper discovery {discovery_id} for {drug_name}: {len(unique_papers)} papers")
+                return discovery_id
+
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error saving paper discovery: {e}")
+            return None
+        finally:
+            conn.close()
+
+    def load_paper_discovery(
+        self,
+        drug_name: str,
+        max_age_days: int = 7,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Load the most recent paper discovery for a drug.
+
+        Args:
+            drug_name: Name of the drug
+            max_age_days: Maximum age of discovery to consider fresh
+
+        Returns:
+            Dict with discovery metadata and papers, or None if not found/expired
+        """
+        if not self.is_available:
+            return None
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Get most recent discovery
+                cur.execute("""
+                    SELECT discovery_id, drug_name, generic_name, approved_indications,
+                           sources_searched, total_papers, papers_passing_filter,
+                           duplicates_removed, discovered_at
+                    FROM cs_paper_discoveries
+                    WHERE LOWER(drug_name) = LOWER(%s)
+                      AND discovered_at > CURRENT_TIMESTAMP - INTERVAL '%s days'
+                    ORDER BY discovered_at DESC
+                    LIMIT 1
+                """, (drug_name, max_age_days))
+                discovery = cur.fetchone()
+
+                if not discovery:
+                    return None
+
+                discovery_id = discovery['discovery_id']
+
+                # Get all papers for this discovery
+                cur.execute("""
+                    SELECT pmid, doi, title, abstract, year, journal, source,
+                           disease, patient_count, would_pass_filter, filter_reason
+                    FROM cs_discovery_papers
+                    WHERE discovery_id = %s
+                    ORDER BY would_pass_filter DESC, disease, title
+                """, (discovery_id,))
+                papers = [dict(row) for row in cur.fetchall()]
+
+                result = dict(discovery)
+                result['papers'] = papers
+
+                # Organize papers by disease
+                papers_by_disease = {}
+                unclassified = []
+                for paper in papers:
+                    disease = paper.get('disease')
+                    if disease and disease.lower() not in ['unknown', 'null', 'none', '']:
+                        if disease not in papers_by_disease:
+                            papers_by_disease[disease] = []
+                        papers_by_disease[disease].append(paper)
+                    else:
+                        unclassified.append(paper)
+
+                result['papers_by_disease'] = papers_by_disease
+                result['unclassified_papers'] = unclassified
+
+                logger.info(f"Loaded paper discovery {discovery_id} for {drug_name}")
+                return result
+
+        except Exception as e:
+            logger.error(f"Error loading paper discovery: {e}")
+            return None
+        finally:
+            conn.close()
+
+    def get_discovery_history(
+        self,
+        drug_name: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get paper discovery history.
+
+        Args:
+            drug_name: Optional drug name to filter by
+            limit: Maximum number of discoveries to return
+
+        Returns:
+            List of discovery summaries
+        """
+        if not self.is_available:
+            return []
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                if drug_name:
+                    cur.execute("""
+                        SELECT discovery_id, drug_name, generic_name,
+                               total_papers, papers_passing_filter,
+                               duplicates_removed, discovered_at
+                        FROM cs_paper_discoveries
+                        WHERE LOWER(drug_name) = LOWER(%s)
+                        ORDER BY discovered_at DESC
+                        LIMIT %s
+                    """, (drug_name, limit))
+                else:
+                    cur.execute("""
+                        SELECT discovery_id, drug_name, generic_name,
+                               total_papers, papers_passing_filter,
+                               duplicates_removed, discovered_at
+                        FROM cs_paper_discoveries
+                        ORDER BY discovered_at DESC
+                        LIMIT %s
+                    """, (limit,))
+
+                return [dict(row) for row in cur.fetchall()]
+
+        except Exception as e:
+            logger.error(f"Error getting discovery history: {e}")
+            return []
+        finally:
+            conn.close()
+
     def get_disease_variant_stats(self) -> Dict[str, Any]:
         """Get statistics about disease mappings in database."""
         if not self.is_available:
@@ -1383,3 +1898,226 @@ class CaseSeriesDatabase:
         except Exception as e:
             logger.error(f"Error getting disease variant stats: {e}")
             return {}
+
+    # =====================================================
+    # PAPERS FOR MANUAL REVIEW
+    # =====================================================
+
+    def save_papers_for_manual_review(
+        self,
+        run_id: str,
+        drug_name: str,
+        papers: List[Dict[str, Any]],
+    ) -> int:
+        """
+        Save papers requiring manual review to the database.
+
+        Args:
+            run_id: Analysis run ID
+            drug_name: Drug being analyzed
+            papers: List of paper dicts with pmid, title, n_patients, etc.
+
+        Returns:
+            Number of papers saved
+        """
+        if not self.is_available or not papers:
+            return 0
+
+        conn = self._get_connection()
+        saved_count = 0
+        try:
+            with conn.cursor() as cur:
+                for paper in papers:
+                    try:
+                        cur.execute("""
+                            INSERT INTO cs_papers_for_manual_review (
+                                run_id, drug_name, pmid, doi, title, authors,
+                                journal, year, abstract, disease,
+                                n_patients, n_confidence, response_rate,
+                                primary_endpoint, efficacy_mention,
+                                reason, has_full_text, extraction_method
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (run_id, pmid, drug_name) DO UPDATE SET
+                                n_patients = EXCLUDED.n_patients,
+                                n_confidence = EXCLUDED.n_confidence,
+                                response_rate = EXCLUDED.response_rate,
+                                primary_endpoint = EXCLUDED.primary_endpoint,
+                                efficacy_mention = EXCLUDED.efficacy_mention
+                        """, (
+                            run_id,
+                            drug_name,
+                            paper.get('pmid'),
+                            paper.get('doi'),
+                            paper.get('title', ''),
+                            paper.get('authors'),
+                            paper.get('journal'),
+                            paper.get('year'),
+                            paper.get('abstract'),
+                            paper.get('disease'),
+                            paper.get('n_patients'),
+                            paper.get('n_confidence', 'Unknown'),
+                            paper.get('response_rate'),
+                            paper.get('primary_endpoint'),
+                            paper.get('efficacy_mention'),
+                            paper.get('reason', 'Abstract only - full text not available'),
+                            paper.get('has_full_text', False),
+                            paper.get('extraction_method', 'single_pass'),
+                        ))
+                        saved_count += 1
+                    except Exception as e:
+                        logger.warning(f"Error saving paper for review {paper.get('pmid')}: {e}")
+                        continue
+
+                conn.commit()
+                logger.info(f"Saved {saved_count} papers for manual review (run {run_id})")
+                return saved_count
+
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error saving papers for manual review: {e}")
+            return 0
+        finally:
+            conn.close()
+
+    def load_papers_for_manual_review(
+        self,
+        run_id: str,
+    ) -> List[Dict[str, Any]]:
+        """
+        Load papers requiring manual review for a specific run.
+
+        Args:
+            run_id: Analysis run ID
+
+        Returns:
+            List of paper dicts, sorted by n_patients descending
+        """
+        if not self.is_available:
+            return []
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT
+                        pmid, doi, title, authors, journal, year, abstract,
+                        disease, n_patients, n_confidence, response_rate,
+                        primary_endpoint, efficacy_mention,
+                        reason, has_full_text, extraction_method,
+                        created_at
+                    FROM cs_papers_for_manual_review
+                    WHERE run_id = %s
+                    ORDER BY n_patients DESC NULLS LAST, title
+                """, (run_id,))
+
+                papers = [dict(row) for row in cur.fetchall()]
+                logger.info(f"Loaded {len(papers)} papers for manual review (run {run_id})")
+                return papers
+
+        except Exception as e:
+            logger.error(f"Error loading papers for manual review: {e}")
+            return []
+        finally:
+            conn.close()
+
+    def get_manual_review_count(self, run_id: str) -> int:
+        """Get count of papers requiring manual review for a run."""
+        if not self.is_available:
+            return 0
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COUNT(*) FROM cs_papers_for_manual_review
+                    WHERE run_id = %s
+                """, (run_id,))
+                return cur.fetchone()[0]
+        except Exception as e:
+            logger.error(f"Error getting manual review count: {e}")
+            return 0
+        finally:
+            conn.close()
+
+    def get_abstract_only_extractions_for_backfill(self, run_id: str) -> List[Dict[str, Any]]:
+        """
+        Get extractions that were done from abstract only for backfill.
+
+        Args:
+            run_id: Analysis run ID
+
+        Returns:
+            List of extraction dicts with paper info
+        """
+        if not self.is_available:
+            return []
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Get extractions that used single_pass (abstract only)
+                # We check full_extraction JSON for extraction_method
+                cur.execute("""
+                    SELECT
+                        e.pmid, e.drug_name, e.disease, e.paper_title, e.paper_year,
+                        e.n_patients, e.response_rate, e.primary_endpoint,
+                        e.efficacy_summary, e.full_extraction,
+                        p.abstract, p.doi, p.authors, p.journal, p.has_full_text
+                    FROM cs_extractions e
+                    LEFT JOIN cs_papers p ON e.pmid = p.pmid AND p.relevance_drug = e.drug_name
+                    WHERE e.run_id = %s
+                    AND (
+                        e.full_extraction->>'extraction_method' = 'single_pass'
+                        OR e.full_extraction->>'extraction_method' IS NULL
+                        OR NOT COALESCE(p.has_full_text, false)
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM cs_papers_for_manual_review m
+                        WHERE m.run_id = %s AND m.pmid = e.pmid AND m.drug_name = e.drug_name
+                    )
+                """, (run_id, run_id))
+
+                return [dict(row) for row in cur.fetchall()]
+
+        except Exception as e:
+            logger.error(f"Error getting abstract-only extractions: {e}")
+            return []
+        finally:
+            conn.close()
+
+    def backfill_papers_for_manual_review(
+        self,
+        run_id: str,
+        papers: List[Dict[str, Any]],
+    ) -> int:
+        """
+        Backfill papers for manual review from existing extractions.
+
+        Args:
+            run_id: Analysis run ID
+            papers: List of paper dicts with extracted info
+
+        Returns:
+            Number of papers saved
+        """
+        if not self.is_available or not papers:
+            return 0
+
+        # Get drug_name from the run
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT drug_name FROM cs_analysis_runs WHERE run_id = %s", (run_id,))
+                run_row = cur.fetchone()
+                if not run_row:
+                    return 0
+                drug_name = run_row['drug_name']
+        finally:
+            conn.close()
+
+        # Use the existing save method
+        return self.save_papers_for_manual_review(
+            run_id=run_id,
+            drug_name=drug_name,
+            papers=papers,
+        )

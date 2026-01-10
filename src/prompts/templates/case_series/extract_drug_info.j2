@@ -5,13 +5,60 @@ Search Results:
 
 Return ONLY valid JSON:
 {
-    "generic_name": "generic name or null",
-    "mechanism": "mechanism of action or null",
-    "target": "molecular target or null",
-    "approved_indications": ["indication 1", "indication 2", ...]
+    "generic_name": "INN/USAN generic name (lowercase)",
+    "brand_names": ["Brand1", "Brand2"],
+    "mechanism": "detailed mechanism of action",
+    "target": "molecular target(s)",
+    "drug_class": "pharmacological class",
+    "approved_indications": ["indication 1", "indication 2", ...],
+    "route_of_administration": "oral" or "subcutaneous" or "intravenous" or "topical",
+    "manufacturer": "originator company name"
 }
 
-Be comprehensive with indications.
+EXTRACTION GUIDANCE:
+
+GENERIC NAME:
+- Use INN (International Nonproprietary Name) or USAN
+- Lowercase: "tofacitinib" not "Tofacitinib"
+- For biologics, use the INN stem: "tocilizumab" not "Actemra"
+
+MECHANISM EXTRACTION:
+Format mechanism descriptions consistently:
+- For small molecules: "[Target] inhibitor" or "[Target] agonist/antagonist"
+  Examples: "JAK1/JAK2 inhibitor", "PDE4 inhibitor", "S1P receptor modulator"
+- For biologics: "Anti-[target] [format]" or "[Target] inhibitor"
+  Examples: "Anti-IL-6R monoclonal antibody", "Anti-TNF-α fusion protein"
+- Include selectivity when relevant: "Selective JAK1 inhibitor" vs "Pan-JAK inhibitor"
+
+TARGET EXTRACTION:
+- Use official gene/protein symbols: JAK1, JAK2, IL-6R, CD20, PD-1, CTLA-4
+- For multi-target drugs, list all primary targets: "JAK1, JAK2, TYK2"
+- Distinguish receptor vs ligand: "IL-6R" (receptor) vs "IL-6" (ligand)
+
+DRUG CLASS:
+Use standard pharmacological classes:
+- "JAK inhibitor"
+- "TNF inhibitor"
+- "IL-6 inhibitor"
+- "Anti-CD20 monoclonal antibody"
+- "Calcineurin inhibitor"
+- "mTOR inhibitor"
+- "PDE4 inhibitor"
+
+APPROVED INDICATIONS:
+- Be COMPREHENSIVE - list ALL FDA-approved indications
+- Use official indication names from FDA labels
+- Format consistently: "Rheumatoid Arthritis" not "RA"
+- Include age specifications if relevant: "Atopic Dermatitis (adults and pediatric patients 6 years and older)"
+- Separate related but distinct indications: "Ulcerative Colitis" and "Crohn's Disease" are different
+
+COMMON INDICATION FORMATTING:
+- "Rheumatoid Arthritis" (not "RA" or "moderate-to-severe RA")
+- "Psoriatic Arthritis" (not "PsA")
+- "Atopic Dermatitis" (not "AD" or "eczema")
+- "Ulcerative Colitis" (not "UC")
+- "Ankylosing Spondylitis" or "Axial Spondyloarthritis"
+- "Systemic Lupus Erythematosus" (not "SLE" or "lupus")
+- "Juvenile Idiopathic Arthritis" (not "JIA")
 
 {% include 'case_series/_partials/json_rules.j2' %}
-

@@ -152,6 +152,7 @@ def store_drug_data(ops: DrugDatabaseOperations, extracted_data, is_investigatio
 
 def extract_efficacy_safety(drug_id: int, drug_name: str, is_investigational: bool):
     """Extract and store efficacy/safety data for a drug."""
+    import re
     try:
         if is_investigational:
             # Use web search for investigational drugs
@@ -169,26 +170,171 @@ def extract_efficacy_safety(drug_id: int, drug_name: str, is_investigational: bo
             if not indications:
                 return 0, 0
 
-            # Search for each indication (simplified - just first indication)
+            # Search for first indication
             indication = indications[0]
             message = anthropic.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=3000,
+                max_tokens=4000,
                 tools=[{"type": "web_search_20250305", "name": "web_search"}],
                 messages=[{
                     "role": "user",
-                    "content": f"""Search for clinical trial efficacy and safety data for {drug_name}
-used to treat {indication}. Return as JSON with efficacy and safety arrays."""
+                    "content": f"""Search for clinical trial efficacy and safety data for {drug_name} used to treat {indication}.
+
+Look for Phase 2 or Phase 3 trial results including:
+- Primary endpoint response rates
+- Comparison to placebo or standard of care
+- Common adverse events and rates
+
+Return as JSON:
+{{
+  "sources": ["url1", "url2"],
+  "efficacy": [
+    {{"trial_name": "name", "endpoint_name": "endpoint", "drug_arm_result": 65.5, "comparator_arm_result": 20.0, "comparator_arm_name": "Placebo", "timepoint": "Week 12", "trial_phase": "Phase 3", "source_index": 0}}
+  ],
+  "safety": [
+    {{"adverse_event": "event", "drug_arm_rate": 10.5, "comparator_arm_rate": 5.0, "is_serious": false, "source_index": 0}}
+  ]
+}}
+
+Return ONLY valid JSON."""
                 }]
             )
 
-            # Parse and store (simplified)
-            return 0, 0  # Return counts
+            # Extract sources from web search
+            search_urls = []
+            for block in message.content:
+                if hasattr(block, 'type') and block.type == 'web_search_tool_result':
+                    if hasattr(block, 'content'):
+                        for result in block.content:
+                            if hasattr(result, 'url'):
+                                search_urls.append(result.url)
+
+            # Parse response
+            efficacy_data = []
+            safety_data = []
+
+            for block in message.content:
+                if block.type == 'text':
+                    text = block.text.strip()
+                    # Clean JSON from markdown
+                    if '```' in text:
+                        match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
+                        if match:
+                            text = match.group(1)
+
+                    try:
+                        data = json.loads(text)
+                        sources = data.get('sources', []) or search_urls
+
+                        for e in data.get('efficacy', []):
+                            e['indication_name'] = indication
+                            source_idx = e.get('source_index', 0)
+                            if sources and 0 <= source_idx < len(sources):
+                                e['source_url'] = sources[source_idx]
+                            efficacy_data.append(e)
+
+                        for s in data.get('safety', []):
+                            s['indication_name'] = indication
+                            source_idx = s.get('source_index', 0)
+                            if sources and 0 <= source_idx < len(sources):
+                                s['source_url'] = sources[source_idx]
+                            safety_data.append(s)
+
+                    except json.JSONDecodeError:
+                        pass
+
+            # Store in database
+            if efficacy_data or safety_data:
+                with DatabaseConnection() as db:
+                    with db.cursor() as cur:
+                        cur.execute('DELETE FROM drug_efficacy_data WHERE drug_id = %s', (drug_id,))
+                        cur.execute('DELETE FROM drug_safety_data WHERE drug_id = %s', (drug_id,))
+
+                        eff_count = 0
+                        for e in efficacy_data:
+                            drug_result = e.get('drug_arm_result')
+                            comp_result = e.get('comparator_arm_result')
+                            try:
+                                drug_result = float(drug_result) if drug_result is not None else None
+                            except (ValueError, TypeError):
+                                drug_result = None
+                            try:
+                                comp_result = float(comp_result) if comp_result is not None else None
+                            except (ValueError, TypeError):
+                                comp_result = None
+
+                            cur.execute("""
+                                INSERT INTO drug_efficacy_data (
+                                    drug_id, trial_name, endpoint_name, drug_arm_result, drug_arm_result_unit,
+                                    comparator_arm_name, comparator_arm_result, timepoint, trial_phase,
+                                    indication_name, confidence_score, data_source, source_url
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'web_search', %s)
+                            """, (
+                                drug_id, e.get('trial_name'), e.get('endpoint_name'),
+                                drug_result, '%',
+                                e.get('comparator_arm_name'), comp_result,
+                                e.get('timepoint'), e.get('trial_phase'),
+                                e.get('indication_name'), 0.7, e.get('source_url')
+                            ))
+                            eff_count += 1
+
+                        safety_count = 0
+                        for s in safety_data:
+                            drug_rate = s.get('drug_arm_rate')
+                            comp_rate = s.get('comparator_arm_rate')
+                            try:
+                                drug_rate = float(drug_rate) if drug_rate is not None else None
+                            except (ValueError, TypeError):
+                                drug_rate = None
+                            try:
+                                comp_rate = float(comp_rate) if comp_rate is not None else None
+                            except (ValueError, TypeError):
+                                comp_rate = None
+
+                            cur.execute("""
+                                INSERT INTO drug_safety_data (
+                                    drug_id, adverse_event, drug_arm_rate, comparator_arm_rate,
+                                    is_serious, indication_name, confidence_score, data_source, source_url
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'web_search', %s)
+                            """, (
+                                drug_id, s.get('adverse_event'), drug_rate,
+                                comp_rate, s.get('is_serious', False),
+                                s.get('indication_name'), 0.7, s.get('source_url')
+                            ))
+                            safety_count += 1
+
+                        db.commit()
+
+                return eff_count, safety_count
+
+            return 0, 0
 
         else:
             # Use OpenFDA for approved drugs
             openfda = OpenFDAClient()
+
+            # Get brand name from database as fallback
+            brand_name = None
+            with DatabaseConnection() as db:
+                with db.cursor() as cur:
+                    cur.execute("SELECT brand_name FROM drugs WHERE drug_id = %s", (drug_id,))
+                    row = cur.fetchone()
+                    if row:
+                        brand_name = row['brand_name']
+
+            # Try generic name first
             labels = openfda.search_drug_labels(drug_name, limit=1)
+
+            # Check if label has required sections, try brand name if not
+            if labels:
+                label = labels[0]
+                has_clinical = label.get('clinical_studies') or label.get('adverse_reactions')
+                if not has_clinical and brand_name:
+                    brand_labels = openfda.search_drug_labels(brand_name, limit=1)
+                    if brand_labels:
+                        labels = brand_labels
+            elif brand_name:
+                labels = openfda.search_drug_labels(brand_name, limit=1)
 
             if not labels:
                 return 0, 0
@@ -259,7 +405,7 @@ def process_drug(drug_name: str, is_investigational: bool, development_code: str
             eff_count, safety_count = extract_efficacy_safety(
                 result['drug_id'],
                 extracted_data.generic_name,
-                is_investigational
+                bool(is_investigational)  # Ensure Python bool
             )
             result['efficacy_count'] = eff_count
             result['safety_count'] = safety_count
@@ -270,7 +416,9 @@ def process_drug(drug_name: str, is_investigational: bool, development_code: str
     except Exception as e:
         result['status'] = 'failed'
         result['error'] = str(e)
-        logger.exception(f"Error processing {drug_name}")
+        logger.exception(f"Error processing {drug_name}: {e}")
+        import traceback
+        traceback.print_exc()
         return result
 
 
@@ -451,7 +599,7 @@ with tab1:
 
             col1, col2 = st.columns(2)
             with col1:
-                extract_efficacy_safety = st.checkbox(
+                should_extract_efficacy = st.checkbox(
                     "Extract efficacy/safety data",
                     value=True,
                     help="Extract clinical trial efficacy and safety data (takes longer)"
@@ -483,7 +631,7 @@ with tab1:
                     'failed': [],
                     'skipped': [],
                     'options': {
-                        'extract_efficacy_safety': extract_efficacy_safety,
+                        'extract_efficacy_safety': should_extract_efficacy,
                         'skip_existing': skip_existing
                     }
                 }
@@ -587,6 +735,8 @@ with tab2:
 
                     # Process drug
                     is_investigational = drug_row.get('is_investigational', False)
+                    # Ensure is_investigational is a Python bool (not numpy.bool_)
+                    is_investigational = bool(is_investigational) if is_investigational else False
                     dev_code = drug_row.get('development_code', '') or None
 
                     result = process_drug(

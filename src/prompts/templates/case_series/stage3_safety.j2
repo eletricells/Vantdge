@@ -14,11 +14,31 @@ Extract EVERY adverse event and safety outcome mentioned:
 - Treatment discontinuations
 - Dose modifications
 
+CRITICAL - HANDLING SAFETY DATA PRESENCE/ABSENCE:
+
+1. IF PAPER EXPLICITLY STATES "NO ADVERSE EVENTS":
+   - Phrases like "well-tolerated with no adverse events", "no AEs reported", "no safety concerns"
+   - Set safety_data_reported: true
+   - Set safety_events: [] (empty array, NOT null)
+   - Add a summary note: "Paper explicitly states no adverse events occurred"
+
+2. IF PAPER REPORTS SPECIFIC ADVERSE EVENTS:
+   - Extract each AE as a separate entry
+   - Set safety_data_reported: true
+   - Populate safety_events array
+
+3. IF PAPER DOES NOT MENTION SAFETY AT ALL:
+   - Set safety_data_reported: false
+   - Set safety_events: null (NOT empty array)
+   - Note: "Safety outcomes not reported in this paper"
+
+This distinction is critical for downstream analysis - "no AEs occurred" is very different from "AEs not reported".
+
 For each safety event, extract:
 {
     "event_name": "name of the adverse event",
     "event_category": "AE" or "SAE" or "AESI" or "Discontinuation" or "Lab abnormality",
-    "category_soc": "Infections | Malignancies | Cardiovascular | Thromboembolic | Hepatotoxicity | Cytopenias | GI Perforation | Hypersensitivity | Neurological | Pulmonary | Renal | Death | Metabolic",
+    "category_soc": "Infections | Malignancies | Cardiovascular | Thromboembolic | Hepatotoxicity | Cytopenias | GI Perforation | Hypersensitivity | Neurological | Pulmonary | Renal | Death | Metabolic | Other",
     "infection_type": "Bacterial | Viral | Fungal | Mycobacterial | Opportunistic | Herpes Zoster" or null (only for infections),
     "malignancy_type": "Hematologic | Solid Tumor | NMSC" or null (only for malignancies),
     "cv_type": "MACE | Heart Failure | Arrhythmia" or null (only for cardiovascular),
@@ -30,7 +50,9 @@ For each safety event, extract:
     "events_total": total event count or null,
     "relatedness": "Related" or "Possibly related" or "Unrelated" or null,
     "outcome": "Resolved" or "Ongoing" or "Fatal" or null,
+    "time_to_onset": "time from treatment start to event" or null,
     "action_taken": "Dose reduced" or "Discontinued" or "None" or null,
+    "rechallenge": "Positive" or "Negative" or "Not attempted" or null,
     "notes": "additional context"
 }
 
@@ -48,21 +70,72 @@ CATEGORY CLASSIFICATION GUIDE (category_soc):
 - Renal: AKI, creatinine elevation, renal failure
 - Death: Any death, include cause if known
 - Metabolic: Lipid changes, CPK elevation, weight gain
+- Other: Events not fitting above categories
 
 KNOWN CLASS EFFECTS (for is_class_effect):
-- JAK inhibitors: Herpes zoster, VTE, MACE, malignancies, cytopenias, lipid elevations
-- IL-1 inhibitors: Injection site reactions, infections
-- Anti-CD20: Infusion reactions, infections, hypogammaglobulinemia
-- TNF inhibitors: Infections, TB reactivation, demyelination, heart failure
 
-Return JSON array of ALL safety events found:
-[
-    {event 1},
-    {event 2},
-    ...
-]
+JAK INHIBITORS (tofacitinib, baricitinib, upadacitinib, ruxolitinib):
+- Herpes zoster reactivation (is_class_effect: true)
+- VTE/PE/DVT (is_class_effect: true)
+- MACE (is_class_effect: true)
+- Malignancies including NMSC (is_class_effect: true)
+- Cytopenias (anemia, neutropenia, lymphopenia) (is_class_effect: true)
+- Lipid elevations (is_class_effect: true)
+- GI perforations (is_class_effect: true)
+- Serious infections (is_class_effect: true)
 
-Include ALL adverse events mentioned.
+IL-1 INHIBITORS (anakinra, canakinumab, rilonacept):
+- Injection site reactions (is_class_effect: true)
+- Serious infections (is_class_effect: true)
+- Neutropenia (is_class_effect: true)
+
+ANTI-CD20 (rituximab, ocrelizumab, ofatumumab):
+- Infusion reactions (is_class_effect: true)
+- Serious infections (is_class_effect: true)
+- Hypogammaglobulinemia (is_class_effect: true)
+- PML (rare but class-associated) (is_class_effect: true)
+- Hepatitis B reactivation (is_class_effect: true)
+
+TNF INHIBITORS (infliximab, adalimumab, etanercept):
+- Serious infections including TB (is_class_effect: true)
+- TB reactivation (is_class_effect: true)
+- Demyelinating disease (is_class_effect: true)
+- Heart failure exacerbation (is_class_effect: true)
+- Lupus-like syndrome (is_class_effect: true)
+- Lymphoma (is_class_effect: true)
+
+IL-6 INHIBITORS (tocilizumab, sarilumab):
+- Serious infections (is_class_effect: true)
+- GI perforations (is_class_effect: true)
+- Hepatotoxicity/transaminase elevations (is_class_effect: true)
+- Neutropenia (is_class_effect: true)
+- Lipid elevations (is_class_effect: true)
+
+Return JSON with this structure:
+{
+    "safety_data_reported": true/false,
+    "safety_reporting_quality": "Systematic" or "Mentioned" or "Not reported",
+    "total_patients_evaluated": number or null,
+    "any_ae_n": number of patients with any AE or null,
+    "any_ae_pct": percentage with any AE or null,
+    "any_sae_n": number with any SAE or null,
+    "any_sae_pct": percentage with any SAE or null,
+    "discontinuation_n": number who discontinued due to AEs or null,
+    "discontinuation_pct": percentage who discontinued or null,
+    "safety_events": [
+        {event 1},
+        {event 2},
+        ...
+    ],
+    "safety_summary": "2-3 sentence summary of safety profile",
+    "notes": "Any important context about safety reporting"
+}
+
+SAFETY REPORTING QUALITY:
+- Systematic: Structured AE collection with counts/percentages for multiple event types
+- Mentioned: Some AEs mentioned but not systematically collected (e.g., "one patient developed herpes zoster")
+- Not reported: Safety not discussed in the paper
+
+Include ALL adverse events mentioned. For events affecting zero patients (if explicitly stated), still include with patients_affected_n: 0.
 
 {% include 'case_series/_partials/json_rules.j2' %}
-

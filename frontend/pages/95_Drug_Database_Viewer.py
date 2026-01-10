@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 from datetime import date, datetime
 from decimal import Decimal
+import pandas as pd
 
 # Add paths
 frontend_dir = Path(__file__).parent.parent
@@ -408,16 +409,16 @@ with st.expander("Debug: Dosing Data", expanded=False):
 
 if dosing:
     import pandas as pd
+    from collections import defaultdict
 
     # Get indication names for dosing regimens - map by indication_id
     indication_map = {ind.get('indication_id'): ind.get('disease_name', 'General')
                      for ind in drug.get('indications', [])}
-    all_indications = list(indication_map.values())
 
     is_approved = drug.get('approval_status') == 'approved'
 
-    # Create one row per dosing regimen (no deduplication)
-    dosing_data = []
+    # Group dosing by indication
+    dosing_by_indication = defaultdict(list)
     for d in dosing:
         indication_id = d.get('indication_id')
 
@@ -440,7 +441,6 @@ if dosing:
         population = d.get('population') or 'Adults'
 
         row = {
-            "Indication": indication_name,
             "Population": population,
             "Status": phase_value,
             "Dosing Type": (d.get('regimen_phase') or 'N/A').title(),
@@ -448,9 +448,12 @@ if dosing:
             "Frequency": d.get('frequency_raw') or d.get('frequency_standard', 'N/A'),
             "Route": d.get('route_raw') or d.get('route_standard', 'N/A')
         }
-        dosing_data.append(row)
+        dosing_by_indication[indication_name].append(row)
 
-    st.dataframe(pd.DataFrame(dosing_data), use_container_width=True, hide_index=True)
+    # Display by indication
+    for indication, regimens in sorted(dosing_by_indication.items()):
+        with st.expander(f"{indication} ({len(regimens)} regimens)", expanded=True):
+            st.dataframe(pd.DataFrame(regimens), use_container_width=True, hide_index=True)
 else:
     st.info("No dosing regimens extracted")
 

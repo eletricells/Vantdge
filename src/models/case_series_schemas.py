@@ -19,8 +19,11 @@ class EvidenceLevel(str, Enum):
     CASE_REPORT = "Case Report"
     CASE_SERIES = "Case Series"
     RETROSPECTIVE_STUDY = "Retrospective Study"
-    PROSPECTIVE_STUDY = "Prospective Study"
-    RANDOMIZED_TRIAL = "Randomized Trial"
+    PROSPECTIVE_COHORT = "Prospective Cohort"
+    PROSPECTIVE_STUDY = "Prospective Study"  # Legacy - maps to Prospective Cohort
+    CONTROLLED_TRIAL = "Controlled Trial"
+    RCT = "RCT"
+    RANDOMIZED_TRIAL = "Randomized Trial"  # Legacy - maps to RCT
     META_ANALYSIS = "Meta-Analysis"
 
 
@@ -65,6 +68,27 @@ class DevelopmentPotential(str, Enum):
     MEDIUM = "Medium"
     LOW = "Low"
     UNKNOWN = "Unknown"
+
+
+class OutcomeMetricType(str, Enum):
+    """Type of efficacy metric being reported.
+
+    Critical for proper interpretation:
+    - EFFICACY_RESPONSE: Clinical improvement (e.g., ACR50, PASI75, symptom improvement)
+    - DRUG_SURVIVAL: % patients remaining on drug over time (NOT efficacy)
+    - DRUG_RETENTION: Same as survival, often used interchangeably
+    - REMISSION: Disease remission rate
+    - DISCONTINUATION: % patients stopping drug (inverse of survival)
+    - COMPOSITE: Combined endpoint with multiple components
+    - OTHER: Other metric types
+    """
+    EFFICACY_RESPONSE = "Efficacy Response"
+    DRUG_SURVIVAL = "Drug Survival"
+    DRUG_RETENTION = "Drug Retention"
+    REMISSION = "Remission"
+    DISCONTINUATION = "Discontinuation"
+    COMPOSITE = "Composite"
+    OTHER = "Other"
 
 
 # ============================================================
@@ -114,6 +138,14 @@ class EfficacyOutcome(BaseModel):
     response_rate: Optional[str] = Field(None, description="Response rate (e.g., '3/3 (100%)')")
     responders_n: Optional[int] = Field(None, description="Number of responders")
     responders_pct: Optional[float] = Field(None, description="Response percentage")
+    metric_type: Optional[str] = Field(
+        "Efficacy Response",
+        description="Type of metric: 'Efficacy Response' (clinical improvement), 'Drug Survival' (retention on drug), 'Remission', 'Discontinuation', 'Other'"
+    )
+    metric_type_confidence: Optional[str] = Field(
+        "High",
+        description="Confidence in metric type classification: High/Medium/Low"
+    )
     time_to_response: Optional[str] = Field(None, description="Time to response")
     duration_of_response: Optional[str] = Field(None, description="Duration of response")
     effect_size_description: Optional[str] = Field(None, description="Effect size description")
@@ -138,7 +170,8 @@ class SafetyOutcome(BaseModel):
 
 class DetailedEfficacyEndpoint(BaseModel):
     """Detailed efficacy endpoint from multi-stage extraction"""
-    endpoint_name: str = Field(..., description="Name of the endpoint")
+    endpoint_name: str = Field(..., description="Name of the endpoint (original)")
+    endpoint_normalized: Optional[str] = Field(None, description="Standardized endpoint name from taxonomy")
     endpoint_category: str = Field("Other", description="Primary/Secondary/Exploratory")
     timepoint: Optional[str] = Field(None, description="Measurement timepoint")
     measurement_type: Optional[str] = Field(None, description="Responder/Change from baseline/Absolute")
@@ -160,6 +193,7 @@ class DetailedEfficacyEndpoint(BaseModel):
     organ_domain: Optional[str] = Field(None, description="Organ domain: Musculoskeletal/Mucocutaneous/Renal/Neurological/Hematological/Cardiopulmonary/Immunological/Systemic/Gastrointestinal/Ocular/Constitutional")
     is_validated_instrument: Optional[bool] = Field(None, description="Whether this is a validated clinical instrument")
     instrument_quality_tier: Optional[int] = Field(None, description="Quality tier: 1=gold standard, 2=validated PRO, 3=investigator-assessed")
+    is_biomarker: Optional[bool] = Field(None, description="True if this is a laboratory biomarker (CRP, LDH, complement, cytokines, etc.) rather than clinical endpoint")
 
     @property
     def is_primary(self) -> bool:
@@ -189,6 +223,92 @@ class DetailedSafetyEndpoint(BaseModel):
     is_class_effect: Optional[bool] = Field(None, description="Whether this is a known effect for this drug class")
 
 
+class BiomarkerResult(BaseModel):
+    """Structured biomarker data extracted from case series"""
+    biomarker_name: str = Field(..., description="Name of the biomarker (e.g., 'LDH', 'CXCL9', 'CRP')")
+    biomarker_category: Optional[str] = Field(None, description="Category: Inflammatory/Complement/Autoantibody/Enzyme/Cytokine/Other")
+    baseline_value: Optional[float] = Field(None, description="Baseline/pre-treatment value")
+    baseline_unit: Optional[str] = Field(None, description="Unit for baseline value")
+    final_value: Optional[float] = Field(None, description="Final/post-treatment value")
+    change_direction: Optional[str] = Field(None, description="Increased/Decreased/No change")
+    change_pct: Optional[float] = Field(None, description="Percentage change from baseline")
+    is_beneficial: Optional[bool] = Field(None, description="True if change is in expected/therapeutic direction")
+    p_value: Optional[str] = Field(None, description="Statistical significance if reported")
+    supports_mechanism: Optional[bool] = Field(None, description="True if biomarker change supports drug's mechanism")
+    notes: Optional[str] = Field(None, description="Additional context")
+
+
+class StudyDesign(str, Enum):
+    """Study design classification"""
+    CASE_REPORT = "Case Report"
+    CASE_SERIES = "Case Series"
+    RETROSPECTIVE = "Retrospective"
+    PROSPECTIVE_OPEN_LABEL = "Prospective Open-Label"
+    PROSPECTIVE_CONTROLLED = "Prospective Controlled"
+    RANDOMIZED_CONTROLLED_TRIAL = "Randomized Controlled Trial"
+    DOUBLE_BLIND_RCT = "Double-Blind RCT"
+    OPEN_LABEL_RCT = "Open-Label RCT"
+    UNKNOWN = "Unknown"
+
+
+class ResponseDefinitionQuality(str, Enum):
+    """Quality of response definition used in study"""
+    IMPLICIT = "Implicit"  # "Patient improved"
+    AUTHOR_DEFINED = "Author-Defined"  # Custom criteria
+    DISEASE_SPECIFIC = "Disease-Specific"  # Disease-specific but not regulatory
+    REGULATORY = "Regulatory"  # ACR/EULAR, PASI, etc.
+    UNKNOWN = "Unknown"
+
+
+class IndividualStudyScore(BaseModel):
+    """Scoring breakdown for an individual case series study"""
+    total_score: float = Field(..., description="Overall score 1-10")
+
+    # Dimension scores (1-10 each)
+    efficacy_score: float = Field(..., description="Efficacy/quantitative rigor score")
+    sample_size_score: float = Field(..., description="Sample size score")
+    endpoint_quality_score: float = Field(..., description="Endpoint quality score")
+    biomarker_score: float = Field(..., description="Biomarker support score")
+    response_definition_score: float = Field(..., description="Response definition quality score")
+    followup_score: float = Field(..., description="Follow-up duration score")
+
+    # Dimension weights used
+    weights: Dict[str, float] = Field(
+        default_factory=lambda: {
+            "efficacy": 0.35,
+            "sample_size": 0.15,
+            "endpoint_quality": 0.10,
+            "biomarker": 0.15,
+            "response_definition": 0.15,
+            "followup": 0.10,
+        }
+    )
+
+    # Scoring rationale
+    scoring_notes: Optional[str] = Field(None, description="Notes explaining the scoring")
+
+
+class AggregateScore(BaseModel):
+    """Aggregate scoring across multiple studies for a disease"""
+    aggregate_score: float = Field(..., description="N-weighted average of individual scores")
+    study_count: int = Field(..., description="Number of studies included")
+    total_patients: int = Field(..., description="Total patients across studies")
+
+    # Best paper info
+    best_paper_pmid: Optional[str] = Field(None, description="PMID of highest-scoring paper")
+    best_paper_score: Optional[float] = Field(None, description="Score of best paper")
+
+    # Consistency metrics
+    consistency_level: Optional[str] = Field(None, description="High/Moderate/Low based on CV")
+    response_rate_cv: Optional[float] = Field(None, description="Coefficient of variation of response rates")
+
+    # Individual scores
+    individual_scores: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of {pmid, n_patients, score} for each study"
+    )
+
+
 class CaseSeriesExtraction(BaseModel):
     """Complete extraction from a case series/report"""
     # Source info
@@ -196,7 +316,12 @@ class CaseSeriesExtraction(BaseModel):
 
     # Disease/indication
     disease: str = Field(..., description="Disease/condition treated")
-    disease_normalized: Optional[str] = Field(None, description="Normalized disease name")
+    disease_normalized: Optional[str] = Field(None, description="Normalized/canonical disease name")
+    disease_subtype: Optional[str] = Field(None, description="Disease subtype (e.g., 'Amyopathic' for Dermatomyositis)")
+    disease_category: Optional[str] = Field(None, description="Top-level disease category (e.g., 'Inflammatory Myopathies')")
+    disease_raw: Optional[str] = Field(None, description="Original disease text before normalization")
+    parent_disease: Optional[str] = Field(None, description="Parent disease for hierarchy grouping (e.g., 'SLE' for 'Lupus Nephritis')")
+    score_explanation: Optional[str] = Field(None, description="AI-generated explanation of how the score was derived")
     is_off_label: bool = Field(True, description="Whether use is off-label")
     is_relevant: bool = Field(True, description="Whether paper is relevant for drug repurposing (set by LLM during extraction)")
 
@@ -222,6 +347,30 @@ class CaseSeriesExtraction(BaseModel):
     detailed_safety_endpoints: List[DetailedSafetyEndpoint] = Field(
         default_factory=list,
         description="Detailed safety endpoints from multi-stage extraction"
+    )
+
+    # New fields for refined scoring (Phase 2)
+    study_design: Optional[str] = Field(
+        None,
+        description="Study design: Case Report, Case Series, Retrospective, Prospective Open-Label"
+    )
+    biomarkers: List[BiomarkerResult] = Field(
+        default_factory=list,
+        description="Biomarker results extracted from the study"
+    )
+    response_definition_quality: Optional[str] = Field(
+        None,
+        description="Quality of response definition: Implicit, Author-Defined, Disease-Specific, Regulatory"
+    )
+    follow_up_weeks: Optional[float] = Field(
+        None,
+        description="Follow-up duration in weeks (numeric for scoring)"
+    )
+
+    # Scoring results
+    individual_score: Optional[IndividualStudyScore] = Field(
+        None,
+        description="Individual study score breakdown"
     )
 
     # Extraction metadata
@@ -403,6 +552,11 @@ class RepurposingOpportunity(BaseModel):
     # Scoring
     scores: OpportunityScores = Field(default_factory=OpportunityScores)
 
+    # Aggregate scoring (for disease-level aggregation)
+    aggregate_score: Optional[AggregateScore] = Field(
+        None, description="Aggregate score across all studies for this disease"
+    )
+
     # Ranking
     rank: Optional[int] = Field(None, description="Rank among opportunities")
 
@@ -410,6 +564,29 @@ class RepurposingOpportunity(BaseModel):
 # ============================================================
 # Analysis Results Schemas
 # ============================================================
+
+class PaperForManualReview(BaseModel):
+    """Paper that passed filters but couldn't extract full text - needs manual review."""
+    pmid: Optional[str] = Field(None, description="PubMed ID")
+    doi: Optional[str] = Field(None, description="DOI")
+    title: str = Field("", description="Paper title")
+    authors: Optional[str] = Field(None, description="Authors")
+    journal: Optional[str] = Field(None, description="Journal name")
+    year: Optional[int] = Field(None, description="Publication year")
+    abstract: Optional[str] = Field(None, description="Abstract text")
+    disease: Optional[str] = Field(None, description="Disease extracted from abstract")
+    # N extraction from abstract
+    n_patients: Optional[int] = Field(None, description="Patient count (extracted from abstract)")
+    n_confidence: str = Field("Unknown", description="Confidence in N extraction: High, Medium, Low, Unknown")
+    # Efficacy info from abstract
+    response_rate: Optional[str] = Field(None, description="Response rate if mentioned (e.g., '80%', '5/6')")
+    primary_endpoint: Optional[str] = Field(None, description="Primary endpoint if mentioned")
+    efficacy_mention: Optional[str] = Field(None, description="Brief efficacy summary from abstract")
+    # Why this needs manual review
+    reason: str = Field("Abstract only - full text not available", description="Reason for manual review")
+    has_full_text: bool = Field(False, description="Whether full text was available")
+    extraction_method: str = Field("single_pass", description="Extraction method used")
+
 
 class DrugAnalysisResult(BaseModel):
     """Complete analysis result for a drug"""
@@ -421,6 +598,12 @@ class DrugAnalysisResult(BaseModel):
 
     # Opportunities found
     opportunities: List[RepurposingOpportunity] = Field(default_factory=list)
+
+    # Papers requiring manual review (abstract-only extractions)
+    papers_for_manual_review: List[PaperForManualReview] = Field(
+        default_factory=list,
+        description="Papers that passed filters but need manual review (no full text access)"
+    )
 
     # Metadata
     analysis_date: datetime = Field(default_factory=datetime.now)
@@ -435,10 +618,45 @@ class DrugAnalysisResult(BaseModel):
 
 
 class MechanismAnalysisResult(BaseModel):
-    """Analysis result for a mechanism class"""
-    mechanism: str = Field(..., description="Mechanism analyzed")
-    drugs_analyzed: List[DrugAnalysisResult] = Field(default_factory=list)
-    total_opportunities: int = Field(0)
+    """Analysis result for a mechanism class (multi-drug analysis)"""
+    mechanism_target: str = Field(..., description="Mechanism/target analyzed (e.g., 'JAK1', 'IL-6')")
+    drugs_analyzed: List[str] = Field(default_factory=list, description="Drug names that were successfully analyzed")
+    drugs_failed: Dict[str, str] = Field(default_factory=dict, description="Drugs that failed: {drug_name: error_message}")
+    opportunities: List[RepurposingOpportunity] = Field(default_factory=list, description="All opportunities ranked together")
+    drug_results: Dict[str, "DrugAnalysisResult"] = Field(default_factory=dict, description="Individual results by drug name")
     analysis_date: datetime = Field(default_factory=datetime.now)
-    total_cost_usd: float = Field(0.0)
+
+    # Papers requiring manual review (aggregated across all drugs)
+    papers_for_manual_review: List[PaperForManualReview] = Field(
+        default_factory=list,
+        description="Papers that passed filters but need manual review (no full text access)"
+    )
+
+    # Aggregate metrics
+    papers_screened: int = Field(0, description="Total papers screened across all drugs")
+    papers_extracted: int = Field(0, description="Total papers extracted across all drugs")
+    total_input_tokens: int = Field(0)
+    total_output_tokens: int = Field(0)
+    estimated_cost_usd: float = Field(0.0)
+
+    @property
+    def total_opportunities(self) -> int:
+        """Total number of opportunities found."""
+        return len(self.opportunities)
+
+    @property
+    def successful_drugs(self) -> int:
+        """Number of drugs successfully analyzed."""
+        return len(self.drugs_analyzed)
+
+    @property
+    def failed_drug_count(self) -> int:
+        """Number of drugs that failed analysis."""
+        return len(self.drugs_failed)
+
+    # Backward compatibility
+    @property
+    def mechanism(self) -> str:
+        """Alias for mechanism_target (backward compatibility)."""
+        return self.mechanism_target
 

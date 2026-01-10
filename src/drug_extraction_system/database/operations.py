@@ -333,6 +333,126 @@ class DrugDatabaseOperations:
 
             return drug
 
+    def search_by_target(
+        self,
+        target: str,
+        include_moa_category: bool = True,
+        approval_status: Optional[str] = None,
+        search_mechanism_text: bool = True,
+    ) -> List[Dict]:
+        """
+        Search for drugs by molecular target or mechanism of action category.
+
+        Uses case-insensitive fuzzy matching to find drugs targeting a specific
+        molecule (e.g., 'JAK1', 'IL-17A', 'TNF-alpha').
+
+        Args:
+            target: Target name to search for (e.g., 'JAK1', 'IL-6', 'C5')
+            include_moa_category: Also search in moa_category field (default True)
+            approval_status: Filter by approval status ('approved', 'investigational')
+            search_mechanism_text: Also search in mechanism_of_action text (default True)
+                Uses stricter matching to avoid false positives
+
+        Returns:
+            List of drug records matching the target
+        """
+        self.db.ensure_connected()
+
+        with self.db.cursor() as cur:
+            # Build the search pattern for structured fields (target, moa_category)
+            search_pattern = f"%{target}%"
+
+            # Base query - search in target field
+            query = """
+                SELECT DISTINCT d.drug_id, d.drug_key, d.generic_name, d.brand_name,
+                       d.manufacturer, d.drug_type, d.mechanism_of_action,
+                       d.target, d.moa_category, d.approval_status, d.highest_phase,
+                       d.first_approval_date
+                FROM drugs d
+                WHERE (d.target ILIKE %s
+            """
+            params = [search_pattern]
+
+            # Optionally search in moa_category as well
+            if include_moa_category:
+                query += " OR d.moa_category ILIKE %s"
+                params.append(search_pattern)
+
+            # For mechanism_of_action text, use stricter matching to avoid false positives
+            # Require the target to appear in specific contexts like "X inhibitor", "anti-X", etc.
+            if search_mechanism_text:
+                # Build specific patterns that indicate the drug actually targets this molecule
+                # This avoids matching "regulates cleavage of C3" when searching for C3 inhibitors
+                moa_patterns = [
+                    f"% {target} inhibitor%",      # "C3 inhibitor"
+                    f"% {target} antagonist%",    # "CXCR4 antagonist"
+                    f"% {target} blocker%",       # "IL-6 blocker"
+                    f"% {target} antibody%",      # "IL-17 antibody"
+                    f"%anti-{target}%",           # "anti-C5"
+                    f"%anti {target}%",           # "anti C5"
+                    f"%targets {target}%",        # "targets JAK1"
+                    f"%targeting {target}%",      # "targeting JAK1"
+                    f"%binds to {target}%",       # "binds to Factor B"
+                    f"%{target} receptor%",       # "CXCR4 receptor"
+                    f"% {target} modulator%",     # "S1P modulator"
+                    f"% {target} agonist%",       # "GLP-1 agonist"
+                ]
+                for pattern in moa_patterns:
+                    query += " OR d.mechanism_of_action ILIKE %s"
+                    params.append(pattern)
+
+            query += ")"
+
+            # Optional approval status filter
+            if approval_status:
+                query += " AND d.approval_status = %s"
+                params.append(approval_status)
+
+            query += " ORDER BY d.generic_name"
+
+            cur.execute(query, params)
+            results = cur.fetchall()
+
+            return [dict(r) for r in results]
+
+    def get_all_targets(self) -> List[Dict[str, Any]]:
+        """
+        Get all unique targets in the database with drug counts.
+
+        Returns:
+            List of dicts with target name and drug count
+        """
+        self.db.ensure_connected()
+
+        with self.db.cursor() as cur:
+            cur.execute("""
+                SELECT target, COUNT(*) as drug_count
+                FROM drugs
+                WHERE target IS NOT NULL AND target != ''
+                GROUP BY target
+                ORDER BY drug_count DESC, target
+            """)
+            return [dict(r) for r in cur.fetchall()]
+
+    def get_all_moa_categories(self) -> List[Dict[str, Any]]:
+        """
+        Get all unique mechanism of action categories with drug counts.
+
+        Returns:
+            List of dicts with moa_category and drug count
+        """
+        self.db.ensure_connected()
+
+        with self.db.cursor() as cur:
+            cur.execute("""
+                SELECT moa_category, COUNT(*) as drug_count
+                FROM drugs
+                WHERE moa_category IS NOT NULL AND moa_category != ''
+                GROUP BY moa_category
+                ORDER BY drug_count DESC, moa_category
+            """)
+            return [dict(r) for r in cur.fetchall()]
+
     def log_process_start(self, batch_id: UUID, csv_file: str, total_drugs: int) -> int:
         """Log batch processing start."""
         self.db.ensure_connected()
@@ -452,15 +572,17 @@ class DrugDatabaseOperations:
                     data = result
 
                 try:
+                    # Support new benchmark fields (source_url, pmid, review_status)
                     cur.execute("""
                         INSERT INTO drug_efficacy_data (
                             drug_id, trial_name, endpoint_name, endpoint_type,
                             drug_arm_name, drug_arm_n, drug_arm_result, drug_arm_result_unit,
                             comparator_arm_name, comparator_arm_n, comparator_arm_result,
                             p_value, confidence_interval, timepoint, trial_phase, nct_id,
-                            population, indication_name, confidence_score, data_source
+                            population, indication_name, confidence_score, data_source,
+                            source_url, pmid, review_status, raw_source_text
                         ) VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'openfda'
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                         )
                     """, (
                         drug_id,
@@ -482,6 +604,11 @@ class DrugDatabaseOperations:
                         data.get('population'),
                         data.get('indication_name'),
                         data.get('confidence_score', 0.85),
+                        data.get('data_source', 'openfda'),
+                        data.get('source_url'),
+                        data.get('pmid'),
+                        data.get('review_status', 'auto_accepted'),
+                        data.get('raw_source_text'),
                     ))
                     inserted += 1
                 except Exception as e:
@@ -683,24 +810,31 @@ class DrugDatabaseOperations:
                     if cur.fetchone():
                         continue  # Skip duplicate
 
-                    # Serialize sponsors and conditions as JSON
+                    # Serialize sponsors, conditions, and interventions as JSON
                     sponsors = trial.get('sponsors', {})
                     conditions = trial.get('conditions', [])
+                    interventions = trial.get('interventions', [])
+
+                    # Support both field name formats (title/trial_title, etc.)
+                    trial_title = trial.get('title') or trial.get('trial_title')
+                    trial_phase = trial.get('phase') or trial.get('trial_phase')
+                    trial_status = trial.get('status') or trial.get('trial_status')
 
                     cur.execute("""
                         INSERT INTO drug_clinical_trials (
                             drug_id, nct_id, trial_title, trial_phase,
-                            trial_status, sponsors, conditions,
+                            trial_status, sponsors, conditions, interventions,
                             start_date, completion_date, enrollment
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         drug_id,
                         nct_id,
-                        trial.get('title'),
-                        trial.get('phase'),
-                        trial.get('status'),
+                        trial_title,
+                        trial_phase,
+                        trial_status,
                         Json(sponsors) if sponsors else None,
                         Json(conditions) if conditions else None,
+                        Json(interventions) if interventions else None,
                         trial.get('start_date'),
                         trial.get('completion_date'),
                         trial.get('enrollment'),
@@ -713,4 +847,95 @@ class DrugDatabaseOperations:
 
         logger.info(f"Stored {inserted} clinical trials for drug_id={drug_id}")
         return inserted
+
+    def store_dosing_regimens(self, drug_id: int, regimens: List[Any]) -> int:
+        """
+        Store dosing regimens for a drug.
+
+        Args:
+            drug_id: Drug ID
+            regimens: List of ParsedDosingRegimen objects or dictionaries
+
+        Returns:
+            Number of records inserted
+        """
+        self.db.ensure_connected()
+        inserted = 0
+
+        # First clear existing regimens
+        with self.db.cursor() as cur:
+            cur.execute("DELETE FROM drug_dosing_regimens WHERE drug_id = %s", (drug_id,))
+            self.db.commit()
+
+        with self.db.cursor() as cur:
+            for idx, regimen in enumerate(regimens):
+                try:
+                    # Handle both dataclass and dict
+                    if hasattr(regimen, '__dict__'):
+                        r = regimen.__dict__
+                    elif isinstance(regimen, dict):
+                        r = regimen
+                    else:
+                        continue
+
+                    # Skip if it's just raw text without structured data
+                    if r.get('raw_text') and not r.get('dose_amount'):
+                        continue
+
+                    # Use savepoint for each insert to handle individual failures
+                    cur.execute("SAVEPOINT dosing_insert")
+                    try:
+                        cur.execute("""
+                            INSERT INTO drug_dosing_regimens (
+                                drug_id, regimen_phase, dose_amount, dose_unit,
+                                frequency_standard, frequency_raw, route_standard, route_raw,
+                                duration_weeks, weight_based, sequence_order, dosing_notes,
+                                data_source, population
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            drug_id,
+                            r.get('regimen_phase', 'single'),
+                            r.get('dose_amount'),
+                            r.get('dose_unit'),
+                            r.get('frequency'),  # frequency_standard
+                            r.get('frequency'),  # frequency_raw
+                            r.get('route'),      # route_standard
+                            r.get('route'),      # route_raw
+                            self._parse_duration_weeks(r.get('duration')),
+                            r.get('weight_based', False),
+                            idx + 1,  # sequence_order
+                            r.get('special_instructions'),  # dosing_notes
+                            r.get('data_source', 'openfda'),
+                            r.get('population'),
+                        ))
+                        cur.execute("RELEASE SAVEPOINT dosing_insert")
+                        inserted += 1
+                    except Exception as insert_err:
+                        cur.execute("ROLLBACK TO SAVEPOINT dosing_insert")
+                        logger.warning(f"Failed to insert dosing regimen: {insert_err}")
+                except Exception as e:
+                    logger.warning(f"Error processing dosing regimen: {e}")
+
+            self.db.commit()
+
+        logger.info(f"Stored {inserted} dosing regimens for drug_id={drug_id}")
+        return inserted
+
+    def _parse_duration_weeks(self, duration_str: str) -> Optional[int]:
+        """Parse duration string to weeks."""
+        if not duration_str:
+            return None
+        try:
+            import re
+            # Try to extract number of weeks
+            match = re.search(r'(\d+)\s*week', duration_str.lower())
+            if match:
+                return int(match.group(1))
+            # Try months (convert to weeks)
+            match = re.search(r'(\d+)\s*month', duration_str.lower())
+            if match:
+                return int(match.group(1)) * 4
+            return None
+        except:
+            return None
 

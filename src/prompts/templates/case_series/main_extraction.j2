@@ -16,20 +16,27 @@ Extract structured data about this case report/series. Focus on:
 
 Return ONLY valid JSON in this format:
 {
-    "disease": "specific disease name treated",
+    "disease": "canonical disease name (e.g., 'Dermatomyositis', 'Rheumatoid Arthritis', 'Systemic Lupus Erythematosus')",
+    "disease_subtype": "disease subtype if applicable (e.g., 'Amyopathic', 'Anti-MDA5', 'Seropositive') or null",
+    "disease_category": "therapeutic area (e.g., 'Inflammatory Myopathies', 'Rheumatic Diseases', 'Dermatologic Diseases')",
+    "disease_raw": "exact disease text as written in the paper",
     "is_relevant": true or false (is this actually about off-label use of {{ drug_name }}?),
-    "evidence_level": "Case Report" or "Case Series" or "Retrospective Study",
-    "n_patients": number,
+    "evidence_level": "RCT" or "Controlled Trial" or "Prospective Cohort" or "Retrospective Study" or "Case Series" or "Case Report",
+    "study_design": "Randomized Controlled Trial" or "Double-Blind RCT" or "Open-Label RCT" or "Prospective Controlled" or "Prospective Open-Label" or "Retrospective" or "Case Series" or "Case Report" or "Unknown",
+    "n_patients": number (CRITICAL: extract from text - see N_PATIENTS EXTRACTION GUIDE below),
     "patient_description": "brief description of patient characteristics",
     "prior_treatments_failed": ["treatment1", "treatment2"],
     "dose": "dose used",
     "route": "oral/IV/etc",
     "duration": "treatment duration",
     "primary_endpoint": "the main efficacy endpoint measured (e.g., 'CDASI score reduction', 'remission rate', 'CRP reduction')",
+    "endpoint_normalized": "standardized endpoint name without disease qualifiers (e.g., 'CDASI' not 'CDASI - amyopathic DM', 'ACR50' not 'ACR50 response rate')",
     "endpoint_result": "result on primary endpoint (e.g., '50% reduction in CDASI', 'complete remission in 3/5 patients')",
     "response_rate": "X/N (Y%)" or null,
     "responders_n": number or null,
     "responders_pct": percentage or null,
+    "metric_type": "Efficacy Response" or "Drug Survival" or "Remission" or "Discontinuation" or "Other",
+    "metric_type_confidence": "High" or "Medium" or "Low",
     "time_to_response": "time description" or null,
     "duration_of_response": "how long the response lasted" or null,
     "effect_size_description": "description of effect size",
@@ -41,10 +48,23 @@ Return ONLY valid JSON in this format:
     "discontinuations_n": number of discontinuations or null,
     "discontinuation_reasons": ["reason1", "reason2"] or [],
     "safety_summary": "2-3 sentence safety summary",
+    "biomarkers": [
+        {
+            "name": "biomarker name (e.g., C-peptide, CRP, ESR, IL-6, IFN signature)",
+            "baseline_value": "value before treatment or null",
+            "final_value": "value after treatment or null",
+            "change_pct": percentage change (negative for decrease) or null,
+            "p_value": "p-value if reported" or null,
+            "direction": "decreased" or "increased" or "normalized" or null,
+            "is_beneficial": true or false or null
+        }
+    ],
     "outcome_result": "Success" or "Fail" or "Mixed",
     "efficacy_signal": "Strong" or "Moderate" or "Weak" or "None",
     "safety_profile": "Favorable" or "Acceptable" or "Concerning" or "Unknown",
     "follow_up_duration": "duration" or null,
+    "follow_up_weeks": numeric value of follow-up in weeks or null (e.g., 12 for 3 months, 26 for 6 months),
+    "response_definition_quality": "Implicit" or "Author-Defined" or "Disease-Specific" or "Regulatory" or "Unknown",
     "key_findings": "1-2 sentence key findings",
     "year": publication year or null,
     "journal": "journal name" or null,
@@ -58,6 +78,31 @@ Return ONLY valid JSON in this format:
         "limiting_factors": ["list any issues, e.g., 'response rate not explicitly stated', 'safety not reported'"]
     }
 }
+
+N_PATIENTS EXTRACTION GUIDE (CRITICAL - DO NOT RETURN NULL IF COUNT IS STATED):
+Always extract n_patients when ANY patient count is mentioned. Look for these patterns:
+
+EXPLICIT COUNTS (extract the number directly):
+- "10 patients with X" → n_patients: 10
+- "a series of 15 patients" → n_patients: 15
+- "n=20" or "N=20" → n_patients: 20
+- "enrolled 25 patients" → n_patients: 25
+- "treated 8 subjects" → n_patients: 8
+- "12 consecutive patients" → n_patients: 12
+- "a cohort of 30 patients" → n_patients: 30
+
+FROM RESPONSE DENOMINATORS (extract total from fractions):
+- "10/12 patients responded" → n_patients: 12
+- "5 of 8 achieved remission" → n_patients: 8
+- "response in 7/10 (70%)" → n_patients: 10
+
+SINGLE PATIENT (case report):
+- "a 45-year-old woman" (single patient described) → n_patients: 1
+- "we report a case" → n_patients: 1
+- "a patient with X" → n_patients: 1
+
+NEVER return n_patients: null if any of these patterns are present in the text.
+Only return null if there is genuinely no indication of patient count.
 
 EXTRACTION CONFIDENCE SCORING GUIDE:
 - disease_certainty:
@@ -83,6 +128,160 @@ EXTRACTION CONFIDENCE SCORING GUIDE:
 CRITICAL:
 - Set is_relevant=false if this is NOT about off-label use
 - Set is_relevant=false if the disease is one of the approved indications
+
+DISEASE/SUBTYPE SEPARATION GUIDE:
+Always separate the base disease from its subtype:
+- "amyopathic dermatomyositis" → disease: "Dermatomyositis", disease_subtype: "Amyopathic"
+- "anti-MDA5 dermatomyositis" → disease: "Dermatomyositis", disease_subtype: "Anti-MDA5"
+- "juvenile dermatomyositis" → disease: "Dermatomyositis", disease_subtype: "Juvenile"
+- "seropositive rheumatoid arthritis" → disease: "Rheumatoid Arthritis", disease_subtype: "Seropositive"
+- "lupus nephritis class IV" → disease: "Lupus Nephritis", disease_subtype: "Class IV"
+- "relapsing-remitting MS" → disease: "Multiple Sclerosis", disease_subtype: "Relapsing-Remitting"
+- "generalized myasthenia gravis" → disease: "Myasthenia Gravis", disease_subtype: "Generalized"
+- "plaque psoriasis" → disease: "Psoriasis", disease_subtype: "Plaque"
+
+CRITICAL - DISEASE SPECIFICITY RULES:
+NEVER use broad categories as the disease name. Always extract the SPECIFIC condition being treated:
+
+BAD (too broad):
+- "Immune-Related Adverse Events" → Extract the SPECIFIC irAE (colitis, pneumonitis, hepatitis, etc.)
+- "Adverse Events" → Extract what condition is being treated
+- "Complications" → Extract the specific complication
+- "Side Effects" → Extract what is being treated
+
+GOOD (specific):
+- irAE colitis → disease: "Colitis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- irAE hepatitis → disease: "Hepatitis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- irAE pneumonitis → disease: "Pneumonitis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- irAE myocarditis → disease: "Myocarditis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- irAE arthritis → disease: "Arthritis", disease_subtype: "Immune Checkpoint Inhibitor-Induced"
+- Graft-versus-host disease → disease: "Graft-versus-Host Disease", disease_subtype: "Acute" or "Chronic"
+- Cytokine release syndrome → disease: "Cytokine Release Syndrome"
+
+If multiple irAEs are treated in the paper, use the PRIMARY condition or "Multiple Immune-Related Adverse Events" as disease_subtype with the most common specific irAE as the disease.
+
+Disease categories include:
+- Inflammatory Myopathies (DM, PM, IBM)
+- Rheumatic Diseases (RA, PsA, AS, gout, OA)
+- Dermatologic Diseases (psoriasis, AD, vitiligo, hidradenitis)
+- Respiratory Diseases (asthma, COPD, IPF)
+- Neurological Diseases (MS, NMOSD, MG, ALS)
+- Gastrointestinal Diseases (Crohn's, UC, celiac)
+- Hematologic Diseases (ITP, PNH, CAD, myelofibrosis)
+- Vasculitis (AAV, GCA, Behcet's)
+- Lupus (SLE, lupus nephritis, cutaneous lupus)
+- Autoimmune Diseases (Sjogren's, SSc)
+
+ENDPOINT NORMALIZATION GUIDE:
+Strip disease qualifiers from endpoints:
+- "CDASI score - amyopathic DM subtype" → endpoint_normalized: "CDASI"
+- "MMT8 for dermatomyositis" → endpoint_normalized: "MMT8"
+- "ACR50 response rate" → endpoint_normalized: "ACR50"
+- "PASI 75 response" → endpoint_normalized: "PASI"
+
+STUDY DESIGN CLASSIFICATION:
+- Randomized Controlled Trial / Double-Blind RCT: Randomized, controlled, often double-blind
+- Open-Label RCT: Randomized but not blinded
+- Prospective Controlled: Prospective study with control/comparator arm but not randomized
+- Prospective Open-Label: Prospective study without control arm
+- Retrospective: Retrospective chart review, registry study, or database analysis
+- Case Series: Multiple patients without formal study protocol
+- Case Report: Single patient (n=1)
+- Unknown: Cannot determine from abstract/content
+
+EVIDENCE LEVEL CLASSIFICATION (CRITICAL):
+Match evidence_level to study_design:
+- "RCT": Any randomized controlled trial (double-blind, open-label, phase 2/3)
+  * Keywords: "randomized", "randomised", "placebo-controlled", "double-blind", "phase 2", "phase 3"
+- "Controlled Trial": Non-randomized but controlled study
+  * Keywords: "controlled trial", "comparator arm", "active control"
+- "Prospective Cohort": Prospective observational study
+  * Keywords: "prospective", "cohort", "longitudinal", "registry"
+- "Retrospective Study": Retrospective analysis
+  * Keywords: "retrospective", "chart review", "database", "registry analysis"
+- "Case Series": Multiple patients, no formal protocol
+- "Case Report": Single patient (n=1)
+
+EXAMPLES:
+- "A phase 2, double-blind, randomized, placebo-controlled trial" → evidence_level: "RCT", study_design: "Double-Blind RCT"
+- "This randomized trial compared..." → evidence_level: "RCT", study_design: "Randomized Controlled Trial"
+- "In this retrospective analysis of 150 patients..." → evidence_level: "Retrospective Study", study_design: "Retrospective"
+- "We report 8 patients treated with..." → evidence_level: "Case Series", study_design: "Case Series"
+
+RESPONSE DEFINITION QUALITY:
+- Implicit: Response described subjectively ("patient improved", "clinical benefit observed")
+- Author-Defined: Authors defined custom response criteria for this study
+- Disease-Specific: Standard disease-specific criteria used (e.g., IMACS, MCID cutoffs) but not regulatory
+- Regulatory: FDA/EMA-accepted primary endpoints (ACR20/50/70, PASI 75, EASI 75, CDASI, SRI-4, Mayo Score)
+
+FOLLOW-UP WEEKS CALCULATION:
+Convert follow-up duration to weeks:
+- "12 weeks" → 12
+- "3 months" → 12
+- "6 months" → 26
+- "1 year" → 52
+- "24 weeks" → 24
+
+BIOMARKER EXTRACTION (CRITICAL):
+Extract ANY laboratory or biological markers mentioned with quantitative changes:
+
+Common biomarkers to look for:
+- Inflammatory: CRP, ESR, ferritin, IL-6, TNF-alpha, cytokines
+- Metabolic: C-peptide, HbA1c, glucose, insulin levels
+- Hematologic: hemoglobin, platelets, WBC, ANC, lymphocytes
+- Autoimmune: ANA, anti-dsDNA, complement (C3, C4), autoantibodies
+- Organ function: creatinine, eGFR, proteinuria, liver enzymes
+- Disease-specific: interferon signature, STAT1, muscle enzymes (CK, LDH, aldolase)
+
+Extract biomarker if ANY of these are present:
+- "CRP decreased from X to Y" → name: "CRP", baseline_value: "X", final_value: "Y", direction: "decreased"
+- "C-peptide AUC was 0.65 vs 0.43 (p=0.001)" → name: "C-peptide AUC", final_value: "0.65", p_value: "0.001", is_beneficial: true
+- "50% reduction in interferon signature" → name: "interferon signature", change_pct: -50, direction: "decreased"
+- "ferritin normalized" → name: "ferritin", direction: "normalized", is_beneficial: true
+
+Set is_beneficial based on clinical context:
+- Inflammatory markers decreasing = beneficial (CRP, ESR, ferritin down = good)
+- C-peptide preserved/increased in T1D = beneficial
+- Autoantibodies decreasing = beneficial
+- Organ function improving = beneficial
+
+METRIC TYPE CLASSIFICATION (CRITICAL):
+Correctly classify what the reported percentage/rate measures:
+
+**Efficacy Response** - Clinical improvement in disease:
+- ACR20/50/70, PASI75, EASI75, CDASI response
+- "83% achieved clinical response"
+- "10/12 patients improved"
+- Change in disease activity scores
+- Symptom improvement rates
+
+**Drug Survival** - % patients REMAINING on medication over time:
+- "18-month drug survival rate was 20.4%"
+- "Drug retention at 1 year: 45%"
+- "Persistence rate: 60% at 6 months"
+- This is NOT efficacy - it includes all discontinuations (lack of efficacy, side effects, switching, access issues)
+- Low drug survival does NOT mean low efficacy
+
+**Remission** - Disease remission specifically:
+- "Complete remission in 3/5 patients"
+- "Remission rate: 40%"
+- Disease-free status achieved
+
+**Discontinuation** - % patients STOPPING medication:
+- "Discontinuation rate: 35%"
+- "40% discontinued due to adverse events"
+- Inverse of drug survival
+
+**Other** - Metrics that don't fit above:
+- Quality of life improvements
+- Biomarker changes alone
+- Composite endpoints
+
+EXAMPLES:
+- "The 18-month drug survival rate for baricitinib was 20.4%" → metric_type: "Drug Survival", NOT "Efficacy Response"
+- "83.3% of patients achieved clinical response at week 16" → metric_type: "Efficacy Response"
+- "Drug retention was 70% at 1 year" → metric_type: "Drug Survival"
+- "Complete remission was achieved in 60% of patients" → metric_type: "Remission"
 
 {% include 'case_series/_partials/json_rules.j2' %}
 

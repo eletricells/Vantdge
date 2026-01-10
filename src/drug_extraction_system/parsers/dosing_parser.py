@@ -114,8 +114,12 @@ Start your response with [ and end with ]"""
 
         return text
 
-    def parse(self, raw_text: str, drug_name: str) -> List[ParsedDosingRegimen]:
+    def parse(self, raw_text, drug_name: str) -> List[ParsedDosingRegimen]:
         """Parse raw dosing text into structured regimens."""
+        # Handle list input (OpenFDA returns list of strings)
+        if isinstance(raw_text, list):
+            raw_text = "\n".join(str(item) for item in raw_text)
+
         if not raw_text or len(raw_text.strip()) < 10:
             return []
 

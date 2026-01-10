@@ -31,3 +31,27 @@ CRITICAL JSON RULES - FOLLOW EXACTLY:
    - If a value is not clearly stated, use null
    - Do not infer or calculate values unless specifically instructed
    - When uncertain between two values, prefer null over guessing
+
+7. NULL VS EMPTY DISTINCTIONS (CRITICAL):
+   Use null and empty values correctly to preserve information:
+
+   - null = Data NOT AVAILABLE, NOT REPORTED, or UNKNOWN
+     Example: "adverse_events": null means "AE data was not reported in this paper"
+
+   - [] (empty array) = Data IS AVAILABLE and confirms ZERO items
+     Example: "adverse_events": [] means "paper explicitly states no AEs occurred"
+
+   - 0 = Data confirms zero count
+     Example: "sae_count": 0 means "paper states zero SAEs"
+     Example: "sae_count": null means "SAE count not reported"
+
+   EXAMPLES:
+   - Paper says "No adverse events were reported" → "adverse_events": [], "sae_count": 0
+   - Paper doesn't mention safety at all → "adverse_events": null, "sae_count": null
+   - Paper says "5 patients had no prior treatments" → "prior_treatments_failed": []
+   - Paper doesn't mention prior treatments → "prior_treatments_failed": null
+
+8. NUMERIC PRECISION:
+   - Report percentages to one decimal place: 83.3 (NOT 83.333333)
+   - Report p-values as strings when ranges: "<0.05", "<0.001"
+   - Report exact p-values as numbers when given: 0.023
