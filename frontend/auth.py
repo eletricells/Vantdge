@@ -139,3 +139,4 @@ def render_sidebar_nav():
 def show_access_denied():
     """Silently redirect to home if user doesn't have access."""
     st.switch_page("Home.py")
+    st.stop()  # Prevent further rendering while redirecting
