@@ -36,6 +36,13 @@ if not check_page_access("Disease_Intelligence"):
 # Import after auth check
 from dotenv import load_dotenv
 load_dotenv()
+import os
+
+
+def get_database_url() -> str:
+    """Get database URL from environment."""
+    return os.getenv('DATABASE_URL', '')
+
 
 from src.drug_extraction_system.database.connection import DatabaseConnection
 from src.disease_intelligence.repository import DiseaseIntelligenceRepository
@@ -789,7 +796,7 @@ def main():
 
     # Initialize database
     try:
-        db = DatabaseConnection()
+        db = DatabaseConnection(database_url=get_database_url())
         repo = DiseaseIntelligenceRepository(db)
     except Exception as e:
         st.error(f"Database connection error: {e}")

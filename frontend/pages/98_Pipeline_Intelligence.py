@@ -41,6 +41,13 @@ if not check_page_access("Pipeline_Intelligence"):
 # Import after auth check
 from dotenv import load_dotenv
 load_dotenv()
+import os
+
+
+def get_database_url() -> str:
+    """Get database URL from environment."""
+    return os.getenv('DATABASE_URL', '')
+
 
 from src.drug_extraction_system.database.connection import DatabaseConnection
 from src.drug_extraction_system.api_clients.clinicaltrials_client import ClinicalTrialsClient
@@ -281,7 +288,7 @@ def render_past_runs_view():
 
     # Initialize database
     try:
-        db = DatabaseConnection()
+        db = DatabaseConnection(database_url=get_database_url())
         repo = DiseaseIntelligenceRepository(db)
     except Exception as e:
         st.error(f"Database connection error: {e}")
@@ -489,7 +496,7 @@ def render_past_runs_view():
 
 async def run_pipeline_extraction(disease_name: str, therapeutic_area: str) -> CompetitiveLandscape:
     """Run pipeline extraction asynchronously."""
-    db = DatabaseConnection()
+    db = DatabaseConnection(database_url=get_database_url())
     ct_client = ClinicalTrialsClient()
     openfda_client = OpenFDAClient()
     web_searcher = get_web_searcher()

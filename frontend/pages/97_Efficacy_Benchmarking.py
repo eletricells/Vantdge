@@ -21,6 +21,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from dotenv import load_dotenv
 load_dotenv()
+import os
+
+
+def get_database_url() -> str:
+    """Get database URL from environment."""
+    return os.getenv('DATABASE_URL', '')
 
 # Configure logging to write to logs.md
 log_file = Path(__file__).parent.parent.parent / "logs.md"
@@ -409,7 +415,7 @@ with tab1:
             status_container.text(msg)
 
         try:
-            with DatabaseConnection() as db:
+            with DatabaseConnection(database_url=get_database_url()) as db:
                 agent = EfficacyBenchmarkingAgent(db)
 
                 # Standardize disease first
@@ -602,7 +608,7 @@ with tab1:
                             status_text.text(msg)
 
                         try:
-                            with DatabaseConnection() as db:
+                            with DatabaseConnection(database_url=get_database_url()) as db:
                                 agent = EfficacyBenchmarkingAgent(db)
                                 extracted = agent.disease_finder.extract_missing_drugs(
                                     selected_for_extraction,
@@ -692,7 +698,7 @@ with tab1:
             search_drug = st.text_input("Drug name", key="manual_drug_search")
             if search_drug:
                 try:
-                    with DatabaseConnection() as db:
+                    with DatabaseConnection(database_url=get_database_url()) as db:
                         agent = EfficacyBenchmarkingAgent(db)
                         found_drugs = agent.disease_finder.search_drugs_by_name(search_drug)
                         if found_drugs:
@@ -732,7 +738,7 @@ with tab1:
                         status_text.text(message)
 
                     try:
-                        with DatabaseConnection() as db:
+                        with DatabaseConnection(database_url=get_database_url()) as db:
                             agent = EfficacyBenchmarkingAgent(
                                 db,
                                 progress_callback=update_progress,
@@ -868,7 +874,7 @@ with tab3:
             col_refresh, col_clear = st.columns([1, 1])
             with col_refresh:
                 if st.button("🔄 Refresh from Database"):
-                    with DatabaseConnection() as db:
+                    with DatabaseConnection(database_url=get_database_url()) as db:
                         agent = EfficacyBenchmarkingAgent(db)
                         st.session_state.existing_data = agent.get_existing_efficacy_data(
                             st.session_state.disease.standard_name
@@ -884,7 +890,7 @@ with tab3:
                     c1, c2 = st.columns(2)
                     with c1:
                         if st.button("Yes, Clear All", type="primary"):
-                            with DatabaseConnection() as db:
+                            with DatabaseConnection(database_url=get_database_url()) as db:
                                 agent = EfficacyBenchmarkingAgent(db)
                                 deleted = agent.clear_disease_efficacy_data(
                                     st.session_state.disease.standard_name
