@@ -70,7 +70,10 @@ async def refresh_pipeline_data(disease_name: str, therapeutic_area: str = "Auto
     This includes web search for latest press releases and news.
     """
     try:
-        db = DatabaseConnection()
+        database_url = get_database_url()
+        if not database_url:
+            return False, "Database URL not configured", None
+        db = DatabaseConnection(database_url=database_url)
         ct_client = ClinicalTrialsClient()
         openfda_client = OpenFDAClient()
 
@@ -282,8 +285,8 @@ def get_pipeline_drugs(disease_name: str) -> List[Dict[str, Any]]:
                         bool_or(ct.trial_status IN ('RECRUITING', 'ACTIVE_NOT_RECRUITING', 'ENROLLING_BY_INVITATION', 'NOT_YET_RECRUITING')) as has_active_trial,
                         -- Check if Phase 3 trial is completed (NDA/BLA pending)
                         bool_or(ct.trial_phase IN ('PHASE3', 'PHASE2_3') AND ct.trial_status = 'COMPLETED') as has_completed_phase3,
-                        array_agg(DISTINCT ct.trial_status) as trial_statuses,
-                        array_agg(DISTINCT ct.nct_id) as nct_ids
+                        array_agg(DISTINCT ct.trial_status) FILTER (WHERE ct.trial_status IS NOT NULL) as trial_statuses,
+                        array_agg(DISTINCT ct.nct_id) FILTER (WHERE ct.nct_id IS NOT NULL) as nct_ids
                     FROM drugs d
                     JOIN drug_clinical_trials ct ON d.drug_id = ct.drug_id
                     WHERE ct.conditions::text ILIKE %s
@@ -309,9 +312,10 @@ def get_pipeline_drugs(disease_name: str) -> List[Dict[str, Any]]:
                             ELSE d.highest_phase
                         END as indication_phase,
                         -- Determine if drug is discontinued for this indication
-                        -- Also check d.highest_phase for NDA status from press release searches
+                        -- Check di.approval_status FIRST for manually validated discontinuations
                         CASE
                             WHEN di.approval_status = 'approved' THEN 'approved'
+                            WHEN di.approval_status = 'discontinued' THEN 'discontinued'
                             WHEN d.highest_phase IN ('NDA Filed', 'NDA Planned', 'BLA Filed', 'BLA Planned') THEN 'nda_pending'
                             WHEN it.has_completed_phase3 AND NOT COALESCE(it.has_active_trial, false) THEN 'nda_pending'
                             WHEN it.has_discontinued_trial AND NOT COALESCE(it.has_active_trial, false) THEN 'discontinued'
@@ -324,6 +328,7 @@ def get_pipeline_drugs(disease_name: str) -> List[Dict[str, Any]]:
                         -- For ordering
                         CASE
                             WHEN di.approval_status = 'approved' THEN 1
+                            WHEN di.approval_status = 'discontinued' THEN 10
                             WHEN d.highest_phase IN ('NDA Filed', 'NDA Planned', 'BLA Filed', 'BLA Planned') THEN 2
                             WHEN it.has_completed_phase3 AND NOT COALESCE(it.has_active_trial, false) THEN 2
                             WHEN it.has_discontinued_trial AND NOT COALESCE(it.has_active_trial, false) THEN 10
@@ -410,7 +415,11 @@ def format_citations(citation_nums: list) -> str:
 def get_disease_intelligence_model(disease_name: str):
     """Get disease intelligence as proper model with source estimates."""
     try:
-        db = DatabaseConnection()
+        database_url = get_database_url()
+        if not database_url:
+            st.error("Database URL required. Set DATABASE_URL environment variable.")
+            return None
+        db = DatabaseConnection(database_url=database_url)
         repo = DiseaseIntelligenceRepository(db)
         return repo.get_disease(disease_name)
     except Exception as e:
@@ -550,15 +559,32 @@ def render_market_sizing_detail(disease_name: str):
         # Determine which pricing tier is being used
         if total_patients < 10000:
             tier_name = "Rare Disease"
+            tier_price = "$200,000"
         elif total_patients < 100000:
             tier_name = "Specialty"
+            tier_price = "$75,000"
         else:
             tier_name = "Standard"
+            tier_price = "$20,000"
 
-        st.caption(
-            f"Calculation: {format_number(funnel.patients_addressable_2L)} patients × "
-            f"${avg_cost:,.0f}/year ({tier_name} tier) = {format_currency(funnel.market_size_2L_usd)}"
-        )
+        # Create columns for calculation and help icon
+        calc_col, help_col = st.columns([10, 1])
+        with calc_col:
+            st.caption(
+                f"Calculation: {format_number(funnel.patients_addressable_2L)} patients × "
+                f"${avg_cost:,.0f}/year ({tier_name} tier) = {format_currency(funnel.market_size_2L_usd)}"
+            )
+        with help_col:
+            with st.popover("ⓘ"):
+                st.markdown("**Pricing Tiers by Patient Population**")
+                st.markdown("""
+| Tier | Patient Count | Annual Cost |
+|------|---------------|-------------|
+| Rare Disease | < 10,000 | $200,000/yr |
+| Specialty | 10,000 - 100,000 | $75,000/yr |
+| Standard | > 100,000 | $20,000/yr |
+""")
+                st.caption(f"**This disease:** {format_number(total_patients)} patients → {tier_name} tier ({tier_price}/yr)")
 
     st.divider()
 
@@ -792,11 +818,12 @@ def render_market_sizing_detail(disease_name: str):
             table_data = []
             for d in drugs:  # Removed [:20] limit - show all drugs
                 # Format NCT IDs as clickable links (markdown format)
-                nct_ids = d.get('nct_ids') or []
+                # Filter out None, NaN, and "nan" strings
+                raw_nct_ids = d.get('nct_ids') or []
+                nct_ids = [nct for nct in raw_nct_ids if nct and str(nct).lower() != 'nan' and str(nct).strip()]
                 nct_links = []
                 for nct in nct_ids[:3]:
-                    if nct:
-                        nct_links.append(f"[{nct}](https://clinicaltrials.gov/study/{nct})")
+                    nct_links.append(f"[{nct}](https://clinicaltrials.gov/study/{nct})")
                 nct_str = ' '.join(nct_links)
                 if len(nct_ids) > 3:
                     nct_str += f' +{len(nct_ids)-3}'
@@ -842,14 +869,17 @@ def render_market_sizing_detail(disease_name: str):
             table_data = []
             for d in drugs:  # Removed [:20] limit
                 statuses = d.get('trial_statuses') or []
-                status_str = ', '.join(str(s) for s in statuses if s) if statuses else 'Discontinued'
+                # Filter out None, NaN, and "nan" strings from statuses
+                valid_statuses = [s for s in statuses if s and str(s).lower() != 'nan' and str(s).strip()]
+                status_str = ', '.join(str(s) for s in valid_statuses) if valid_statuses else 'Discontinued'
 
                 # Format NCT IDs as clickable links (markdown format)
-                nct_ids = d.get('nct_ids') or []
+                # Filter out None, NaN, and "nan" strings
+                raw_nct_ids = d.get('nct_ids') or []
+                nct_ids = [nct for nct in raw_nct_ids if nct and str(nct).lower() != 'nan' and str(nct).strip()]
                 nct_links = []
                 for nct in nct_ids[:3]:
-                    if nct:
-                        nct_links.append(f"[{nct}](https://clinicaltrials.gov/study/{nct})")
+                    nct_links.append(f"[{nct}](https://clinicaltrials.gov/study/{nct})")
                 nct_str = ' '.join(nct_links)
                 if len(nct_ids) > 3:
                     nct_str += f' +{len(nct_ids)-3}'
@@ -1077,7 +1107,10 @@ async def run_pipeline_intelligence(
 ) -> Tuple[bool, str, Optional[Any]]:
     """Run Pipeline Intelligence workflow for a disease."""
     try:
-        db = DatabaseConnection()
+        database_url = get_database_url()
+        if not database_url:
+            return False, "Database URL not configured", None
+        db = DatabaseConnection(database_url=database_url)
         ct_client = ClinicalTrialsClient()
         openfda_client = OpenFDAClient()
         web_searcher = get_web_searcher()
@@ -1123,7 +1156,10 @@ async def run_disease_intelligence(
         from src.disease_intelligence.service import DiseaseIntelligenceService
         from anthropic import Anthropic
 
-        db = DatabaseConnection()
+        database_url = get_database_url()
+        if not database_url:
+            return False, "Database URL not configured", None
+        db = DatabaseConnection(database_url=database_url)
         pubmed = PubMedAPI()
         web_searcher = get_web_searcher()
 
@@ -1189,7 +1225,10 @@ async def run_unified_analysis(
         from src.disease_intelligence.service import DiseaseIntelligenceService
         from anthropic import Anthropic
 
-        db = DatabaseConnection()
+        database_url = get_database_url()
+        if not database_url:
+            return False, "Database URL not configured", None
+        db = DatabaseConnection(database_url=database_url)
         ct_client = ClinicalTrialsClient()
         openfda_client = OpenFDAClient()
         pubmed = PubMedAPI()
