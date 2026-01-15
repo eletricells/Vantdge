@@ -42,6 +42,12 @@ load_dotenv()
 
 from src.drug_extraction_system.database.connection import DatabaseConnection
 from src.drug_extraction_system.database.operations import DrugDatabaseOperations
+import os
+
+
+def get_database_url() -> str:
+    """Get database URL from environment."""
+    return os.getenv('DATABASE_URL', '')
 
 
 def get_status_color(status: str) -> str:
@@ -88,7 +94,11 @@ st.markdown("---")
 
 # Get all drugs for dropdown
 try:
-    with DatabaseConnection() as db:
+    database_url = get_database_url()
+    if not database_url:
+        st.error("Database URL required. Set DATABASE_URL environment variable.")
+        st.stop()
+    with DatabaseConnection(database_url=database_url) as db:
         with db.cursor() as cur:
             cur.execute("""
                 SELECT drug_id, drug_key, generic_name, brand_name, 
@@ -140,7 +150,7 @@ sources = []
 
 # Get detailed drug data
 try:
-    with DatabaseConnection() as db:
+    with DatabaseConnection(database_url=database_url) as db:
         ops = DrugDatabaseOperations(db)
         drug = ops.get_drug_with_details(selected_drug_id)
 
@@ -293,7 +303,7 @@ with col1:
     # Get black box warning from drug_metadata
     black_box_warning = "N/A"
     try:
-        with DatabaseConnection() as db_check:
+        with DatabaseConnection(database_url=database_url) as db_check:
             with db_check.cursor() as cur:
                 cur.execute("""
                     SELECT has_black_box_warning
@@ -633,7 +643,7 @@ for t in trials:
 trials_with_std_conditions = {}
 std_conditions_error = None
 try:
-    with DatabaseConnection() as db:
+    with DatabaseConnection(database_url=database_url) as db:
         with db.cursor() as cur:
             cur.execute("""
                 SELECT dct.trial_id, dct.nct_id,
@@ -701,7 +711,7 @@ if industry_trials:
     # Build trial_id -> trial mapping for quick lookup (nct_id to trial_id)
     trial_id_map = {}
     try:
-        with DatabaseConnection() as db:
+        with DatabaseConnection(database_url=database_url) as db:
             with db.cursor() as cur:
                 cur.execute("SELECT trial_id, nct_id FROM drug_clinical_trials WHERE drug_id = %s", (selected_drug_id,))
                 for row in cur.fetchall():
