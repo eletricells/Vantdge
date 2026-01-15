@@ -1890,6 +1890,7 @@ with tab6:
                     SELECT run_id, drug_name, status, papers_found, papers_extracted,
                            opportunities_found, estimated_cost_usd, started_at, completed_at
                     FROM cs_analysis_runs
+                    WHERE status NOT IN ('in_progress', 'running')
                     ORDER BY started_at DESC
                     LIMIT 20
                 """)
