@@ -20,7 +20,7 @@ frontend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 
 st.set_page_config(
     page_title="Drug Database Viewer",
@@ -31,6 +31,10 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("Drug_Database_Viewer"):
+    show_access_denied()
 
 # Import after auth check
 from dotenv import load_dotenv

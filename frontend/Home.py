@@ -10,7 +10,7 @@ frontend_dir = Path(__file__).parent
 if str(frontend_dir) not in sys.path:
     sys.path.insert(0, str(frontend_dir))
 
-from auth import check_password
+from auth import check_password, render_sidebar_nav, get_user_role
 
 st.set_page_config(
     page_title="Vantdge",
@@ -19,9 +19,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Hide sidebar before login
+if not st.session_state.get("password_correct"):
+    st.markdown("""<style>[data-testid="stSidebar"]{display:none}</style>""", unsafe_allow_html=True)
+
 # Password protection
 if not check_password():
-    st.stop()  # Do not continue if check_password is not True
+    st.stop()
+
+# Render custom sidebar navigation for restricted users
+render_sidebar_nav()
 
 # Custom CSS
 st.markdown("""
@@ -49,72 +56,106 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Get user role for conditional content
+user_role = get_user_role()
+
 # Header
 st.markdown('<p class="main-header">🧬 Vantdge</p>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">AI-Powered Biopharma Intelligence Platform</p>', unsafe_allow_html=True)
 
 st.markdown("---")
 
-# Welcome message
-col1, col2 = st.columns([2, 1])
-
-with col1:
+# Different content based on user role
+if user_role == "case_series":
+    # RH_TEST1 - Case Series focused view
+    st.markdown("## Welcome!")
     st.markdown("""
-    ## Welcome!
-
-    **Case Study Analysis v2** identifies drug repurposing opportunities through:
-
-    - 📋 **Approved Indication Discovery**: Extracts FDA-approved uses from DailyMed and Drugs.com
-    - 🔍 **Case Series Search**: Finds off-label evidence via PubMed and web search
-    - 🤖 **AI-Powered Extraction**: Structures clinical data with Claude
-    - 📊 **Scoring & Prioritization**: Ranks opportunities by clinical strength (50%), evidence quality (25%), and market potential (25%)
-
-    ### Getting Started
-
-    Navigate to **Case Study Analysis v2** in the sidebar to discover repurposing opportunities.
+    Explore drug repurposing opportunities through AI-powered case series analysis.
     """)
 
-with col2:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+        <h3>🧬 Case Study Analysis</h3>
+        <p>Run new drug repurposing analyses:</p>
+        <ul>
+            <li>Search PubMed & preprints</li>
+            <li>Extract clinical evidence</li>
+            <li>Score disease opportunities</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+        <h3>📚 Case Series Browser</h3>
+        <p>Browse existing analyses:</p>
+        <ul>
+            <li>View extracted papers by drug</li>
+            <li>Filter by disease & evidence</li>
+            <li>Export to Excel</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### Getting Started")
+    st.markdown("Use the sidebar to navigate to Case Study Analysis or Case Series Browser.")
+
+else:
+    # JCL_TEST - Full access view
+    st.markdown("## Welcome!")
     st.markdown("""
-    ### 📊 System Status
-
-    **Active Agents:**
-    - ✅ Case Study Analysis v2
-
-    **WIP Agents:**
-    - 🔨 Drug Extraction
-    - 🔨 Drug Browser
-    - 🔨 Clinical Data Extractor
-    - 🔨 Literature Search
-    - 🔨 Prompt Manager
-    - 🔨 Case Study Analysis (v1)
-
-    **Features:**
-    - ✅ PubMed Integration
-    - ✅ Web Search (Tavily)
-    - ✅ DailyMed API
-    - ✅ Drugs.com Scraping
+    Vantdge is an AI-powered platform for biopharma competitive intelligence and drug repurposing analysis.
     """)
 
-# Sidebar navigation help
-with st.sidebar:
-    st.markdown("## 🧭 Navigation")
-    st.markdown("""
-    Use the pages above to navigate:
+    col1, col2, col3 = st.columns(3)
 
-    **📄 Case Studies**
-    - Case Study Analysis
-    - Case Study Analysis v2
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+        <h3>🧬 Case Study Analysis</h3>
+        <p>Identify drug repurposing opportunities through AI-powered literature analysis.</p>
+        <ul>
+            <li>PubMed & preprint search</li>
+            <li>Full-text extraction</li>
+            <li>Clinical evidence scoring</li>
+            <li>Disease opportunity ranking</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
-    **🔬 WIP (Work In Progress)**
-    - Drug Extraction
-    - Drug Browser
-    - Clinical Data Extractor
-    - Literature Search
-    - Prompt Manager
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+        <h3>🏥 Disease Intelligence</h3>
+        <p>Comprehensive disease landscape analysis for strategic planning.</p>
+        <ul>
+            <li>Prevalence & incidence data</li>
+            <li>Current treatment options</li>
+            <li>Clinical trial failure rates</li>
+            <li>Unmet medical needs</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
-    ---
+    with col3:
+        st.markdown("""
+        <div class="feature-card">
+        <h3>💊 Pipeline Intelligence</h3>
+        <p>Track competitive drug development pipelines.</p>
+        <ul>
+            <li>Clinical trial monitoring</li>
+            <li>Competitor drug tracking</li>
+            <li>Development stage analysis</li>
+            <li>Market opportunity assessment</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
-    ### 💡 Note
-    WIP pages are experimental features under development.
-    """)
+    st.markdown("---")
+    st.markdown("### Getting Started")
+    st.markdown("Use the sidebar to navigate to the available tools.")

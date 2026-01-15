@@ -42,7 +42,7 @@ stream_handler.setFormatter(logging.Formatter('%(name)s - %(message)s'))
 root_logger.addHandler(file_handler)
 root_logger.addHandler(stream_handler)
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 
 st.set_page_config(
     page_title="Efficacy Benchmarking",
@@ -52,6 +52,10 @@ st.set_page_config(
 
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("Efficacy_Benchmarking"):
+    show_access_denied()
 
 # Import after auth
 from src.drug_extraction_system.database.connection import DatabaseConnection

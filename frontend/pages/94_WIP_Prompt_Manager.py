@@ -10,7 +10,7 @@ frontend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 from src.prompts import get_prompt_manager, PromptManager
 from datetime import datetime
 import shutil
@@ -24,6 +24,10 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("WIP_Prompt_Manager"):
+    show_access_denied()
 
 st.title("📝 Prompt Manager")
 st.markdown("View and edit AI prompt templates used by agents")

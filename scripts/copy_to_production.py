@@ -15,9 +15,12 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2 import sql
 
-# Database URLs
+# Database URLs - load from environment variables
 LOCAL_URL = os.getenv('DATABASE_URL')
-PROD_URL = "postgresql://postgres:rLUGCpOgJHPSuPBJVAcXBdEwIPpyFOVl@trolley.proxy.rlwy.net:57642/railway"
+PROD_URL = os.getenv('PROD_DATABASE_URL')
+
+if not PROD_URL:
+    raise ValueError("PROD_DATABASE_URL environment variable is required")
 
 # Tables to copy (in order to respect foreign keys)
 TABLES_TO_COPY = [

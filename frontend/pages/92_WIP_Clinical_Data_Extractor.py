@@ -24,7 +24,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 from src.agents.clinical_data_extractor import ClinicalDataExtractorAgent
 from src.tools.clinical_extraction_database import ClinicalExtractionDatabase
 from src.utils.config import get_settings
@@ -41,6 +41,10 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("WIP_Clinical_Data_Extractor"):
+    show_access_denied()
 from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)

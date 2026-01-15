@@ -11,7 +11,7 @@ frontend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 from src.utils.config import get_settings
 from src.tools.drug_database import DrugDatabase
 from src.utils.drug_version_manager import DrugVersionHistory, DrugVersionManager
@@ -25,6 +25,10 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("WIP_Drug_Browser"):
+    show_access_denied()
 
 
 def smart_title_case(text: str) -> str:

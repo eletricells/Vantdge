@@ -14,7 +14,7 @@ frontend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 from src.utils.config import get_settings
 from src.tools.drug_database import DrugDatabase
 from src.tools.enhanced_dailymed_extractor import EnhancedDailyMedExtractor
@@ -28,6 +28,10 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("WIP_Drug_Extraction"):
+    show_access_denied()
 
 # Common FDA-approved drugs for autocomplete
 # This list can be expanded or loaded from a file

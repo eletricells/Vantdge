@@ -22,7 +22,7 @@ frontend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 
 st.set_page_config(
     page_title="Pipeline Intelligence",
@@ -34,6 +34,10 @@ st.set_page_config(
 if not check_password():
     st.stop()
 
+# Page access check
+if not check_page_access("Pipeline_Intelligence"):
+    show_access_denied()
+
 # Import after auth check
 from dotenv import load_dotenv
 load_dotenv()
@@ -44,6 +48,7 @@ from src.drug_extraction_system.api_clients.openfda_client import OpenFDAClient
 from src.pipeline_intelligence.repository import PipelineIntelligenceRepository
 from src.pipeline_intelligence.service import PipelineIntelligenceService
 from src.pipeline_intelligence.models import PipelineDrug, CompetitiveLandscape
+from src.disease_intelligence.repository import DiseaseIntelligenceRepository
 
 
 def get_llm_client():
@@ -270,6 +275,218 @@ def render_summary_table(landscape: CompetitiveLandscape):
         st.dataframe(df, hide_index=True, use_container_width=True)
 
 
+def render_past_runs_view():
+    """Render a view of all past pipeline runs."""
+    st.header("Past Pipeline Runs")
+
+    # Initialize database
+    try:
+        db = DatabaseConnection()
+        repo = DiseaseIntelligenceRepository(db)
+    except Exception as e:
+        st.error(f"Database connection error: {e}")
+        return
+
+    # Refresh button
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("Refresh", key="refresh_all_runs"):
+            st.rerun()
+
+    # Get all runs
+    runs = repo.get_all_pipeline_runs(limit=100)
+
+    if not runs:
+        st.info("No pipeline runs recorded yet. Run a pipeline analysis to get started.")
+        return
+
+    # Summary metrics
+    st.subheader("Summary")
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        st.metric("Total Runs", len(runs))
+    with col2:
+        unique_diseases = len(set(r.get("disease_name") for r in runs if r.get("disease_name")))
+        st.metric("Diseases Analyzed", unique_diseases)
+    with col3:
+        completed = sum(1 for r in runs if r.get("status") == "completed")
+        st.metric("Completed", completed)
+    with col4:
+        total_drugs = sum(r.get("drugs_found_total") or 0 for r in runs)
+        st.metric("Total Drugs Found", total_drugs)
+    with col5:
+        total_trials = sum(r.get("clinicaltrials_searched") or 0 for r in runs)
+        st.metric("Trials Searched", total_trials)
+
+    st.divider()
+
+    # Filter options
+    col1, col2 = st.columns(2)
+    with col1:
+        disease_filter = st.selectbox(
+            "Filter by Disease",
+            ["All"] + list(set(r.get("disease_name") for r in runs if r.get("disease_name")))
+        )
+    with col2:
+        status_filter = st.selectbox(
+            "Filter by Status",
+            ["All", "completed", "running", "failed"]
+        )
+
+    # Apply filters
+    filtered_runs = runs
+    if disease_filter != "All":
+        filtered_runs = [r for r in filtered_runs if r.get("disease_name") == disease_filter]
+    if status_filter != "All":
+        filtered_runs = [r for r in filtered_runs if r.get("status") == status_filter]
+
+    # Runs table
+    st.subheader(f"Runs ({len(filtered_runs)})")
+
+    if filtered_runs:
+        runs_df = pd.DataFrame(filtered_runs)
+
+        # Select and rename columns for display
+        display_cols = [
+            "run_id", "disease_name", "therapeutic_area", "run_timestamp",
+            "run_type", "status", "clinicaltrials_searched", "drugs_found_total",
+            "drugs_new", "drugs_updated"
+        ]
+        display_cols = [c for c in display_cols if c in runs_df.columns]
+
+        rename_map = {
+            "run_id": "ID",
+            "disease_name": "Disease",
+            "therapeutic_area": "Area",
+            "run_timestamp": "Timestamp",
+            "run_type": "Type",
+            "status": "Status",
+            "clinicaltrials_searched": "Trials",
+            "drugs_found_total": "Drugs",
+            "drugs_new": "New",
+            "drugs_updated": "Updated"
+        }
+
+        df_display = runs_df[display_cols].copy()
+        df_display.columns = [rename_map.get(c, c) for c in display_cols]
+
+        # Format timestamp
+        if "Timestamp" in df_display.columns:
+            df_display["Timestamp"] = pd.to_datetime(df_display["Timestamp"]).dt.strftime("%Y-%m-%d %H:%M")
+
+        # Style status column
+        def highlight_status(val):
+            colors = {"completed": "background-color: #90EE90", "running": "background-color: #87CEEB", "failed": "background-color: #FFB6C1"}
+            return colors.get(val, "")
+
+        st.dataframe(
+            df_display,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Status": st.column_config.TextColumn("Status", width="small"),
+                "Drugs": st.column_config.NumberColumn("Drugs", format="%d"),
+                "Trials": st.column_config.NumberColumn("Trials", format="%d"),
+            }
+        )
+
+        # Detailed view for selected run
+        st.subheader("Run Details")
+
+        # Select a run to view details
+        run_ids = [r.get("run_id") for r in filtered_runs]
+        selected_run_id = st.selectbox("Select Run to View Details", run_ids, format_func=lambda x: f"Run {x}")
+
+        selected_run = next((r for r in filtered_runs if r.get("run_id") == selected_run_id), None)
+
+        if selected_run:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown(f"**Disease:** {selected_run.get('disease_name', 'N/A')}")
+                st.markdown(f"**Therapeutic Area:** {selected_run.get('therapeutic_area', 'N/A')}")
+                st.markdown(f"**Run Type:** {selected_run.get('run_type', 'N/A')}")
+                st.markdown(f"**Status:** {selected_run.get('status', 'N/A')}")
+
+            with col2:
+                st.markdown(f"**ClinicalTrials Searched:** {selected_run.get('clinicaltrials_searched', 0)}")
+                st.markdown(f"**Web Sources Searched:** {selected_run.get('web_sources_searched', 0)}")
+                st.markdown(f"**Drugs Found:** {selected_run.get('drugs_found_total', 0)}")
+                st.markdown(f"**New:** {selected_run.get('drugs_new', 0)} | **Updated:** {selected_run.get('drugs_updated', 0)}")
+
+            if selected_run.get("error_message"):
+                st.error(f"Error: {selected_run.get('error_message')}")
+
+            # Get drugs for this disease
+            disease_name = selected_run.get("disease_name")
+            if disease_name:
+                drugs = repo.get_drugs_for_disease(disease_name)
+                if drugs:
+                    st.subheader(f"Drugs Found ({len(drugs)})")
+
+                    # Group by phase
+                    phase_order = ["Approved", "Phase 3", "Phase 2", "Phase 1", "Preclinical"]
+                    drugs_by_phase = {}
+                    for drug in drugs:
+                        phase = drug.get("highest_phase") or "Unknown"
+                        if phase not in drugs_by_phase:
+                            drugs_by_phase[phase] = []
+                        drugs_by_phase[phase].append(drug)
+
+                    # Display in tabs
+                    phase_tabs = [p for p in phase_order if p in drugs_by_phase]
+                    if "Unknown" in drugs_by_phase:
+                        phase_tabs.append("Unknown")
+
+                    if phase_tabs:
+                        drug_tabs = st.tabs([f"{p} ({len(drugs_by_phase[p])})" for p in phase_tabs])
+                        for i, phase in enumerate(phase_tabs):
+                            with drug_tabs[i]:
+                                for drug in drugs_by_phase[phase]:
+                                    name = drug.get('brand_name') or drug.get('generic_name') or 'Unknown'
+                                    generic = drug.get('generic_name') or ''
+                                    with st.expander(f"**{name}** ({generic})"):
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            st.markdown(f"**Manufacturer:** {drug.get('manufacturer') or 'N/A'}")
+                                            st.markdown(f"**Type:** {drug.get('drug_type') or 'N/A'}")
+                                        with col2:
+                                            st.markdown(f"**MOA:** {drug.get('mechanism_of_action') or 'N/A'}")
+                                            if drug.get('first_approval_date'):
+                                                st.markdown(f"**Approval Date:** {drug.get('first_approval_date')}")
+                else:
+                    st.info("No drugs found for this disease in the database")
+
+            # Get pipeline sources for this disease
+            disease_id = selected_run.get("disease_id")
+            if disease_id:
+                sources = repo.get_pipeline_sources(disease_id)
+                if sources:
+                    st.subheader(f"Sources ({len(sources)})")
+
+                    # Group by type
+                    source_types = {}
+                    for src in sources:
+                        stype = src.get("source_type", "unknown")
+                        if stype not in source_types:
+                            source_types[stype] = []
+                        source_types[stype].append(src)
+
+                    for stype, type_sources in source_types.items():
+                        with st.expander(f"{stype.replace('_', ' ').title()} ({len(type_sources)})"):
+                            for src in type_sources[:10]:
+                                title = src.get("title") or src.get("nct_id") or "Untitled"
+                                if src.get("nct_id"):
+                                    st.markdown(f"- **{title}** ([NCT](https://clinicaltrials.gov/study/{src.get('nct_id')}))")
+                                elif src.get("source_url"):
+                                    st.markdown(f"- **{title}** ([Link]({src.get('source_url')}))")
+                                else:
+                                    st.markdown(f"- **{title}**")
+    else:
+        st.info("No runs match the selected filters")
+
+
 async def run_pipeline_extraction(disease_name: str, therapeutic_area: str) -> CompetitiveLandscape:
     """Run pipeline extraction asynchronously."""
     db = DatabaseConnection()
@@ -306,30 +523,51 @@ def main():
 
     # Input section
     with st.sidebar:
-        st.header("Search Parameters")
+        st.header("View Mode")
 
-        disease_name = st.text_input(
-            "Disease Name",
-            value="Systemic Lupus Erythematosus",
-            placeholder="e.g., Systemic Lupus Erythematosus"
+        view_mode = st.radio(
+            "Select View",
+            ["Run Analysis", "Past Runs"],
+            horizontal=True
         )
-
-        therapeutic_area = st.selectbox(
-            "Therapeutic Area",
-            ["Autoimmune", "Oncology", "Neurology", "Cardiology", "Dermatology", "Rare Disease", "Other"]
-        )
-
-        run_extraction = st.button("Run Pipeline Analysis", type="primary", use_container_width=True)
 
         st.divider()
 
-        st.caption("**Note:** Analysis includes:")
-        st.caption("- ClinicalTrials.gov (active trials)")
-        st.caption("- Web search for news/updates")
-        st.caption("- Discontinued program tracking")
-        st.caption("- FDA approval verification")
+        if view_mode == "Run Analysis":
+            st.header("Search Parameters")
+
+            disease_name = st.text_input(
+                "Disease Name",
+                value="Systemic Lupus Erythematosus",
+                placeholder="e.g., Systemic Lupus Erythematosus"
+            )
+
+            therapeutic_area = st.selectbox(
+                "Therapeutic Area",
+                ["Autoimmune", "Oncology", "Neurology", "Cardiology", "Dermatology", "Rare Disease", "Other"]
+            )
+
+            run_extraction = st.button("Run Pipeline Analysis", type="primary", use_container_width=True)
+
+            st.divider()
+
+            st.caption("**Note:** Analysis includes:")
+            st.caption("- ClinicalTrials.gov (active trials)")
+            st.caption("- Web search for news/updates")
+            st.caption("- Discontinued program tracking")
+            st.caption("- FDA approval verification")
+        else:
+            disease_name = None
+            therapeutic_area = None
+            run_extraction = False
+            st.caption("View historical pipeline analysis runs")
 
     # Main content
+    if view_mode == "Past Runs":
+        render_past_runs_view()
+        return
+
+    # Run Analysis mode
     if run_extraction:
         if not disease_name:
             st.error("Please enter a disease name")
@@ -354,13 +592,13 @@ def main():
         landscape = st.session_state["landscape"]
 
         # View toggle
-        view_mode = st.radio(
-            "View Mode",
+        result_view = st.radio(
+            "Result View",
             ["Cards by Phase", "Summary Table"],
             horizontal=True
         )
 
-        if view_mode == "Cards by Phase":
+        if result_view == "Cards by Phase":
             render_landscape(landscape)
         else:
             st.subheader(f"All Drugs for {landscape.disease_name}")

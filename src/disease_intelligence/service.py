@@ -504,7 +504,7 @@ class DiseaseIntelligenceService:
 
         for query in pubmed_queries:
             try:
-                results = await self._search_pubmed(query, max_results=10)  # Increased from 8
+                results = await self._search_pubmed(query, max_results=30)  # Tripled from 10
                 papers.extend(results)
             except Exception as e:
                 logger.warning(f"PubMed search failed for '{query}': {e}")
@@ -526,7 +526,7 @@ class DiseaseIntelligenceService:
 
         for query in web_queries:
             try:
-                results = await self._search_web(query, max_results=5)  # Increased from 4
+                results = await self._search_web(query, max_results=15)  # Tripled from 5
                 papers.extend(results)
             except Exception as e:
                 logger.warning(f"Web search failed for '{query}': {e}")
@@ -541,7 +541,7 @@ class DiseaseIntelligenceService:
                 unique_papers.append(paper)
 
         logger.info(f"Found {len(unique_papers)} unique prevalence papers")
-        return unique_papers[:60]  # Increased limit for better source coverage
+        return unique_papers[:75]  # Tripled from previous limit for better source coverage
 
     async def _search_treatment(
         self,

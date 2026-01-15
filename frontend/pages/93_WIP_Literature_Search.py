@@ -24,7 +24,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 from src.agents.paperscope_v2 import PaperScopeV2Agent
 from src.tools.pubmed import PubMedAPI
 from src.tools.web_search import WebSearchTool
@@ -41,6 +41,10 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("WIP_Literature_Search"):
+    show_access_denied()
 from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)

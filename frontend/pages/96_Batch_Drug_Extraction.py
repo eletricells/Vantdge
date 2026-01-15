@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 
 st.set_page_config(
     page_title="Batch Drug Extraction",
@@ -35,6 +35,10 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("Batch_Drug_Extraction"):
+    show_access_denied()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(name)s - %(message)s')
