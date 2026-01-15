@@ -16,6 +16,10 @@ Extract EVERY efficacy outcome mentioned, including:
 - Biomarker changes
 - Time to response
 - Duration of response
+- COMPARATIVE METRICS (Hazard Ratios, Odds Ratios, Relative Risk)
+- Mortality/Survival outcomes
+- Recurrence/Relapse rate reductions
+- Drug retention rates
 
 CRITICAL: Extract ALL numerical values. Look carefully for:
 - N (total patients evaluated for each endpoint)
@@ -43,10 +47,10 @@ If truly unknown, use overall study N as best estimate and note "N inferred from
 
 For each endpoint, extract:
 {
-    "endpoint_name": "specific name of the endpoint (e.g., EASI-75, PASI 90, ACR50)",
+    "endpoint_name": "specific name of the endpoint (e.g., EASI-75, PASI 90, ACR50, Mortality, Survival)",
     "endpoint_category": "Primary" or "Secondary" or "Exploratory",
-    "timepoint": "when measured (e.g., Week 12, Month 6)",
-    "measurement_type": "Responder" or "Change from baseline" or "Absolute value",
+    "timepoint": "when measured (e.g., Week 12, Month 6, Day 28)",
+    "measurement_type": "Responder" or "Change from baseline" or "Absolute value" or "Ratio" or "Survival" or "Time-to-event",
     "value": numerical value or null,
     "unit": "unit of measurement",
     "total_n": total number of patients evaluated for this endpoint (CRITICAL - extract from text),
@@ -57,12 +61,31 @@ For each endpoint, extract:
     "final_value": final/post-treatment value or null,
     "change_from_baseline": absolute change value or null,
     "change_pct": percentage change or null,
+
+    // COMPARATIVE RATIO METRICS (HR, OR, RR) - CRITICAL FOR RCTs AND COMPARATIVE STUDIES
+    "ratio_type": "HR" or "OR" or "RR" or null (HR=Hazard Ratio, OR=Odds Ratio, RR=Relative Risk),
+    "ratio_value": the ratio value (e.g., 0.68 for HR 0.68) or null,
+    "ci_lower": lower bound of 95% confidence interval or null,
+    "ci_upper": upper bound of 95% confidence interval or null,
+    "comparator": "what the treatment was compared to (e.g., placebo, standard care, tocilizumab)",
+
+    // SURVIVAL/MORTALITY METRICS
+    "mortality_pct": mortality percentage in treatment group or null,
+    "comparator_mortality_pct": mortality percentage in comparator group or null,
+    "survival_pct": survival percentage or null,
+
+    // RECURRENCE/RELAPSE METRICS
+    "recurrence_rate_baseline": pre-treatment recurrence rate or null,
+    "recurrence_rate_final": post-treatment recurrence rate or null,
+    "recurrence_reduction_pct": percentage reduction in recurrence or null,
+
     "p_value": "p-value if reported" or null,
     "statistical_significance": true/false/null,
-    "organ_domain": "one of: Musculoskeletal | Mucocutaneous | Renal | Neurological | Hematological | Cardiopulmonary | Immunological | Systemic | Gastrointestinal | Ocular | Constitutional",
+    "organ_domain": "one of: Musculoskeletal | Mucocutaneous | Renal | Neurological | Hematological | Cardiopulmonary | Immunological | Systemic | Gastrointestinal | Ocular | Constitutional | Survival",
     "is_validated_instrument": true/false,
     "instrument_quality_tier": 1-3 (1=gold standard, 2=validated PRO, 3=investigator-assessed),
     "is_biomarker": true/false (true if this is a laboratory biomarker like CRP, LDH, complement, cytokines, autoantibodies, etc.),
+    "is_comparative": true/false (true if this compares treatment vs comparator using HR/OR/RR),
     "notes": "additional context"
 }
 
@@ -134,6 +157,66 @@ EXAMPLE - If paper says "CXCL9 levels decreased from 1850 to 420 pg/mL (p<0.05)"
     "organ_domain": "Immunological",
     "is_biomarker": true,
     "notes": "Cytokine marker of interferon pathway activity"
+}
+
+EXAMPLE - HAZARD RATIO: If paper says "Treatment was associated with improved survival (HR 0.68, 95% CI 0.52-0.89, p=0.005) compared to standard care":
+{
+    "endpoint_name": "Overall Survival",
+    "endpoint_category": "Primary",
+    "measurement_type": "Ratio",
+    "ratio_type": "HR",
+    "ratio_value": 0.68,
+    "ci_lower": 0.52,
+    "ci_upper": 0.89,
+    "comparator": "standard care",
+    "p_value": "0.005",
+    "statistical_significance": true,
+    "organ_domain": "Survival",
+    "is_comparative": true,
+    "notes": "HR < 1 indicates treatment benefit"
+}
+
+EXAMPLE - ODDS RATIO: If paper says "Patients had lower odds of ICU admission (OR 0.36, p<0.0001) versus placebo":
+{
+    "endpoint_name": "ICU Admission",
+    "endpoint_category": "Primary",
+    "measurement_type": "Ratio",
+    "ratio_type": "OR",
+    "ratio_value": 0.36,
+    "comparator": "placebo",
+    "p_value": "<0.0001",
+    "statistical_significance": true,
+    "is_comparative": true,
+    "notes": "OR < 1 indicates reduced risk with treatment"
+}
+
+EXAMPLE - MORTALITY: If paper says "28-day mortality was 6% in the treatment group vs 27% in controls (p=0.003)":
+{
+    "endpoint_name": "28-day Mortality",
+    "endpoint_category": "Primary",
+    "measurement_type": "Survival",
+    "timepoint": "Day 28",
+    "mortality_pct": 6.0,
+    "comparator_mortality_pct": 27.0,
+    "comparator": "controls",
+    "p_value": "0.003",
+    "statistical_significance": true,
+    "organ_domain": "Survival",
+    "is_comparative": true
+}
+
+EXAMPLE - RECURRENCE REDUCTION: If paper says "Recurrence rate decreased from 2.33 to 0.39 episodes per patient-year (83% reduction, p<0.001)":
+{
+    "endpoint_name": "Recurrence Rate",
+    "endpoint_category": "Primary",
+    "measurement_type": "Change from baseline",
+    "recurrence_rate_baseline": 2.33,
+    "recurrence_rate_final": 0.39,
+    "recurrence_reduction_pct": 83.0,
+    "unit": "episodes/patient-year",
+    "p_value": "<0.001",
+    "statistical_significance": true,
+    "notes": "Six-fold reduction in recurrences"
 }
 
 HANDLING MULTIPLE TIMEPOINTS:

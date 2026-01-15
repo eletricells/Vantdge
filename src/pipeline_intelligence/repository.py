@@ -248,14 +248,47 @@ class PipelineIntelligenceRepository:
             result = cur.fetchone()
             return dict(result) if result else None
 
+    def find_drug_by_pubchem_cid(self, pubchem_cid: int) -> Optional[Dict]:
+        """Find existing drug by PubChem CID/SID.
+
+        Args:
+            pubchem_cid: PubChem identifier (positive = CID, negative = SID)
+
+        Returns:
+            Drug record dict if found, None otherwise
+        """
+        if not pubchem_cid:
+            return None
+        self.db.ensure_connected()
+        with self.db.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM drugs WHERE pubchem_cid = %s LIMIT 1",
+                (pubchem_cid,)
+            )
+            result = cur.fetchone()
+            return dict(result) if result else None
+
     def upsert_drug(self, drug: PipelineDrug) -> int:
-        """Insert or update a drug in the database."""
+        """Insert or update a drug in the database.
+
+        Checks for existing drug by:
+        1. Generic name / brand name (existing behavior)
+        2. PubChem CID (new - catches research code duplicates)
+        """
         existing = self.find_drug_by_name(drug.generic_name, drug.brand_name)
+
+        # If not found by name, check by PubChem CID
+        if not existing and hasattr(drug, 'pubchem_cid') and drug.pubchem_cid:
+            existing = self.find_drug_by_pubchem_cid(drug.pubchem_cid)
+            if existing:
+                logger.info(f"Found existing drug by PubChem CID: '{drug.generic_name}' matches '{existing.get('generic_name')}' (CID: {drug.pubchem_cid})")
 
         self.db.ensure_connected()
         with self.db.cursor() as cur:
             if existing:
-                # Update existing drug
+                # Update existing drug - use highest phase between existing and new
+                # Get pubchem_cid, handling both attribute and dict access
+                pubchem_cid = getattr(drug, 'pubchem_cid', None)
                 cur.execute(
                     """
                     UPDATE drugs
@@ -263,31 +296,56 @@ class PipelineIntelligenceRepository:
                         drug_type = COALESCE(%s, drug_type),
                         mechanism_of_action = COALESCE(%s, mechanism_of_action),
                         approval_status = %s,
-                        highest_phase = COALESCE(%s, highest_phase),
+                        highest_phase = CASE
+                            WHEN %s IS NULL THEN highest_phase
+                            WHEN highest_phase IS NULL THEN %s
+                            WHEN (CASE %s
+                                    WHEN 'Approved' THEN 1
+                                    WHEN 'Phase 3' THEN 2
+                                    WHEN 'Phase 2' THEN 3
+                                    WHEN 'Phase 1' THEN 4
+                                    WHEN 'Preclinical' THEN 5
+                                    ELSE 6 END)
+                                 < (CASE highest_phase
+                                    WHEN 'Approved' THEN 1
+                                    WHEN 'Phase 3' THEN 2
+                                    WHEN 'Phase 2' THEN 3
+                                    WHEN 'Phase 1' THEN 4
+                                    WHEN 'Preclinical' THEN 5
+                                    ELSE 6 END)
+                            THEN %s
+                            ELSE highest_phase
+                        END,
+                        pubchem_cid = COALESCE(%s, pubchem_cid),
                         updated_at = CURRENT_TIMESTAMP
                     WHERE drug_id = %s
                     """,
                     (
                         drug.manufacturer, drug.drug_type, drug.mechanism_of_action,
-                        drug.approval_status, drug.highest_phase, existing["drug_id"]
+                        drug.approval_status,
+                        drug.highest_phase, drug.highest_phase, drug.highest_phase, drug.highest_phase,
+                        pubchem_cid,
+                        existing["drug_id"]
                     )
                 )
                 self.db.commit()
                 return existing["drug_id"]
             else:
                 # Insert new drug
+                pubchem_cid = getattr(drug, 'pubchem_cid', None)
                 cur.execute(
                     """
                     INSERT INTO drugs
                     (brand_name, generic_name, manufacturer, drug_type, mechanism_of_action,
-                     approval_status, highest_phase, first_approval_date)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                     approval_status, highest_phase, first_approval_date, pubchem_cid)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING drug_id
                     """,
                     (
                         drug.brand_name, drug.generic_name, drug.manufacturer,
                         drug.drug_type, drug.mechanism_of_action,
-                        drug.approval_status, drug.highest_phase, drug.first_approval_date
+                        drug.approval_status, drug.highest_phase, drug.first_approval_date,
+                        pubchem_cid
                     )
                 )
                 result = cur.fetchone()

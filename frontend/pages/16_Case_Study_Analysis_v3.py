@@ -21,7 +21,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied, render_sidebar_nav
 from src.case_series import CaseSeriesOrchestrator, create_orchestrator
 from src.case_series.services.mechanism_discovery_service import MechanismDiscoveryService
 from src.utils.config import get_settings
@@ -35,6 +35,13 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("Case_Study_Analysis_v3"):
+    show_access_denied()
+
+# Render custom sidebar navigation for restricted users
+render_sidebar_nav()
 
 # Configure logging with file output to logs.md
 LOG_FILE = project_root / "logs.md"
@@ -412,6 +419,14 @@ if 'v3_opportunities' not in st.session_state:
 if 'v3_result' not in st.session_state:
     st.session_state.v3_result = None
 
+# Session state - Preprint search
+if 'v3_preprint_search_result' not in st.session_state:
+    st.session_state.v3_preprint_search_result = None
+if 'v3_preprint_extractions' not in st.session_state:
+    st.session_state.v3_preprint_extractions = []
+if 'v3_preprint_opportunities' not in st.session_state:
+    st.session_state.v3_preprint_opportunities = []
+
 
 # Sidebar
 with st.sidebar:
@@ -432,6 +447,10 @@ with st.sidebar:
         st.session_state.v3_extractions = []
         st.session_state.v3_opportunities = []
         st.session_state.v3_result = None
+        # Reset preprint state
+        st.session_state.v3_preprint_search_result = None
+        st.session_state.v3_preprint_extractions = []
+        st.session_state.v3_preprint_opportunities = []
 
     st.markdown("---")
     st.subheader("Workflow Status")
@@ -1267,68 +1286,179 @@ with tab1:
 # Tab 2: Literature Search
 with tab2:
     st.header("Step 2: Literature Search")
-    st.markdown("""
-    Search for case series using `LiteratureSearchService`.
-    Multi-source: PubMed, Semantic Scholar, Web Search.
-    """)
 
     if not st.session_state.v3_drug_info:
         st.warning("Complete Step 1 (Drug Information) first.")
     else:
-        col1, col2 = st.columns(2)
+        # Sub-tabs for Standard and Preprint searches
+        search_tab1, search_tab2 = st.tabs([
+            "📚 Standard Sources (PubMed, Semantic Scholar, Web)",
+            "🔬 Preprint Servers (bioRxiv, medRxiv)"
+        ])
 
-        with col1:
-            use_llm_filter = st.checkbox("LLM Relevance Filtering", value=True)
-        with col2:
-            max_per_source = st.slider("Max results per source", 10, 200, 50)
+        # Standard Sources Tab
+        with search_tab1:
+            st.markdown("""
+            Search for case series using `LiteratureSearchService`.
+            Multi-source: PubMed, Semantic Scholar, Web Search.
+            """)
 
-        if st.button("Search Literature", type="primary", use_container_width=True):
-            with st.spinner("Searching literature..."):
-                try:
-                    drug_info = st.session_state.v3_drug_info
-                    search_result = run_async(
-                        orchestrator.search_literature(
-                            drug_name=drug_info.drug_name,
-                            exclude_indications=drug_info.approved_indications,
-                            max_per_source=max_per_source,
-                            filter_with_llm=use_llm_filter,
-                            generic_name=drug_info.generic_name,  # Search both brand + generic
+            col1, col2 = st.columns(2)
+
+            with col1:
+                use_llm_filter = st.checkbox("LLM Relevance Filtering", value=True, key="standard_llm_filter")
+            with col2:
+                max_per_source = st.slider("Max results per source", 10, 200, 50, key="standard_max_source")
+
+            if st.button("Search Standard Sources", type="primary", use_container_width=True, key="search_standard"):
+                with st.spinner("Searching literature..."):
+                    try:
+                        drug_info = st.session_state.v3_drug_info
+                        search_result = run_async(
+                            orchestrator.search_literature(
+                                drug_name=drug_info.drug_name,
+                                exclude_indications=drug_info.approved_indications,
+                                max_per_source=max_per_source,
+                                filter_with_llm=use_llm_filter,
+                                generic_name=drug_info.generic_name,
+                            )
                         )
-                    )
-                    st.session_state.v3_search_result = search_result
-                    st.success(f"Found {len(search_result.papers)} papers!")
-                except Exception as e:
-                    st.error(f"Error: {e}")
-                    logger.error(f"Search error: {e}", exc_info=True)
+                        st.session_state.v3_search_result = search_result
+                        st.success(f"Found {len(search_result.papers)} papers!")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                        logger.error(f"Search error: {e}", exc_info=True)
 
-        # Display results
-        if st.session_state.v3_search_result:
-            result = st.session_state.v3_search_result
+            # Display standard results
+            if st.session_state.v3_search_result:
+                result = st.session_state.v3_search_result
 
-            st.markdown("---")
-            st.subheader(f"Found {len(result.papers)} Papers")
+                st.markdown("---")
+                st.subheader(f"Found {len(result.papers)} Papers")
+
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Found", result.total_found)
+                with col2:
+                    st.metric("Duplicates Removed", result.duplicates_removed)
+                with col3:
+                    st.metric("Sources", len(result.sources_searched))
+
+                # Paper list
+                for i, paper in enumerate(result.papers[:20], 1):
+                    title = paper.title or "No title"
+                    display_title = f"{title[:80]}..." if len(title) > 80 else title
+                    with st.expander(f"{i}. {display_title}"):
+                        st.write(f"**PMID:** {paper.pmid or 'N/A'}")
+                        st.write(f"**Journal:** {paper.journal or 'N/A'}")
+                        st.write(f"**Year:** {paper.year or 'N/A'}")
+                        st.write(f"**Source:** {paper.source}")
+                        abstract_text = paper.abstract[:500] + "..." if paper.abstract and len(paper.abstract) > 500 else (paper.abstract or "No abstract")
+                        st.write(f"**Abstract:** {abstract_text}")
+
+                if len(result.papers) > 20:
+                    st.info(f"Showing 20 of {len(result.papers)} papers")
+
+        # Preprint Sources Tab
+        with search_tab2:
+            st.warning("""
+            **Preprint papers are not peer-reviewed.**
+            Evidence scores are reduced by 30% to reflect this.
+            Always verify findings in peer-reviewed literature before clinical application.
+            """)
+
+            st.markdown("""
+            Search bioRxiv and medRxiv for preprints from the **last 2 years**.
+            Results are kept separate from standard sources.
+            """)
 
             col1, col2, col3 = st.columns(3)
+
             with col1:
-                st.metric("Total Found", result.total_found)
+                preprint_server = st.selectbox(
+                    "Server",
+                    options=["both", "biorxiv", "medrxiv"],
+                    format_func=lambda x: {"both": "Both", "biorxiv": "bioRxiv only", "medrxiv": "medRxiv only"}[x],
+                    key="preprint_server"
+                )
             with col2:
-                st.metric("Duplicates Removed", result.duplicates_removed)
+                preprint_llm_filter = st.checkbox("LLM Relevance Filtering", value=True, key="preprint_llm_filter")
             with col3:
-                st.metric("Sources", len(result.sources_searched))
+                max_preprints = st.slider("Max results", 50, 300, 100, key="preprint_max")
 
-            # Paper list
-            for i, paper in enumerate(result.papers[:20], 1):
-                title = paper.title or "No title"
-                display_title = f"{title[:80]}..." if len(title) > 80 else title
-                with st.expander(f"{i}. {display_title}"):
-                    st.write(f"**PMID:** {paper.pmid or 'N/A'}")
-                    st.write(f"**Journal:** {paper.journal or 'N/A'}")
-                    st.write(f"**Year:** {paper.year or 'N/A'}")
-                    abstract_text = paper.abstract[:500] + "..." if paper.abstract and len(paper.abstract) > 500 else (paper.abstract or "No abstract")
-                    st.write(f"**Abstract:** {abstract_text}")
+            if st.button("Search Preprint Servers", type="primary", use_container_width=True, key="search_preprints"):
+                with st.spinner("Searching preprint servers..."):
+                    try:
+                        drug_info = st.session_state.v3_drug_info
 
-            if len(result.papers) > 20:
-                st.info(f"Showing 20 of {len(result.papers)} papers")
+                        # Get standard papers for deduplication (if available)
+                        standard_papers = None
+                        if st.session_state.v3_search_result:
+                            standard_papers = st.session_state.v3_search_result.papers
+
+                        preprint_result = run_async(
+                            orchestrator.search_preprint_literature(
+                                drug_name=drug_info.drug_name,
+                                generic_name=drug_info.generic_name,
+                                approved_indications=drug_info.approved_indications,
+                                max_results=max_preprints,
+                                server=preprint_server,
+                                years_back=2,
+                                apply_llm_filter=preprint_llm_filter,
+                                standard_papers=standard_papers,
+                            )
+                        )
+                        st.session_state.v3_preprint_search_result = preprint_result
+                        st.success(f"Found {len(preprint_result.papers)} preprints!")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                        logger.error(f"Preprint search error: {e}", exc_info=True)
+
+            # Display preprint results
+            if st.session_state.v3_preprint_search_result:
+                result = st.session_state.v3_preprint_search_result
+
+                st.markdown("---")
+                st.subheader(f"Found {len(result.papers)} Preprints")
+
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Found", result.total_found)
+                with col2:
+                    st.metric("Duplicates Removed", result.duplicates_removed)
+                with col3:
+                    st.metric("Sources", ", ".join(result.sources_searched))
+
+                # Paper list with preprint badges
+                for i, paper in enumerate(result.papers[:20], 1):
+                    title = paper.title or "No title"
+                    display_title = f"{title[:80]}..." if len(title) > 80 else title
+
+                    # Add preprint server badge
+                    server_badge = f"🔬 {paper.source}" if paper.source else "🔬 Preprint"
+                    pub_status = "✅ Published" if paper.published_doi else "📝 Preprint"
+
+                    with st.expander(f"{i}. [{server_badge}] {display_title}"):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.write(f"**DOI:** {paper.doi or 'N/A'}")
+                            st.write(f"**Year:** {paper.year or 'N/A'}")
+                            st.write(f"**Server:** {paper.preprint_server or paper.source}")
+                        with col2:
+                            if paper.published_doi:
+                                st.success(pub_status)
+                                st.write(f"Published: {paper.published_doi}")
+                            else:
+                                st.warning(pub_status)
+
+                        abstract_text = paper.abstract[:500] + "..." if paper.abstract and len(paper.abstract) > 500 else (paper.abstract or "No abstract")
+                        st.write(f"**Abstract:** {abstract_text}")
+
+                        if paper.url:
+                            st.markdown(f"[View on {paper.source}]({paper.url})")
+
+                if len(result.papers) > 20:
+                    st.info(f"Showing 20 of {len(result.papers)} preprints")
 
 
 # Tab 3: Data Extraction
@@ -1524,9 +1654,21 @@ with tab4:
                         n_patients = ext.patient_population.n_patients if ext.patient_population else None
                         resp_pct = ext.efficacy.responders_pct if ext.efficacy else None
                         sae_pct = ext.safety.sae_percentage if ext.safety else None
+                        pop_type = ext.patient_population.population_type if ext.patient_population else None
+                        is_refractory = ext.patient_population.is_refractory if ext.patient_population else None
+                        severity = ext.patient_population.disease_severity if ext.patient_population else None
                         st.write(f"**Patients:** {n_patients or 'N/A'}")
                         st.write(f"**Response Rate:** {resp_pct if resp_pct is not None else 'N/A'}{'%' if resp_pct is not None else ''}")
                         st.write(f"**SAE Rate:** {sae_pct if sae_pct is not None else 'N/A'}{'%' if sae_pct is not None else ''}")
+                        if pop_type or is_refractory is not None or severity:
+                            pop_info = []
+                            if pop_type:
+                                pop_info.append(pop_type)
+                            elif is_refractory:
+                                pop_info.append("refractory")
+                            if severity:
+                                pop_info.append(f"{severity} severity")
+                            st.write(f"**Population:** {', '.join(pop_info)}" if pop_info else "")
 
                     with col2:
                         st.write(f"**PMID:** {ext.source.pmid if ext.source else 'N/A'}")
@@ -1554,7 +1696,7 @@ with tab5:
         test_mode = st.checkbox("Test Mode (limit papers for faster testing)", value=True)
 
         if test_mode:
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
                 max_papers_to_find = st.number_input(
                     "Max papers to find",
@@ -1574,6 +1716,12 @@ with tab5:
             with col3:
                 with_market = st.checkbox("Include market intelligence", value=False)
             with col4:
+                supplemental_mode = st.checkbox(
+                    "Supplemental search",
+                    value=False,
+                    help="Skip papers already processed in previous runs."
+                )
+            with col5:
                 max_concurrent = st.number_input(
                     "Concurrent extractions",
                     min_value=1,
@@ -1582,7 +1730,7 @@ with tab5:
                     help="Number of papers to extract in parallel"
                 )
         else:
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 max_papers_to_find = 500  # High limit to get all available papers
                 max_papers_to_extract = None  # No limit
@@ -1590,6 +1738,12 @@ with tab5:
             with col2:
                 with_market = st.checkbox("Include market intelligence", value=True)
             with col3:
+                supplemental_mode = st.checkbox(
+                    "Supplemental search",
+                    value=False,
+                    help="Skip papers already processed in previous runs. Use this to add new papers without re-processing existing ones."
+                )
+            with col4:
                 max_concurrent = st.number_input(
                     "Concurrent extractions",
                     min_value=1,
@@ -1605,15 +1759,21 @@ with tab5:
             try:
                 from src.case_series.orchestrator import AnalysisConfig
 
+                # Debug: Show what values we're passing
+                logger.info(f"Creating AnalysisConfig with supplemental={supplemental_mode}")
+                st.write(f"Debug: supplemental_mode = {supplemental_mode}")
+
                 config = AnalysisConfig(
                     max_papers_per_source=max_papers_to_find,
                     max_papers_to_extract=max_papers_to_extract if test_mode else None,
                     enrich_market_data=with_market,
                     max_concurrent_extractions=max_concurrent,
+                    supplemental=supplemental_mode,
                 )
 
                 extract_msg = f"max {max_papers_to_extract}" if test_mode else "all"
-                status.write(f"Running analysis (find up to {max_papers_to_find}, extract {extract_msg})...")
+                supp_msg = " [SUPPLEMENTAL MODE]" if supplemental_mode else ""
+                status.write(f"Running analysis (find up to {max_papers_to_find}, extract {extract_msg}){supp_msg}...")
 
                 result = run_async(
                     orchestrator.analyze(st.session_state.v3_drug_name, config=config)

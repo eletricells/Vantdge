@@ -15,6 +15,7 @@ from src.case_series.services.literature_search_service import LiteratureSearchS
 from src.case_series.services.extraction_service import ExtractionService
 from src.case_series.services.market_intel_service import MarketIntelService
 from src.case_series.services.disease_standardizer import DiseaseStandardizer
+from src.case_series.services.preprint_search_service import PreprintSearchService
 from src.case_series.scoring.scoring_engine import ScoringEngine, ScoringWeights
 from src.case_series.repositories.case_series_repository import CaseSeriesRepository
 
@@ -108,6 +109,15 @@ def create_orchestrator(
         semantic_scholar_api_key=semantic_scholar_api_key,  # For citation mining
     )
 
+    # Create preprint search service (bioRxiv/medRxiv)
+    preprint_searcher = _create_preprint_client()
+    preprint_search_service = PreprintSearchService(
+        preprint_searcher=preprint_searcher,
+        llm_client=llm_client,
+        filter_llm_client=filter_llm_client,
+    )
+    logger.info("Created Preprint search service (bioRxiv/medRxiv)")
+
     extraction_service = ExtractionService(
         llm_client=llm_client,
         pubmed_searcher=pubmed_searcher,
@@ -131,6 +141,7 @@ def create_orchestrator(
     return CaseSeriesOrchestrator(
         drug_info_service=drug_info_service,
         literature_search_service=literature_search_service,
+        preprint_search_service=preprint_search_service,
         extraction_service=extraction_service,
         market_intel_service=market_intel_service,
         disease_standardizer=disease_standardizer,
@@ -445,3 +456,40 @@ def _create_web_fetcher():
             return await self.fetch(url)
 
     return SimpleWebFetcher()
+
+
+def _create_preprint_client():
+    """Create bioRxiv/medRxiv preprint search client wrapper."""
+    try:
+        from src.tools.preprint_search import PreprintSearchAPI
+    except ImportError:
+        logger.warning("PreprintSearchAPI not available")
+        return None
+
+    class PreprintSearcherWrapper:
+        """Preprint search implementation for bioRxiv/medRxiv."""
+
+        def __init__(self):
+            self._api = PreprintSearchAPI()
+            logger.info("Preprint Search API initialized (bioRxiv/medRxiv, last 2 years)")
+
+        def search(
+            self,
+            query: str,
+            server: str = "both",
+            max_results: int = 100,
+            years_back: int = 2,
+        ) -> list:
+            """Search preprint servers."""
+            return self._api.search(
+                query=query,
+                server=server,
+                max_results=max_results,
+                years_back=years_back
+            )
+
+        def check_publication_status(self, preprint_doi: str) -> Optional[str]:
+            """Check if a preprint has been published."""
+            return self._api.check_publication_status(preprint_doi)
+
+    return PreprintSearcherWrapper()

@@ -14,6 +14,7 @@ from .models import (
     TreatmentParadigm,
     TreatmentLine,
     TreatmentDrug,
+    TreatmentEstimate,
     FailureRates,
     MarketFunnel,
     DiseaseSource,
@@ -70,38 +71,125 @@ class DiseaseIntelligenceRepository:
             if disease.sources:
                 sources_json = json.dumps([s.model_dump() for s in disease.sources])
 
+            # Prepare source estimates JSONB - merge with existing if updating
+            prevalence_estimates_json = None
+            failure_rate_estimates_json = None
+
             if existing:
-                # Update existing
+                # Load existing estimates to merge with new ones
+                disease_id = existing["disease_id"]
+                cur.execute("""
+                    SELECT prevalence_estimates, failure_rate_estimates
+                    FROM disease_intelligence WHERE disease_id = %s
+                """, (disease_id,))
+                existing_row = cur.fetchone()
+
+                # Merge prevalence estimates (deduplicate by PMID)
+                if disease.prevalence.source_estimates:
+                    new_estimates = [e.model_dump() for e in disease.prevalence.source_estimates]
+                    existing_estimates = existing_row.get("prevalence_estimates") or [] if existing_row else []
+                    if isinstance(existing_estimates, str):
+                        existing_estimates = json.loads(existing_estimates)
+
+                    # Build set of existing PMIDs
+                    existing_pmids = set()
+                    for e in existing_estimates:
+                        pmid = e.get("pmid")
+                        if pmid:
+                            existing_pmids.add(str(pmid))
+
+                    # Add new estimates that don't already exist
+                    merged = list(existing_estimates)
+                    for e in new_estimates:
+                        pmid = e.get("pmid")
+                        if pmid and str(pmid) not in existing_pmids:
+                            merged.append(e)
+                            existing_pmids.add(str(pmid))
+                        elif not pmid:
+                            # No PMID - check by title
+                            title = e.get("title", "").lower()
+                            if not any(ex.get("title", "").lower() == title for ex in merged):
+                                merged.append(e)
+
+                    prevalence_estimates_json = json.dumps(merged) if merged else None
+                    logger.info(f"Merged prevalence estimates: {len(existing_estimates)} existing + {len(new_estimates)} new = {len(merged)} total")
+
+                # Merge failure rate estimates (deduplicate by PMID)
+                if disease.failure_rates.source_estimates:
+                    new_estimates = [e.model_dump() for e in disease.failure_rates.source_estimates]
+                    existing_estimates = existing_row.get("failure_rate_estimates") or [] if existing_row else []
+                    if isinstance(existing_estimates, str):
+                        existing_estimates = json.loads(existing_estimates)
+
+                    # Build set of existing PMIDs
+                    existing_pmids = set()
+                    for e in existing_estimates:
+                        pmid = e.get("pmid")
+                        if pmid:
+                            existing_pmids.add(str(pmid))
+
+                    # Add new estimates that don't already exist
+                    merged = list(existing_estimates)
+                    for e in new_estimates:
+                        pmid = e.get("pmid")
+                        if pmid and str(pmid) not in existing_pmids:
+                            merged.append(e)
+                            existing_pmids.add(str(pmid))
+                        elif not pmid:
+                            # No PMID - check by title
+                            title = e.get("title", "").lower()
+                            if not any(ex.get("title", "").lower() == title for ex in merged):
+                                merged.append(e)
+
+                    failure_rate_estimates_json = json.dumps(merged) if merged else None
+                    logger.info(f"Merged failure rate estimates: {len(existing_estimates)} existing + {len(new_estimates)} new = {len(merged)} total")
+            else:
+                # New disease - just use the new estimates
+                if disease.prevalence.source_estimates:
+                    prevalence_estimates_json = json.dumps([e.model_dump() for e in disease.prevalence.source_estimates])
+                if disease.failure_rates.source_estimates:
+                    failure_rate_estimates_json = json.dumps([e.model_dump() for e in disease.failure_rates.source_estimates])
+
+            if existing:
+                # Update existing - use COALESCE to preserve existing values when new is NULL
                 disease_id = existing["disease_id"]
                 cur.execute("""
                     UPDATE disease_intelligence SET
-                        disease_aliases = %s,
-                        therapeutic_area = %s,
-                        total_patients = %s,
-                        adult_patients = %s,
-                        pediatric_patients = %s,
-                        prevalence_source = %s,
-                        prevalence_year = %s,
-                        pct_diagnosed = %s,
-                        pct_treated = %s,
-                        severity_breakdown = %s,
-                        subpopulations = %s,
-                        treatment_paradigm = %s,
-                        fail_1L_pct = %s,
-                        fail_1L_reason = %s,
-                        fail_2L_pct = %s,
-                        fail_2L_reason = %s,
-                        patients_treated = %s,
-                        patients_fail_1L = %s,
-                        patients_addressable_2L = %s,
-                        market_size_2L_usd = %s,
-                        data_quality = %s,
-                        sources = %s,
-                        notes = %s,
+                        disease_aliases = COALESCE(%s, disease_aliases),
+                        therapeutic_area = COALESCE(%s, therapeutic_area),
+                        total_patients = COALESCE(%s, total_patients),
+                        adult_patients = COALESCE(%s, adult_patients),
+                        pediatric_patients = COALESCE(%s, pediatric_patients),
+                        prevalence_source = COALESCE(%s, prevalence_source),
+                        prevalence_year = COALESCE(%s, prevalence_year),
+                        pct_diagnosed = COALESCE(%s, pct_diagnosed),
+                        pct_treated = COALESCE(%s, pct_treated),
+                        severity_breakdown = COALESCE(%s, severity_breakdown),
+                        subpopulations = COALESCE(%s, subpopulations),
+                        treatment_paradigm = COALESCE(%s, treatment_paradigm),
+                        fail_1L_pct = COALESCE(%s, fail_1L_pct),
+                        fail_1L_reason = COALESCE(%s, fail_1L_reason),
+                        fail_2L_pct = COALESCE(%s, fail_2L_pct),
+                        fail_2L_reason = COALESCE(%s, fail_2L_reason),
+                        patients_treated = COALESCE(%s, patients_treated),
+                        patients_fail_1L = COALESCE(%s, patients_fail_1L),
+                        patients_addressable_2L = COALESCE(%s, patients_addressable_2L),
+                        market_size_2L_usd = COALESCE(%s, market_size_2L_usd),
+                        data_quality = COALESCE(%s, data_quality),
+                        sources = COALESCE(%s, sources),
+                        notes = COALESCE(%s, notes),
+                        prevalence_estimates = COALESCE(%s, prevalence_estimates),
+                        failure_rate_estimates = COALESCE(%s, failure_rate_estimates),
+                        prevalence_methodology = COALESCE(%s, prevalence_methodology),
+                        failure_rate_methodology = COALESCE(%s, failure_rate_methodology),
+                        prevalence_confidence = COALESCE(%s, prevalence_confidence),
+                        failure_rate_confidence = COALESCE(%s, failure_rate_confidence),
+                        prevalence_range = COALESCE(%s, prevalence_range),
+                        failure_rate_range = COALESCE(%s, failure_rate_range),
                         updated_at = CURRENT_TIMESTAMP
                     WHERE disease_id = %s
                 """, (
-                    json.dumps(disease.disease_aliases),
+                    json.dumps(disease.disease_aliases) if disease.disease_aliases else None,
                     disease.therapeutic_area,
                     disease.prevalence.total_patients,
                     disease.prevalence.adult_patients,
@@ -124,6 +212,14 @@ class DiseaseIntelligenceRepository:
                     disease.data_quality,
                     sources_json,
                     disease.notes,
+                    prevalence_estimates_json,
+                    failure_rate_estimates_json,
+                    disease.prevalence.methodology_notes,
+                    disease.failure_rates.methodology_notes,
+                    disease.prevalence.confidence,
+                    disease.failure_rates.confidence,
+                    disease.prevalence.estimate_range,
+                    disease.failure_rates.estimate_range,
                     disease_id,
                 ))
                 logger.info(f"Updated disease intelligence for {disease.disease_name}")
@@ -138,9 +234,14 @@ class DiseaseIntelligenceRepository:
                         treatment_paradigm,
                         fail_1L_pct, fail_1L_reason, fail_2L_pct, fail_2L_reason,
                         patients_treated, patients_fail_1L, patients_addressable_2L, market_size_2L_usd,
-                        data_quality, sources, notes
+                        data_quality, sources, notes,
+                        prevalence_estimates, failure_rate_estimates,
+                        prevalence_methodology, failure_rate_methodology,
+                        prevalence_confidence, failure_rate_confidence,
+                        prevalence_range, failure_rate_range
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     RETURNING disease_id
                 """, (
@@ -168,6 +269,14 @@ class DiseaseIntelligenceRepository:
                     disease.data_quality,
                     sources_json,
                     disease.notes,
+                    prevalence_estimates_json,
+                    failure_rate_estimates_json,
+                    disease.prevalence.methodology_notes,
+                    disease.failure_rates.methodology_notes,
+                    disease.prevalence.confidence,
+                    disease.failure_rates.confidence,
+                    disease.prevalence.estimate_range,
+                    disease.failure_rates.estimate_range,
                 ))
                 disease_id = cur.fetchone()["disease_id"]
                 logger.info(f"Inserted new disease intelligence for {disease.disease_name}")
@@ -330,8 +439,169 @@ class DiseaseIntelligenceRepository:
             self.db.commit()
             return deleted
 
+    def get_pipeline_runs(self, disease_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all pipeline runs for a disease.
+
+        Args:
+            disease_id: ID of the disease
+
+        Returns:
+            List of run dictionaries with run metadata and statistics
+        """
+        self.db.ensure_connected()
+
+        with self.db.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    run_id,
+                    disease_id,
+                    disease_key,
+                    run_timestamp,
+                    run_type,
+                    clinicaltrials_searched,
+                    web_sources_searched,
+                    drugs_found_total,
+                    drugs_new,
+                    drugs_updated,
+                    status,
+                    error_message,
+                    created_at
+                FROM disease_pipeline_runs
+                WHERE disease_id = %s
+                ORDER BY run_timestamp DESC
+            """, (disease_id,))
+
+            return [dict(row) for row in cur.fetchall()]
+
+    def get_pipeline_sources(self, disease_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all pipeline sources for a disease.
+
+        Args:
+            disease_id: ID of the disease
+
+        Returns:
+            List of source dictionaries with NCT IDs, URLs, etc.
+        """
+        self.db.ensure_connected()
+
+        with self.db.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    source_id,
+                    disease_id,
+                    drug_id,
+                    nct_id,
+                    source_url,
+                    source_type,
+                    title,
+                    publication_date,
+                    content_summary,
+                    extracted_data,
+                    confidence_score,
+                    verified,
+                    created_at
+                FROM disease_pipeline_sources
+                WHERE disease_id = %s
+                ORDER BY created_at DESC
+            """, (disease_id,))
+
+            return [dict(row) for row in cur.fetchall()]
+
+    def get_drugs_for_disease(self, disease_name: str) -> List[Dict[str, Any]]:
+        """
+        Get all drugs associated with a disease from the drugs database.
+
+        Args:
+            disease_name: Name of the disease
+
+        Returns:
+            List of drug dictionaries with drug details
+        """
+        self.db.ensure_connected()
+
+        with self.db.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    d.drug_id,
+                    d.brand_name,
+                    d.generic_name,
+                    d.manufacturer,
+                    d.drug_type,
+                    d.mechanism_of_action,
+                    d.highest_phase,
+                    d.approval_status,
+                    d.first_approval_date,
+                    di.line_of_therapy,
+                    di.approval_date as indication_approval_date,
+                    CASE d.highest_phase
+                        WHEN 'Approved' THEN 1
+                        WHEN 'Phase 3' THEN 2
+                        WHEN 'Phase 2' THEN 3
+                        WHEN 'Phase 1' THEN 4
+                        WHEN 'Preclinical' THEN 5
+                        ELSE 6
+                    END as phase_order
+                FROM drugs d
+                JOIN drug_indications di ON d.drug_id = di.drug_id
+                JOIN diseases ds ON di.disease_id = ds.disease_id
+                WHERE LOWER(ds.disease_name_standard) ILIKE LOWER(%s)
+                   OR LOWER(ds.disease_name_standard) ILIKE LOWER(%s)
+                ORDER BY phase_order, d.brand_name
+            """, (f'%{disease_name}%', disease_name))
+
+            return [dict(row) for row in cur.fetchall()]
+
+    def get_all_pipeline_runs(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Get all pipeline runs across all diseases (most recent first).
+
+        Args:
+            limit: Maximum number of runs to return
+
+        Returns:
+            List of run dictionaries including disease name
+        """
+        self.db.ensure_connected()
+
+        with self.db.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    r.run_id,
+                    r.disease_id,
+                    r.disease_key,
+                    di.disease_name,
+                    di.therapeutic_area,
+                    r.run_timestamp,
+                    r.run_type,
+                    r.clinicaltrials_searched,
+                    r.web_sources_searched,
+                    r.drugs_found_total,
+                    r.drugs_new,
+                    r.drugs_updated,
+                    r.status,
+                    r.error_message,
+                    r.created_at
+                FROM disease_pipeline_runs r
+                JOIN disease_intelligence di ON r.disease_id = di.disease_id
+                ORDER BY r.run_timestamp DESC
+                LIMIT %s
+            """, (limit,))
+
+            return [dict(row) for row in cur.fetchall()]
+
     def _row_to_model(self, row: Dict[str, Any]) -> DiseaseIntelligence:
         """Convert database row to DiseaseIntelligence model."""
+        # Parse prevalence estimates
+        prevalence_estimates = []
+        if row.get("prevalence_estimates"):
+            est_data = row["prevalence_estimates"]
+            if isinstance(est_data, str):
+                est_data = json.loads(est_data)
+            from .models import PrevalenceEstimate
+            prevalence_estimates = [PrevalenceEstimate(**e) for e in est_data]
+
         # Parse prevalence
         prevalence = PrevalenceData(
             total_patients=row.get("total_patients"),
@@ -339,6 +609,10 @@ class DiseaseIntelligenceRepository:
             pediatric_patients=row.get("pediatric_patients"),
             prevalence_source=row.get("prevalence_source"),
             prevalence_year=row.get("prevalence_year"),
+            source_estimates=prevalence_estimates,
+            estimate_range=row.get("prevalence_range"),
+            methodology_notes=row.get("prevalence_methodology"),
+            confidence=row.get("prevalence_confidence"),
         )
 
         # Parse segmentation
@@ -356,11 +630,20 @@ class DiseaseIntelligenceRepository:
                 subpop_data = json.loads(subpop_data)
             subpopulations = [Subpopulation(**s) for s in subpop_data]
 
+        # Parse treatment estimates
+        treatment_estimates = []
+        if row.get("treatment_estimates"):
+            te_data = row["treatment_estimates"]
+            if isinstance(te_data, str):
+                te_data = json.loads(te_data)
+            treatment_estimates = [TreatmentEstimate(**e) for e in te_data]
+
         segmentation = PatientSegmentation(
             pct_diagnosed=float(row["pct_diagnosed"]) if row.get("pct_diagnosed") else None,
             pct_treated=float(row["pct_treated"]) if row.get("pct_treated") else None,
             severity=severity,
             subpopulations=subpopulations,
+            treatment_estimates=treatment_estimates,
         )
 
         # Parse treatment paradigm
@@ -371,12 +654,25 @@ class DiseaseIntelligenceRepository:
                 tp_data = json.loads(tp_data)
             treatment_paradigm = TreatmentParadigm(**tp_data)
 
+        # Parse failure rate estimates
+        failure_rate_estimates = []
+        if row.get("failure_rate_estimates"):
+            est_data = row["failure_rate_estimates"]
+            if isinstance(est_data, str):
+                est_data = json.loads(est_data)
+            from .models import FailureRateEstimate
+            failure_rate_estimates = [FailureRateEstimate(**e) for e in est_data]
+
         # Parse failure rates (PostgreSQL lowercases column names)
         failure_rates = FailureRates(
             fail_1L_pct=float(row["fail_1l_pct"]) if row.get("fail_1l_pct") else None,
             fail_1L_reason=row.get("fail_1l_reason"),
             fail_2L_pct=float(row["fail_2l_pct"]) if row.get("fail_2l_pct") else None,
             fail_2L_reason=row.get("fail_2l_reason"),
+            source_estimates=failure_rate_estimates,
+            estimate_range=row.get("failure_rate_range"),
+            methodology_notes=row.get("failure_rate_methodology"),
+            confidence=row.get("failure_rate_confidence"),
         )
 
         # Parse market funnel (PostgreSQL lowercases column names)

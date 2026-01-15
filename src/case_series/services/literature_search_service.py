@@ -93,18 +93,29 @@ class Paper:
     journal: Optional[str] = None
     year: Optional[int] = None
     url: Optional[str] = None
-    source: str = "Unknown"  # PubMed, Semantic Scholar, Web, Citation Mining
+    source: str = "Unknown"  # PubMed, Semantic Scholar, Web, Citation Mining, bioRxiv, medRxiv
     has_full_text: bool = False
     relevance_score: float = 0.0
     relevance_reason: Optional[str] = None
     extracted_disease: Optional[str] = None
+    # Preprint-specific fields
+    is_preprint: bool = False
+    published_doi: Optional[str] = None  # DOI of published version if preprint was published
+    preprint_server: Optional[str] = None  # "biorxiv" or "medrxiv"
 
     def __post_init__(self):
-        """Ensure authors is always a string and pmcid is valid."""
+        """Ensure authors is always a string, pmcid is valid, and year is int."""
         # Validate pmcid is a string, not a dict (can happen with API bugs)
         if self.pmcid is not None and not isinstance(self.pmcid, str):
             logger.warning(f"Invalid pmcid type {type(self.pmcid)}, setting to None")
             self.pmcid = None
+
+        # Validate year is an integer or None (LLM might return "Unknown")
+        if self.year is not None and not isinstance(self.year, int):
+            try:
+                self.year = int(self.year)
+            except (ValueError, TypeError):
+                self.year = None
 
         if self.authors is not None and not isinstance(self.authors, str):
             # Convert list of author dicts to string
@@ -139,6 +150,9 @@ class Paper:
             'relevance_score': self.relevance_score,
             'relevance_reason': self.relevance_reason,
             'extracted_disease': self.extracted_disease,
+            'is_preprint': self.is_preprint,
+            'published_doi': self.published_doi,
+            'preprint_server': self.preprint_server,
         }
 
 
@@ -193,8 +207,18 @@ class LiteratureSearchService:
         '{drug_term} AND (rheumatoid OR psoriatic OR ankylosing OR arthritis) AND (patients OR treated OR response) {exclusions}',
         '{drug_term} AND (inflammatory OR autoimmune) AND (patients OR treated OR outcome OR response) {exclusions}',
 
+        # NEUROLOGICAL autoimmune disease searches
+        '{drug_term} AND ("neuromyelitis optica" OR NMOSD OR "multiple sclerosis" OR encephalitis OR "myasthenia gravis") AND (patients OR treated OR response) {exclusions}',
+        '{drug_term} AND (neuropathy OR neuritis OR myelitis OR "Guillain-Barre" OR CIDP) AND (patients OR treated OR response) {exclusions}',
+
         # Refractory/resistant disease searches
         '{drug_term} AND (refractory OR resistant OR recalcitrant OR treatment-resistant) AND (patients OR treated OR response) {exclusions}',
+
+        # NON-ONCOLOGY case reports - explicitly exclude cancer terms to find off-label uses
+        '{drug_term} AND ("Case Reports"[Publication Type] OR case report OR case series) NOT (lymphoma OR leukemia OR myeloma OR cancer OR tumor OR carcinoma OR oncology OR malignancy) {exclusions}',
+
+        # Rare disease and orphan indication searches
+        '{drug_term} AND (rare disease OR orphan OR ultra-rare) AND (patients OR treated OR response) {exclusions}',
     ]
 
     # Exclusion terms - filter out non-clinical papers
@@ -248,6 +272,8 @@ class LiteratureSearchService:
         use_pubmed: bool = True,
         use_semantic_scholar: bool = True,
         use_web_search: bool = True,
+        skip_pmids: Optional[Set[str]] = None,
+        filter_checkpoint_callback: callable = None,
     ) -> SearchResult:
         """
         Search for case series across all sources.
@@ -270,6 +296,8 @@ class LiteratureSearchService:
             use_pubmed: Whether to search PubMed
             use_semantic_scholar: Whether to search Semantic Scholar
             use_web_search: Whether to search web sources
+            skip_pmids: Set of PMIDs to skip (already processed in previous runs)
+            filter_checkpoint_callback: Optional callback(papers, batch_num) for saving progress every 50 batches
 
         Returns:
             SearchResult with deduplicated, filtered papers
@@ -337,9 +365,19 @@ class LiteratureSearchService:
             logger.info(f"Truncating {len(deduped_papers)} papers to {max_total_papers} (testing limit)")
             deduped_papers = deduped_papers[:max_total_papers]
 
+        # Skip papers already processed in previous runs (supplemental mode optimization)
+        # This MUST happen BEFORE the expensive LLM filter to save compute
+        skipped_count = 0
+        if skip_pmids:
+            before_skip = len(deduped_papers)
+            deduped_papers = [p for p in deduped_papers if p.pmid not in skip_pmids]
+            skipped_count = before_skip - len(deduped_papers)
+            if skipped_count > 0:
+                logger.info(f"Supplemental mode: Skipped {skipped_count} already-processed papers BEFORE filtering")
+
         # Set total_found to reflect papers actually sent to filtering (after dedup and truncation)
         result.total_found = len(deduped_papers)
-        logger.info(f"Papers to filter: {result.total_found} (raw: {total_raw}, deduped: {total_raw - result.duplicates_removed}, truncated: {truncated_count})")
+        logger.info(f"Papers to filter: {result.total_found} (raw: {total_raw}, deduped: {total_raw - result.duplicates_removed}, truncated: {truncated_count}, skipped: {skipped_count})")
 
         # Check PMC availability
         if self._pubmed:
@@ -348,7 +386,8 @@ class LiteratureSearchService:
         # Filter with LLM (uses separate filter client if available, e.g., Haiku)
         if filter_with_llm and self._filter_llm_client:
             filtered_papers = await self._filter_with_llm(
-                deduped_papers, drug_name, exclude_indications
+                deduped_papers, drug_name, exclude_indications,
+                checkpoint_callback=filter_checkpoint_callback,
             )
             result.papers = filtered_papers
         else:
@@ -381,6 +420,12 @@ class LiteratureSearchService:
         else:
             drug_term = f'"{drug_name}"[Title/Abstract]'
             logger.info(f"PubMed: Searching for drug name '{drug_name}'")
+
+        # Special case: CAR-T has multiple common naming variants in literature
+        # Papers may use "CAR-T", "CAR T", "CAR T cell", "chimeric antigen receptor T cell", etc.
+        if drug_name.upper() in ('CAR-T', 'CAR T', 'CART'):
+            drug_term = '("CAR-T"[Title/Abstract] OR "CAR T"[Title/Abstract] OR "CAR T cell"[Title/Abstract] OR "CAR-T cell"[Title/Abstract] OR "chimeric antigen receptor T cell"[Title/Abstract] OR "chimeric antigen receptor T-cell"[Title/Abstract])'
+            logger.info(f"PubMed: Using expanded CAR-T search variants")
 
         # Papers per query: use max_results directly for each query to avoid missing papers
         # Each query searches a different aspect, so we want full coverage from each
@@ -458,6 +503,11 @@ class LiteratureSearchService:
         if generic_name and generic_name.lower() != drug_name.lower():
             drug_names.append(generic_name)
 
+        # Special case: CAR-T has multiple naming variants
+        if drug_name.upper() in ('CAR-T', 'CAR T', 'CART'):
+            drug_names = ['CAR-T', 'CAR T', 'CAR T cell', 'chimeric antigen receptor T cell']
+            logger.info("Semantic Scholar: Using expanded CAR-T search variants")
+
         queries = []
         for name in drug_names:
             # Query 1: Case reports and treatment outcomes
@@ -499,6 +549,11 @@ class LiteratureSearchService:
         drug_names = [drug_name]
         if generic_name and generic_name.lower() != drug_name.lower():
             drug_names.append(generic_name)
+
+        # Special case: CAR-T has multiple naming variants
+        if drug_name.upper() in ('CAR-T', 'CAR T', 'CART'):
+            drug_names = ['CAR-T', 'CAR T', 'CAR T cell', 'chimeric antigen receptor T cell']
+            logger.info("Web search: Using expanded CAR-T search variants")
 
         queries = []
         for name in drug_names:
@@ -617,7 +672,77 @@ class LiteratureSearchService:
             except Exception as e:
                 logger.error(f"Citation mining error for '{name}': {e}")
 
-        logger.info(f"Citation mining total: {len(papers)} papers")
+        # Also search PubMed for reviews and their related articles
+        if self._pubmed:
+            pubmed_review_papers = self._mine_pubmed_reviews(drug_name, generic_name, seen_ids)
+            papers.extend(pubmed_review_papers)
+
+        logger.info(f"Citation Mining returned {len(papers)} papers")
+        return papers
+
+    def _mine_pubmed_reviews(
+        self,
+        drug_name: str,
+        generic_name: Optional[str] = None,
+        seen_ids: Optional[Set[str]] = None,
+    ) -> List[Paper]:
+        """
+        Search PubMed for review articles and find related case studies.
+
+        This supplements Semantic Scholar when it's rate limited.
+        """
+        if not self._pubmed:
+            return []
+
+        papers = []
+        seen_ids = seen_ids or set()
+
+        # Build list of drug names
+        drug_names = [drug_name]
+        if generic_name and generic_name.lower() != drug_name.lower():
+            drug_names.append(generic_name)
+
+        for name in drug_names:
+            try:
+                # Search for reviews about this drug
+                review_query = f'"{name}"[Title/Abstract] AND ("Review"[Publication Type] OR "Systematic Review"[Publication Type])'
+                logger.info(f"PubMed review search: {review_query[:80]}...")
+
+                review_pmids = self._pubmed.search(review_query, max_results=10)
+
+                if not review_pmids:
+                    logger.info(f"No PubMed reviews found for '{name}'")
+                    continue
+
+                logger.info(f"Found {len(review_pmids)} PubMed reviews for '{name}'")
+
+                # For each review, find related articles (which often include cited case studies)
+                for review_pmid in review_pmids[:5]:  # Limit to 5 reviews
+                    try:
+                        # Use PubMed eLink to find related articles
+                        related = self._pubmed.get_related_articles(review_pmid, max_results=20)
+                        for rel in related:
+                            rel_pmid = rel.get('pmid')
+                            if rel_pmid and rel_pmid not in seen_ids:
+                                seen_ids.add(rel_pmid)
+                                papers.append(Paper(
+                                    pmid=rel_pmid,
+                                    title=rel.get('title', ''),
+                                    abstract=rel.get('abstract', ''),
+                                    authors=rel.get('authors', ''),
+                                    journal=rel.get('journal', ''),
+                                    year=rel.get('year'),
+                                    source='PubMed Review Mining',
+                                    relevance_reason=f"Related to review PMID:{review_pmid}",
+                                ))
+                    except Exception as e:
+                        logger.warning(f"Failed to get related articles for review {review_pmid}: {e}")
+
+                logger.info(f"PubMed review mining for '{name}': {len(papers)} related papers found")
+
+            except Exception as e:
+                logger.error(f"PubMed review mining error for '{name}': {e}")
+
         return papers
 
     def _deduplicate(self, papers: List[Paper]) -> List[Paper]:
@@ -753,6 +878,10 @@ class LiteratureSearchService:
         filtered = []
         drug_lower = drug_name.lower()
 
+        # Special case: CAR-T has multiple naming variants in literature
+        is_cart_search = drug_name.upper() in ('CAR-T', 'CAR T', 'CART')
+        cart_variants = ['car-t', 'car t', 'car t cell', 'car-t cell', 'chimeric antigen receptor']
+
         for paper in papers:
             text = f"{paper.title or ''} {paper.abstract or ''}".lower()
 
@@ -761,8 +890,13 @@ class LiteratureSearchService:
             is_citation_mining = paper.source == 'Citation Mining'
 
             # For non-citation-mining papers, must mention the drug
-            if not is_citation_mining and drug_lower not in text:
-                continue
+            if not is_citation_mining:
+                if is_cart_search:
+                    # For CAR-T, check any variant
+                    if not any(variant in text for variant in cart_variants):
+                        continue
+                elif drug_lower not in text:
+                    continue
 
             # Check for clinical keywords
             has_clinical = any(kw in text for kw in clinical_keywords)
@@ -786,8 +920,18 @@ class LiteratureSearchService:
         papers: List[Paper],
         drug_name: str,
         exclude_indications: List[str],
+        checkpoint_callback: callable = None,
+        checkpoint_interval: int = 10,
     ) -> List[Paper]:
-        """Use LLM to filter papers for relevance."""
+        """Use LLM to filter papers for relevance.
+
+        Args:
+            papers: Papers to filter
+            drug_name: Name of drug
+            exclude_indications: Approved indications to exclude
+            checkpoint_callback: Optional callback(papers_so_far, batch_num) called every checkpoint_interval batches
+            checkpoint_interval: How often to call checkpoint callback (default 10 batches)
+        """
         if not papers:
             return []
 
@@ -857,7 +1001,13 @@ class LiteratureSearchService:
                         result = result_by_index.get(j, {})
                         # Template uses 'include', not 'is_relevant'
                         if result.get('include', False):
-                            paper.relevance_score = result.get('patient_count', 0) / 100.0 if result.get('patient_count') else 0.5
+                            # Safely calculate relevance score from patient_count
+                            patient_count = result.get('patient_count')
+                            try:
+                                patient_count_int = int(patient_count) if patient_count else 0
+                                paper.relevance_score = patient_count_int / 100.0 if patient_count_int else 0.5
+                            except (ValueError, TypeError):
+                                paper.relevance_score = 0.5  # Default if patient_count is not numeric
                             paper.relevance_reason = result.get('reason', '')
                             paper.extracted_disease = result.get('disease', '')
                             passed_papers.append(paper)
@@ -875,21 +1025,37 @@ class LiteratureSearchService:
                     # Include all papers from failed batch
                     return batch
 
-        # Process all batches concurrently (limited by semaphore)
-        batch_results = await asyncio.gather(
-            *[process_batch(i, batch) for i, batch in batches],
-            return_exceptions=True
-        )
-
-        # Collect results
+        # Process batches in waves for checkpointing (saves progress every N batches)
         filtered_papers = []
-        for i, result in enumerate(batch_results):
-            if isinstance(result, Exception):
-                logger.warning(f"Batch {i} raised exception: {result}")
-                # Include all papers from failed batch
-                filtered_papers.extend(batches[i][1])
-            else:
-                filtered_papers.extend(result)
+        total_batches = len(batches)
+
+        for wave_start in range(0, total_batches, checkpoint_interval):
+            wave_end = min(wave_start + checkpoint_interval, total_batches)
+            wave_batches = batches[wave_start:wave_end]
+
+            # Process this wave concurrently (limited by semaphore)
+            batch_results = await asyncio.gather(
+                *[process_batch(idx, batch) for idx, batch in wave_batches],
+                return_exceptions=True
+            )
+
+            # Collect results from this wave
+            for i, result in enumerate(batch_results):
+                actual_batch_idx = wave_start + i
+                if isinstance(result, Exception):
+                    logger.warning(f"Batch {actual_batch_idx} raised exception: {result}")
+                    # Include all papers from failed batch
+                    filtered_papers.extend(wave_batches[i][1])
+                else:
+                    filtered_papers.extend(result)
+
+            # Call checkpoint callback if provided
+            if checkpoint_callback and wave_end < total_batches:
+                try:
+                    logger.info(f"Checkpoint: {wave_end}/{total_batches} batches complete, {len(filtered_papers)} papers passed so far")
+                    checkpoint_callback(filtered_papers.copy(), wave_end)
+                except Exception as e:
+                    logger.warning(f"Checkpoint callback failed at batch {wave_end}: {e}")
 
         # Log filtering summary
         pass_rate = len(filtered_papers) / len(papers) * 100 if papers else 0

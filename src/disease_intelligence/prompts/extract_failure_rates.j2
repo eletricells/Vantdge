@@ -8,6 +8,7 @@ For EACH source paper that contains failure rate data, extract the estimate sepa
 {% for source in sources %}
 --- Source {{ loop.index }}: {{ source.title }} ---
 PMID: {{ source.pmid or 'N/A' }}
+{% if source.authors %}Authors: {{ source.authors }}{% endif %}
 {% if source.journal %}Journal: {{ source.journal }} ({{ source.year }}){% endif %}
 {% if source.url %}URL: {{ source.url }}{% endif %}
 

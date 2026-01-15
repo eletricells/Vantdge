@@ -189,6 +189,165 @@ class OpenFDAClient(BaseAPIClient):
         results = self.search_drug_labels(drug_name, limit=1)
         return results is not None and len(results) > 0
 
+    def is_approved_for_indication(
+        self,
+        drug_name: str,
+        indication: str,
+        fuzzy_threshold: float = 0.8
+    ) -> tuple[bool, str, list[str]]:
+        """
+        Check if a drug is FDA-approved for a specific indication.
+
+        Searches OpenFDA drug labels and checks if the indication appears
+        in the approved indications_and_usage text.
+
+        Args:
+            drug_name: Drug name (brand or generic)
+            indication: Disease/indication to check (e.g., "pemphigus vulgaris")
+            fuzzy_threshold: Minimum similarity score for fuzzy matching (0-1)
+
+        Returns:
+            Tuple of (is_approved, indications_text, matched_terms)
+            - is_approved: True if indication found in approved uses
+            - indications_text: Full indications_and_usage text from label
+            - matched_terms: List of matching terms found
+        """
+        labels = self.search_drug_labels(drug_name, limit=3)
+        if not labels:
+            logger.debug(f"No FDA labels found for '{drug_name}'")
+            return False, "", []
+
+        # Check each label (may have multiple formulations)
+        for label in labels:
+            indications_text = ""
+            indications_raw = label.get("indications_and_usage", [])
+            if indications_raw:
+                indications_text = indications_raw[0] if isinstance(indications_raw, list) else indications_raw
+
+            if not indications_text:
+                continue
+
+            # Check if indication is mentioned in the approved uses
+            is_match, matched_terms = self._check_indication_match(
+                indication, indications_text, fuzzy_threshold
+            )
+
+            if is_match:
+                logger.info(f"'{drug_name}' IS approved for '{indication}' - matched: {matched_terms}")
+                return True, indications_text, matched_terms
+
+        logger.debug(f"'{drug_name}' not approved for '{indication}'")
+        return False, indications_text if labels else "", []
+
+    def _check_indication_match(
+        self,
+        indication: str,
+        indications_text: str,
+        threshold: float = 0.8
+    ) -> tuple[bool, list[str]]:
+        """
+        Check if an indication matches the approved indications text.
+
+        Uses multiple matching strategies:
+        1. Exact substring match (case-insensitive)
+        2. Word-based matching for multi-word indications
+        3. Common synonyms/variations
+
+        Args:
+            indication: The indication to search for
+            indications_text: The FDA label indications_and_usage text
+            threshold: Minimum match threshold
+
+        Returns:
+            Tuple of (is_match, matched_terms)
+        """
+        indication_lower = indication.lower().strip()
+        text_lower = indications_text.lower()
+        matched_terms = []
+
+        # Strategy 1: Exact substring match
+        if indication_lower in text_lower:
+            matched_terms.append(f"exact: '{indication}'")
+            return True, matched_terms
+
+        # Strategy 2: Check key terms from indication
+        # Split indication into significant words (skip common words)
+        skip_words = {"disease", "syndrome", "disorder", "chronic", "acute", "severe",
+                      "moderate", "mild", "adult", "pediatric", "patients", "with", "the", "of", "and"}
+        indication_words = [w for w in indication_lower.split() if w not in skip_words and len(w) > 2]
+
+        # Check if all significant words appear in text
+        if indication_words:
+            words_found = [w for w in indication_words if w in text_lower]
+            if len(words_found) == len(indication_words):
+                matched_terms.append(f"all_words: {words_found}")
+                return True, matched_terms
+            # Allow partial match if most words found (for long indication names)
+            if len(indication_words) >= 3 and len(words_found) >= len(indication_words) * threshold:
+                matched_terms.append(f"partial_words: {words_found}")
+                return True, matched_terms
+
+        # Strategy 3: Common medical synonyms and variations
+        synonyms = self._get_indication_synonyms(indication_lower)
+        for synonym in synonyms:
+            if synonym in text_lower:
+                matched_terms.append(f"synonym: '{synonym}'")
+                return True, matched_terms
+
+        return False, matched_terms
+
+    def _get_indication_synonyms(self, indication: str) -> list[str]:
+        """
+        Get common synonyms and variations for an indication.
+
+        This handles common cases where FDA labels may use different terminology.
+        """
+        synonyms = []
+
+        # Map common variations
+        # NOTE: Be careful with synonyms - they should be specific enough
+        # to avoid false positives. For example, "lupus" alone would match
+        # both "systemic lupus erythematosus" AND "lupus nephritis" which
+        # are distinct FDA indications.
+        synonym_map = {
+            # Autoimmune conditions
+            "pemphigus vulgaris": ["pemphigus", "pv"],
+            # Don't use "lupus" alone - it would match lupus nephritis
+            "systemic lupus erythematosus": ["sle", "systemic lupus"],
+            "lupus nephritis": ["ln", "lupus nephritis"],
+            "rheumatoid arthritis": ["ra"],  # "rheumatoid" alone could be ambiguous
+            "psoriatic arthritis": ["psa"],
+            "ankylosing spondylitis": ["as", "ankylosing"],
+            "ulcerative colitis": ["uc"],
+            "crohn's disease": ["crohn", "crohns", "crohn disease"],
+            "multiple sclerosis": ["ms", "relapsing multiple sclerosis", "relapsing-remitting multiple sclerosis"],
+            "myasthenia gravis": ["mg", "myasthenia"],
+            "neuromyelitis optica": ["nmo", "nmosd", "devic", "neuromyelitis optica spectrum disorder"],
+            "atopic dermatitis": ["atopic eczema"],  # "eczema" alone is too broad
+            "plaque psoriasis": ["chronic plaque psoriasis"],  # "psoriasis" alone is too broad
+            "giant cell arteritis": ["gca", "temporal arteritis"],
+            "polymyalgia rheumatica": ["pmr"],
+            "graves disease": ["graves", "graves' disease"],  # "hyperthyroidism" is too broad
+            "hashimoto": ["hashimoto's thyroiditis", "hashimoto thyroiditis", "autoimmune thyroiditis"],
+            # Oncology
+            "non-hodgkin lymphoma": ["nhl", "non-hodgkin's lymphoma"],  # "b-cell lymphoma" is a subtype
+            "chronic lymphocytic leukemia": ["cll"],
+            "diffuse large b-cell lymphoma": ["dlbcl"],
+            "follicular lymphoma": ["fl"],
+        }
+
+        # Check if indication has known synonyms
+        for key, values in synonym_map.items():
+            if key in indication or indication in key:
+                synonyms.extend(values)
+            # Also check if any synonym matches the input
+            for v in values:
+                if v in indication:
+                    synonyms.append(key)
+                    synonyms.extend([x for x in values if x != v])
+
+        return list(set(synonyms))
+
     def extract_drug_data(self, label: Dict) -> Dict[str, Any]:
         """
         Extract structured drug data from OpenFDA label.

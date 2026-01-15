@@ -45,6 +45,8 @@ INCLUDE papers that have ALL of the above:
 - Single-center or multi-center case series
 - **INVESTIGATOR-SPONSORED RCTs** - Academic/independent randomized trials conducted by researchers at universities or medical centers (NOT funded by drug manufacturer)
 - **Pilot studies or feasibility trials** from academic institutions
+- **Phase 1 trials** - Early-phase studies with safety and efficacy data (these are valuable for off-label research!)
+- **Investigator-initiated trials** - Even if they have a product code (e.g., "CT103A", "MB-102"), include if academic/hospital-sponsored
 
 EXCLUDE these paper types (even if they have patient data):
 - **MANUFACTURER-SPONSORED RCTs** - Industry-funded trials, especially those with formal trial names (e.g., BEACON, BREVITY, RA-BEAM, etc.)
@@ -84,6 +86,8 @@ Signs of investigator-sponsored trials (INCLUDE these):
 - Single academic center, "investigator-initiated", smaller sample sizes (<50 patients)
 - No formal trial name, funded by grants/foundations/NIH
 - University or hospital as the only affiliation
+- Phase 1 or first-in-human studies (these are almost always academic/investigator-initiated)
+- Studies with internal product codes (CT103A, MB-102, etc.) from academic centers
 
 {{ papers_text }}
 
@@ -95,6 +99,28 @@ Return ONLY a JSON object with this exact format:
         ...
     ]
 }
+
+DISEASE EXTRACTION (CRITICAL):
+For each included paper, you MUST extract the disease being treated. Look for the disease in:
+- The title (e.g., "...in neuromyelitis optica spectrum disorders" → disease: "Neuromyelitis Optica Spectrum Disorder")
+- The abstract (e.g., "patients with systemic lupus erythematosus" → disease: "Systemic Lupus Erythematosus")
+
+IMPORTANT: Recognize these neurological/autoimmune conditions as valid diseases:
+- Neuromyelitis optica spectrum disorder (NMOSD), AQP4-IgG seropositive NMOSD
+- Multiple sclerosis (MS), relapsing-remitting MS
+- Myasthenia gravis, Lambert-Eaton myasthenic syndrome
+- Chronic inflammatory demyelinating polyneuropathy (CIDP)
+- Guillain-Barré syndrome
+- Autoimmune encephalitis, anti-NMDA receptor encephalitis
+- Stiff person syndrome
+- Systemic lupus erythematosus (SLE), lupus nephritis
+- Systemic sclerosis, scleroderma
+- Dermatomyositis, polymyositis, inflammatory myopathy
+- Sjögren's syndrome
+- Rheumatoid arthritis, juvenile idiopathic arthritis
+- Inflammatory bowel disease, Crohn's disease, ulcerative colitis
+
+If the disease is clearly stated in the title, ALWAYS extract it - do not return null.
 
 PATIENT COUNT EXTRACTION (CRITICAL):
 For each included paper, extract patient_count from the title/abstract:

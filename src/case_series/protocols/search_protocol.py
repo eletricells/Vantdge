@@ -192,3 +192,50 @@ class WebSearcher(Protocol):
             Dict with 'answer' and 'sources' keys
         """
         ...
+
+
+class PreprintSearcher(Protocol):
+    """Protocol for preprint search implementations (bioRxiv/medRxiv)."""
+
+    def search(
+        self,
+        query: str,
+        server: str = "both",
+        max_results: int = 100,
+        years_back: int = 2,
+    ) -> List[Dict[str, Any]]:
+        """
+        Search preprint servers for papers.
+
+        Args:
+            query: Search query (drug name, disease, etc.)
+            server: "biorxiv", "medrxiv", or "both"
+            max_results: Maximum results to return
+            years_back: Number of years back to search (default: 2)
+
+        Returns:
+            List of preprint metadata dicts with keys:
+            - doi: Preprint DOI
+            - title: Paper title
+            - abstract: Paper abstract
+            - authors: Author string
+            - year: Publication year
+            - date: Publication date
+            - source: Server name (bioRxiv or medRxiv)
+            - is_preprint: Always True
+            - published_doi: DOI of published version if available
+            - preprint_server: Server name lowercase
+        """
+        ...
+
+    def check_publication_status(self, preprint_doi: str) -> Optional[str]:
+        """
+        Check if a preprint has been published.
+
+        Args:
+            preprint_doi: The preprint DOI
+
+        Returns:
+            Published DOI if available, None otherwise
+        """
+        ...

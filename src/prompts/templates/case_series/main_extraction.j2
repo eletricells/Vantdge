@@ -16,16 +16,40 @@ Extract structured data about this case report/series. Focus on:
 
 Return ONLY valid JSON in this format:
 {
-    "disease": "canonical disease name (e.g., 'Dermatomyositis', 'Rheumatoid Arthritis', 'Systemic Lupus Erythematosus')",
+    "disease": "PRIMARY canonical disease name (e.g., 'Dermatomyositis', 'Rheumatoid Arthritis', 'Systemic Lupus Erythematosus')",
     "disease_subtype": "disease subtype if applicable (e.g., 'Amyopathic', 'Anti-MDA5', 'Seropositive') or null",
     "disease_category": "therapeutic area (e.g., 'Inflammatory Myopathies', 'Rheumatic Diseases', 'Dermatologic Diseases')",
     "disease_raw": "exact disease text as written in the paper",
+    "additional_diseases": [
+        {
+            "disease": "SECONDARY disease name if paper studies multiple diseases",
+            "disease_subtype": "subtype or null",
+            "disease_category": "therapeutic area",
+            "n_patients": number of patients with THIS specific disease or null,
+            "patient_description": "patient characteristics for this disease subset or null",
+            "disease_severity": "mild/moderate/severe/mixed or null",
+            "response_rate": "X/N (Y%)" format for THIS disease or null,
+            "responders_n": number of responders for this disease or null,
+            "responders_pct": percentage responders for this disease or null,
+            "primary_endpoint": "main endpoint measured for this disease or null",
+            "endpoint_result": "result on primary endpoint for this disease or null",
+            "efficacy_signal": "Strong/Moderate/Weak/None for THIS disease",
+            "efficacy_summary": "2-3 sentence efficacy summary specific to THIS disease",
+            "follow_up_duration": "follow-up duration for this disease subset or null",
+            "key_findings": "key findings specific to THIS disease or null"
+        }
+    ],
     "is_relevant": true or false (is this actually about off-label use of {{ drug_name }}?),
     "evidence_level": "RCT" or "Controlled Trial" or "Prospective Cohort" or "Retrospective Study" or "Case Series" or "Case Report",
     "study_design": "Randomized Controlled Trial" or "Double-Blind RCT" or "Open-Label RCT" or "Prospective Controlled" or "Prospective Open-Label" or "Retrospective" or "Case Series" or "Case Report" or "Unknown",
     "n_patients": number (CRITICAL: extract from text - see N_PATIENTS EXTRACTION GUIDE below),
     "patient_description": "brief description of patient characteristics",
+    "disease_severity": "mild" or "moderate" or "severe" or "mixed" or null,
     "prior_treatments_failed": ["treatment1", "treatment2"],
+    "is_refractory": true or false or null (see REFRACTORY POPULATION GUIDE below),
+    "prior_therapy_lines": number of prior therapy lines failed (0 = treatment-naive) or null,
+    "refractory_to": ["drug/class1", "drug/class2"] or null,
+    "population_type": "treatment-naive" or "inadequate-responders" or "refractory" or "highly-refractory" or null,
     "dose": "dose used",
     "route": "oral/IV/etc",
     "duration": "treatment duration",
@@ -104,6 +128,50 @@ SINGLE PATIENT (case report):
 NEVER return n_patients: null if any of these patterns are present in the text.
 Only return null if there is genuinely no indication of patient count.
 
+REFRACTORY POPULATION GUIDE (CRITICAL FOR UNDERSTANDING PATIENT CONTEXT):
+Identifying whether patients are refractory/treatment-resistant is crucial for interpreting results.
+
+**is_refractory**: Set to TRUE if ANY of these indicators are present:
+- "refractory", "treatment-resistant", "treatment-refractory"
+- "failed prior therapy", "inadequate response to", "non-responders to"
+- "resistant to conventional treatment", "failed standard of care"
+- Multiple prior treatments listed as failed
+- "difficult-to-treat", "recalcitrant"
+
+**prior_therapy_lines**: Count distinct therapy lines failed:
+- "failed methotrexate" → 1
+- "failed methotrexate and TNF inhibitor" → 2
+- "failed multiple biologics" → estimate 2-3 unless specified
+- "treatment-naive" or "no prior biologics" → 0
+
+**refractory_to**: Extract specific drugs/classes they failed:
+- "failed rituximab and cyclophosphamide" → ["rituximab", "cyclophosphamide"]
+- "refractory to conventional DMARDs" → ["conventional DMARDs"]
+- "inadequate response to anti-TNF therapy" → ["anti-TNF"]
+- Include drug classes when specific drugs not named
+
+**population_type** classification:
+- "treatment-naive": No prior systemic therapy for this condition
+- "inadequate-responders": 1-2 prior therapies with suboptimal response
+- "refractory": Failed 2+ therapies, clearly stated as refractory
+- "highly-refractory": Failed 3+ therapies OR explicitly called highly refractory
+
+**disease_severity**: Look for explicit severity descriptors:
+- "mild", "moderate", "severe" - use these if stated
+- "active disease", "flaring" → typically moderate-severe
+- "rapidly progressive" → severe
+- If mixed population (e.g., "mild to moderate"), use "mixed"
+
+EXAMPLES:
+- "15 patients with dermatomyositis refractory to corticosteroids and at least one immunosuppressant"
+  → is_refractory: true, prior_therapy_lines: 2, refractory_to: ["corticosteroids", "immunosuppressants"], population_type: "refractory"
+
+- "Treatment-naive patients with early RA"
+  → is_refractory: false, prior_therapy_lines: 0, population_type: "treatment-naive"
+
+- "Patients who failed anti-TNF, rituximab, and tocilizumab"
+  → is_refractory: true, prior_therapy_lines: 3, refractory_to: ["anti-TNF", "rituximab", "tocilizumab"], population_type: "highly-refractory"
+
 EXTRACTION CONFIDENCE SCORING GUIDE:
 - disease_certainty:
   * High: Disease explicitly named, clearly the focus of treatment
@@ -159,6 +227,39 @@ GOOD (specific):
 - Cytokine release syndrome → disease: "Cytokine Release Syndrome"
 
 If multiple irAEs are treated in the paper, use the PRIMARY condition or "Multiple Immune-Related Adverse Events" as disease_subtype with the most common specific irAE as the disease.
+
+MULTIPLE DISEASES GUIDE:
+Many papers study the drug in MULTIPLE diseases (e.g., CAR-T for both SLE and rheumatoid arthritis in the same paper).
+- Set "disease" to the PRIMARY disease (most patients or most focus)
+- Use "additional_diseases" array for ALL other diseases mentioned with clinical data
+- Include each disease even if only a few patients (e.g., 2 RA patients in a study of 10 SLE patients)
+
+CRITICAL: Extract DISEASE-SPECIFIC efficacy for each additional disease:
+- Each disease may have DIFFERENT response rates (e.g., SLE 80% vs RA 60%)
+- Extract the specific n_patients, response_rate, and efficacy_signal for EACH disease
+- Do NOT assume all diseases have the same efficacy outcomes
+- If efficacy data differs by disease, capture it accurately per disease
+
+Examples:
+  * Paper: "CAR-T in 15 SLE patients (80% CR) and 10 RA patients (60% response)"
+    → disease: "Systemic Lupus Erythematosus", n_patients: 15, responders_pct: 80
+    → additional_diseases: [{
+         disease: "Rheumatoid Arthritis",
+         n_patients: 10,
+         responders_pct: 60,
+         efficacy_signal: "Moderate",
+         efficacy_summary: "60% response rate in 10 RA patients treated with CAR-T"
+       }]
+
+  * Paper: "Autoimmune cohort: 8 SSc (75% improved), 5 myositis (100% improved), 3 MCTD (67% improved)"
+    → disease: "Systemic Sclerosis", n_patients: 8, responders_pct: 75
+    → additional_diseases: [
+         {disease: "Myositis", n_patients: 5, responders_pct: 100, efficacy_signal: "Strong"},
+         {disease: "Mixed Connective Tissue Disease", n_patients: 3, responders_pct: 67, efficacy_signal: "Moderate"}
+       ]
+
+  * Paper: "NMOSD (5 patients, all improved) and MS (3 patients, partial response)"
+    → Extract each with specific efficacy data
 
 Disease categories include:
 - Inflammatory Myopathies (DM, PM, IBM)

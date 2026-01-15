@@ -1,0 +1,328 @@
+"""
+Hybrid Approval Date Extractor
+
+Combines multiple approaches to extract FDA approval dates:
+1. Drugs.com web scraping (primary)
+2. AI agent analysis of label (fallback)
+3. NULL for still-missing data
+
+Implements smart fuzzy matching to link scraped data to database indications.
+"""
+import logging
+from typing import Dict, List, Optional
+import re
+
+from src.tools.drugs_com_scraper import DrugsComScraper
+from src.tools.approval_date_agent import ApprovalDateAgent
+
+logger = logging.getLogger(__name__)
+
+
+class ApprovalDateExtractor:
+    """
+    Hybrid extractor for FDA approval dates.
+
+    Hierarchy:
+    1. Drugs.com scraper (high confidence, web data)
+    2. AI agent (medium/low confidence, label analysis)
+    3. NULL (not found)
+    """
+
+    def __init__(
+        self,
+        use_scraper: bool = True,
+        use_ai_agent: bool = True,
+        scraper_cache_dir: str = "./data/drugs_com_cache"
+    ):
+        """
+        Initialize hybrid extractor.
+
+        Args:
+            use_scraper: Enable Drugs.com scraper
+            use_ai_agent: Enable AI agent fallback
+            scraper_cache_dir: Cache directory for scraper
+        """
+        self.use_scraper = use_scraper
+        self.use_ai_agent = use_ai_agent
+
+        # Initialize components
+        self.scraper = DrugsComScraper(cache_dir=scraper_cache_dir) if use_scraper else None
+        self.ai_agent = ApprovalDateAgent() if use_ai_agent else None
+
+    def get_approval_dates(
+        self,
+        drug_name: str,
+        indications: List[str],
+        label_xml: Optional[str] = None
+    ) -> Dict[str, Dict]:
+        """
+        Extract approval dates using hybrid approach.
+
+        Args:
+            drug_name: Drug brand name (for Drugs.com)
+            indications: List of indication names from database
+            label_xml: DailyMed label XML (for AI agent fallback)
+
+        Returns:
+            Dictionary mapping indication names to approval data:
+            {
+                "rheumatoid arthritis": {
+                    "year": 2002,
+                    "date": "2002-12-31",
+                    "source": "Drugs.com"
+                },
+                "psoriasis": {
+                    "year": 2008,
+                    "date": None,
+                    "source": "AI Agent (medium)"
+                },
+                "unknown indication": {
+                    "year": None,
+                    "date": None,
+                    "source": "Not found"
+                }
+            }
+        """
+        logger.info(f"Extracting approval dates for {drug_name}")
+
+        results = {}
+
+        # Step 1: Try Drugs.com scraper
+        if self.use_scraper and self.scraper:
+            try:
+                scraped_data = self.scraper.get_approval_timeline(drug_name)
+
+                if scraped_data:
+                    logger.info(f"Drugs.com: found {len(scraped_data)} approval events")
+
+                    # Match scraped indications to database indications
+                    matched = self._match_scraped_to_db(scraped_data, indications)
+
+                    for indication, approval_data in matched.items():
+                        results[indication] = {
+                            "year": approval_data["year"],
+                            "date": approval_data["approval_date"],
+                            "source": "Drugs.com"
+                        }
+                else:
+                    logger.info("Drugs.com: no data found (page may not exist)")
+
+            except Exception as e:
+                logger.warning(f"Drugs.com scraping failed: {e}")
+
+        # Step 2: For missing indications, try AI agent
+        missing_indications = [ind for ind in indications if ind.lower() not in results]
+
+        if missing_indications and self.use_ai_agent and self.ai_agent and label_xml:
+            try:
+                logger.info(f"AI agent: analyzing {len(missing_indications)} missing indications")
+
+                ai_data = self.ai_agent.extract_approval_dates(
+                    label_xml=label_xml,
+                    indications=missing_indications,
+                    drug_name=drug_name
+                )
+
+                for indication, approval_data in ai_data.items():
+                    # Only use AI data if confidence is high or medium AND year is not null
+                    if approval_data["year"] and approval_data["confidence"] in ["high", "medium"]:
+                        results[indication] = {
+                            "year": approval_data["year"],
+                            "date": approval_data.get("date"),
+                            "source": f"AI Agent ({approval_data['confidence']})"
+                        }
+
+            except Exception as e:
+                logger.warning(f"AI agent extraction failed: {e}")
+
+        # Step 3: Fill in NULL for still-missing indications
+        for indication in indications:
+            if indication.lower() not in results:
+                results[indication.lower()] = {
+                    "year": None,
+                    "date": None,
+                    "source": "Not found"
+                }
+
+        logger.info(
+            f"Extraction complete: {sum(1 for r in results.values() if r['year'] is not None)}/{len(indications)} "
+            f"indications with approval years"
+        )
+
+        return results
+
+    def _match_scraped_to_db(
+        self,
+        scraped_data: List[Dict],
+        db_indications: List[str]
+    ) -> Dict[str, Dict]:
+        """
+        Match scraped indication names to database indication names.
+
+        Uses fuzzy matching to handle variations in naming.
+
+        Args:
+            scraped_data: List of scraped approval events
+            db_indications: List of database indication names
+
+        Returns:
+            Dictionary mapping database indication names to approval data
+        """
+        matched = {}
+
+        # Normalize database indications for matching
+        db_indications_lower = [ind.lower() for ind in db_indications]
+
+        for event in scraped_data:
+            scraped_indication = event["indication"].lower()
+
+            # Try to find all matches in database indications (handles multi-indication events)
+            all_matches = self._fuzzy_match_indication(scraped_indication, db_indications_lower)
+
+            if all_matches:
+                # Store using database indication name(s)
+                for match in all_matches:
+                    matched[match] = event
+                logger.debug(f"Matched '{scraped_indication[:60]}...' to {len(all_matches)} indication(s)")
+            else:
+                logger.debug(f"No match for '{scraped_indication[:60]}...'")
+
+        logger.info(f"Fuzzy matching [v2]: linked {len(matched)} DB indications from {len(scraped_data)} scraped events")
+
+        return matched
+
+    def _fuzzy_match_indication(
+        self,
+        scraped_indication: str,
+        db_indications: List[str]
+    ) -> List[str]:
+        """
+        Find best fuzzy match for scraped indication in database indications.
+
+        Matching tiers:
+        1. Exact match
+        2. Substring match (either direction)
+        3. Match after stripping modifiers (active, chronic, etc.)
+        4. Keyword match (arthritis, disease, psoriasis, etc.)
+
+        Args:
+            scraped_indication: Scraped indication name (lowercase)
+            db_indications: Database indication names (lowercase)
+
+        Returns:
+            Best matching database indication name or None
+        """
+        # Tier 1: Exact match
+        if scraped_indication in db_indications:
+            return [scraped_indication]
+
+        # Tier 2: Substring match
+        matches = []
+        for db_ind in db_indications:
+            if scraped_indication in db_ind or db_ind in scraped_indication:
+                matches.append(db_ind)
+        if matches:
+            return matches
+
+        # Tier 3: Strip modifiers and match
+        # Remove common modifiers
+        modifiers = r'\b(active|chronic|severe|moderate|moderately|mild|acute)\s+'
+
+        scraped_stripped = re.sub(modifiers, '', scraped_indication).strip()
+
+        matches = []
+        for db_ind in db_indications:
+            db_stripped = re.sub(modifiers, '', db_ind).strip()
+
+            if scraped_stripped == db_stripped:
+                matches.append(db_ind)
+        if matches:
+            return matches
+
+        # Tier 4: Keyword match (for specific disease types)
+        keywords = [
+            'rheumatoid arthritis',
+            'psoriatic arthritis',
+            'ankylosing spondylitis',
+            'crohn',
+            'colitis',
+            'psoriasis',
+            'uveitis',
+            'hidradenitis',
+            'lupus',
+            'arthritis'
+        ]
+
+        matches = []
+        for keyword in keywords:
+            if keyword in scraped_indication:
+                # Find ALL DB indications with this keyword
+                for db_ind in db_indications:
+                    if keyword in db_ind and db_ind not in matches:
+                        matches.append(db_ind)
+        if matches:
+            return matches
+
+        # No match found
+        logger.debug(f"No fuzzy match for '{scraped_indication}' in DB indications")
+        return []
+
+    def get_coverage_stats(self, results: Dict[str, Dict]) -> Dict:
+        """
+        Calculate coverage statistics for extraction results.
+
+        Args:
+            results: Results from get_approval_dates()
+
+        Returns:
+            Statistics dictionary
+        """
+        total = len(results)
+        with_year = sum(1 for r in results.values() if r["year"] is not None)
+
+        # Count by source
+        sources = {}
+        for r in results.values():
+            source = r["source"]
+            sources[source] = sources.get(source, 0) + 1
+
+        return {
+            "total_indications": total,
+            "with_approval_year": with_year,
+            "without_approval_year": total - with_year,
+            "coverage_percent": round(with_year / total * 100, 1) if total > 0 else 0,
+            "by_source": sources
+        }
+
+
+# Convenience function
+def extract_approval_dates(
+    drug_name: str,
+    indications: List[str],
+    label_xml: Optional[str] = None,
+    use_scraper: bool = True,
+    use_ai_agent: bool = True
+) -> Dict[str, Dict]:
+    """
+    Convenience function to extract approval dates.
+
+    Args:
+        drug_name: Drug brand name
+        indications: List of indication names
+        label_xml: DailyMed label XML (optional, for AI agent)
+        use_scraper: Enable Drugs.com scraper
+        use_ai_agent: Enable AI agent fallback
+
+    Returns:
+        Approval date dictionary
+    """
+    extractor = ApprovalDateExtractor(
+        use_scraper=use_scraper,
+        use_ai_agent=use_ai_agent
+    )
+
+    return extractor.get_approval_dates(
+        drug_name=drug_name,
+        indications=indications,
+        label_xml=label_xml
+    )

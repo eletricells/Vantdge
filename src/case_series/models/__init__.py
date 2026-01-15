@@ -25,6 +25,8 @@ from src.models.case_series_schemas import (
     DetailedSafetyEndpoint,
     ExtractionConfidence,
     CaseSeriesExtraction,
+    # Multi-disease support
+    AdditionalDisease,
     # New scoring models
     BiomarkerResult,
     IndividualStudyScore,
@@ -66,6 +68,8 @@ __all__ = [
     "DetailedSafetyEndpoint",
     "ExtractionConfidence",
     "CaseSeriesExtraction",
+    # Multi-disease support
+    "AdditionalDisease",
     # Scoring models
     "BiomarkerResult",
     "IndividualStudyScore",

@@ -142,9 +142,16 @@ class PrevalenceData(BaseModel):
 class PatientSegmentation(BaseModel):
     """Patient segmentation data."""
     pct_diagnosed: Optional[float] = Field(None, ge=0, le=100, description="Percentage diagnosed")
-    pct_treated: Optional[float] = Field(None, ge=0, le=100, description="Percentage receiving any treatment")
+    pct_treated: Optional[float] = Field(None, ge=0, le=100, description="Percentage receiving any treatment (consensus)")
+    pct_treated_source: Optional[str] = Field(None, description="Primary source for treatment rate")
     severity: Optional[SeverityBreakdown] = None
     subpopulations: List[Subpopulation] = Field(default_factory=list)
+
+    # Per-source treatment rate tracking
+    treatment_estimates: List[TreatmentEstimate] = Field(default_factory=list, description="Individual treatment rate estimates from each source")
+    treatment_rate_range: Optional[str] = Field(None, description="Range of treatment rate estimates")
+    treatment_rate_confidence: Optional[str] = Field(None, description="Confidence: High, Medium, Low")
+    treatment_rate_confidence_rationale: Optional[str] = Field(None, description="Why this confidence level")
 
 
 class FailureRates(BaseModel):
@@ -152,10 +159,12 @@ class FailureRates(BaseModel):
     # Consensus estimates (median)
     fail_1L_pct: Optional[float] = Field(None, ge=0, le=100, description="Percentage failing first-line (consensus)")
     fail_1L_reason: Optional[str] = Field(None, description="Primary reason for 1L failure")
+    fail_1L_source: Optional[str] = Field(None, description="Primary source for 1L failure rate")
+    fail_1L_source_count: Optional[int] = Field(None, description="Number of sources contributing to 1L estimate")
     primary_failure_type: Optional[str] = Field(None, description="Most common failure type: primary_nonresponse, secondary_loss, intolerance")
     fail_2L_pct: Optional[float] = Field(None, ge=0, le=100, description="Percentage failing second-line")
     fail_2L_reason: Optional[str] = Field(None, description="Primary reason for 2L failure")
-    source: Optional[str] = Field(None, description="Primary source for failure rate data")
+    source: Optional[str] = Field(None, description="Primary source for failure rate data (deprecated, use fail_1L_source)")
 
     # Switch vs discontinuation (important for market sizing)
     switch_rate_1L_pct: Optional[float] = Field(None, ge=0, le=100, description="% of 1L failures who switch to another therapy")
@@ -249,6 +258,18 @@ class DiseaseIntelligence(BaseModel):
             costs = [d.wac_monthly for d in self.treatment_paradigm.second_line.drugs if d.wac_monthly]
             if costs:
                 avg_cost = sum(costs) / len(costs) * 12  # Annual cost
+
+        # Fallback: use prevalence-based tiered pricing
+        # - Rare disease (<10K): $200K/year
+        # - Specialty (10K-100K): $75K/year
+        # - Standard (>100K): $20K/year
+        if not avg_cost and total > 0:
+            if total < 10000:
+                avg_cost = 200000  # Rare disease
+            elif total < 100000:
+                avg_cost = 75000   # Specialty
+            else:
+                avg_cost = 20000   # Standard
 
         # Calculate market size
         market_size = None

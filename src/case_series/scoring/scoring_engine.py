@@ -155,6 +155,12 @@ class ScoringEngine:
             completeness_score * w.completeness_weight
         )
 
+        # Apply preprint penalty (30% reduction for lack of peer review)
+        preprint_penalty_applied = False
+        if ext.is_preprint:
+            evidence_score *= 0.7
+            preprint_penalty_applied = True
+
         # Market Opportunity Score (25% of overall by default)
         competitors_score = self._market_scorer.score_competitors(opportunity)
         market_size_score = self._market_scorer.score_market_size(opportunity)
@@ -218,6 +224,9 @@ class ScoringEngine:
                 "publication_venue": round(venue_score, 1),
                 "response_durability": round(durability_score, 1),
                 "extraction_completeness": round(completeness_score, 1),
+                "is_preprint": ext.is_preprint,
+                "preprint_penalty_applied": preprint_penalty_applied,
+                "preprint_server": ext.preprint_server if ext.is_preprint else None,
             },
             # Market breakdown
             competitors_score=round(competitors_score, 1),

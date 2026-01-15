@@ -24,7 +24,7 @@ Extract pipeline updates and news as JSON:
     {
       "drug_name": "<generic or brand name>",
       "manufacturer": "<company>",
-      "update_type": "<phase_advancement, topline_results, regulatory_filing, approval, discontinuation, partnership>",
+      "update_type": "<phase_advancement, topline_results, positive_phase3, nda_planned, regulatory_filing, approval, discontinuation, partnership>",
       "headline": "<brief 1-line summary of the news>",
       "details": "<2-3 sentence details>",
       "phase_mentioned": "<Phase 1, Phase 2, Phase 3, Approved, or null>",
@@ -55,5 +55,13 @@ CRITICAL RULES:
 4. Flag discontinued or failed programs
 5. Identify any new drugs not in the known list
 6. Be conservative with confidence_score - only high if data is explicit
+
+UPDATE TYPE GUIDANCE:
+- "positive_phase3": Use when Phase 3 trial met primary endpoint / reported positive results
+- "nda_planned": Use when company announces PLANS to file NDA/BLA (e.g., "expect to file NDA in H1 2026")
+- "regulatory_filing": Use when NDA/BLA has been SUBMITTED to FDA (not just planned)
+- "approval": Use when FDA has GRANTED approval
+- "topline_results": Use for Phase 1/2 results or interim data
+- "discontinuation": Use when development is stopped for any reason
 
 Output valid JSON only.

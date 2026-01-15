@@ -1,0 +1,59 @@
+{# FDA-Approved Drugs Extraction Prompt #}
+
+Extract FDA-approved drugs for {{ disease_name }} from the web search results below.
+
+=== CRITICAL: FDA APPROVAL FOR THIS EXACT INDICATION ===
+Only include drugs with FDA approval specifically for "{{ disease_name }}".
+Do NOT include:
+- Drugs approved for related but DIFFERENT indications
+- Drugs only in clinical trials (not yet approved)
+- Off-label uses (even if commonly used)
+- Drugs approved in other countries but not FDA-approved
+
+Examples of DIFFERENT indications that should NOT be conflated:
+- "Systemic Lupus Erythematosus" vs "Lupus Nephritis" vs "Cutaneous Lupus"
+- "Rheumatoid Arthritis" vs "Psoriatic Arthritis" vs "Ankylosing Spondylitis"
+- "Graves Disease" vs "Thyroid Eye Disease"
+- "Dermatomyositis" vs "Polymyositis"
+- "Crohn's Disease" vs "Ulcerative Colitis"
+- "Primary Sjogren's Syndrome" vs "Secondary Sjogren's Syndrome"
+
+=== WEB SEARCH RESULTS ===
+{% for result in search_results %}
+Title: {{ result.title }}
+URL: {{ result.url }}
+Content: {{ result.content[:2000] if result.content else 'No content' }}
+---
+{% endfor %}
+
+Extract as JSON:
+{
+  "approved_drugs": [
+    {
+      "generic_name": "<INN/generic name - REQUIRED>",
+      "brand_name": "<brand name if known>",
+      "manufacturer": "<pharmaceutical company>",
+      "drug_type": "<mAb, small molecule, etc.>",
+      "mechanism_of_action": "<target and mechanism>",
+      "approval_year": <year as integer or null if unknown>,
+      "fda_indication_wording": "<exact or paraphrased FDA label indication if available>",
+      "confidence_score": <0.0-1.0 based on source reliability>
+    }
+  ],
+  "extraction_notes": "<any caveats, uncertainties, or drugs excluded with reasons>"
+}
+
+=== CONFIDENCE SCORING GUIDELINES ===
+- 0.9-1.0: FDA press release, Drugs@FDA, or FDA label explicitly confirms approval for this exact indication
+- 0.7-0.8: Reputable medical source (UpToDate, Medscape, FDA-related news) confirms FDA approval
+- 0.5-0.6: Multiple sources mention as "approved" but exact indication wording is unclear
+- <0.5: Only generic mentions of approval without FDA/indication specificity - DO NOT INCLUDE
+
+=== RULES ===
+1. generic_name is REQUIRED for each drug
+2. Only include drugs with confidence_score >= 0.5
+3. If a drug is mentioned as "commonly used" or "first-line treatment" but FDA approval status is unclear, do NOT include it
+4. Symptomatic treatments count IF they have specific FDA approval for the disease (e.g., pilocarpine for Sjogren's dry mouth)
+5. If sources conflict about approval status, note this in extraction_notes
+
+Output valid JSON only.

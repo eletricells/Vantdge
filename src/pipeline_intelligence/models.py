@@ -91,6 +91,10 @@ class PipelineDrug(BaseModel):
     last_updated: Optional[datetime] = None
     confidence_score: Optional[float] = None  # 0.0-1.0
 
+    # PubChem identifier for deduplication
+    # Positive values = CID (compound), Negative values = SID (substance-only)
+    pubchem_cid: Optional[int] = None
+
 
 class CompetitiveLandscape(BaseModel):
     """Complete competitive landscape for a disease."""
@@ -99,6 +103,10 @@ class CompetitiveLandscape(BaseModel):
     disease_key: Optional[str] = None
     disease_id: Optional[int] = None
     therapeutic_area: Optional[str] = None
+
+    # Disease synonyms (from MeSH expansion) - shared with Disease Intelligence
+    disease_synonyms: List[str] = Field(default_factory=list)
+    mesh_id: Optional[str] = Field(None, description="MeSH ID if found")
 
     # Drug counts by phase
     total_drugs: int = 0

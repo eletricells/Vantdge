@@ -38,7 +38,8 @@ class ClinicalTrialsClient(BaseAPIClient):
         status: Optional[List[str]] = None,
         phase: Optional[List[str]] = None,
         limit: int = 50,
-        sponsor_class: Optional[str] = None
+        sponsor_class: Optional[str] = None,
+        condition: Optional[str] = None,
     ) -> Optional[List[Dict]]:
         """
         Search clinical trials by drug name.
@@ -48,7 +49,8 @@ class ClinicalTrialsClient(BaseAPIClient):
             status: Filter by status (e.g., ["RECRUITING", "COMPLETED"])
             phase: Filter by phase (e.g., ["PHASE1", "PHASE2"])
             limit: Max results to return
-            sponsor_class: Filter by sponsor class (e.g., "INDUSTRY", "NIH", "OTHER")
+            sponsor_class: Filter by sponsor class (e.g., "INDUSTRY", "NIH", "OTHER") - may not work with v2 API
+            condition: Filter by condition/disease name
 
         Returns:
             List of trial data or None
@@ -59,17 +61,20 @@ class ClinicalTrialsClient(BaseAPIClient):
             "format": "json"
         }
 
-        # Add status filter
+        # Add condition filter
+        if condition:
+            params["query.cond"] = condition
+
+        # Add status filter (use pipe for OR)
         if status:
-            params["filter.overallStatus"] = ",".join(status)
+            params["filter.overallStatus"] = "|".join(status)
 
-        # Add phase filter
+        # Add phase filter (use pipe for OR)
         if phase:
-            params["filter.phase"] = ",".join(phase)
+            params["filter.phase"] = "|".join(phase)
 
-        # Add sponsor class filter (INDUSTRY, NIH, OTHER, etc.)
-        if sponsor_class:
-            params["filter.advanced"] = f"AREA[LeadSponsorClass]{sponsor_class}"
+        # Note: sponsor_class filter not reliably supported in v2 API
+        # Skip to avoid 400 errors
 
         result = self.get("/studies", params=params)
 

@@ -91,7 +91,8 @@ class DrugProcessor:
             self.db_ops = None
 
         # Phase 1 components (fast API extraction)
-        self.resolver = DrugNameResolver()
+        # Enable PubChem for research code resolution and deduplication
+        self.resolver = DrugNameResolver(use_pubchem=True)
         self.status_detector = DrugStatusDetector()
         self.approved_extractor = ApprovedDrugExtractor()
         self.pipeline_extractor = PipelineDrugExtractor()
@@ -129,15 +130,28 @@ class DrugProcessor:
         try:
             logger.info(f"Processing drug: '{drug_name}'")
 
+            # Step 0: Resolve drug name via PubChem (maps research codes to generic names)
+            resolved = self.resolver.resolve(drug_name)
+            canonical_name = resolved.generic_name or drug_name
+
+            # If this is a research code that resolved to a generic name, log it
+            if resolved.name_type == "research_code" and resolved.generic_name != drug_name:
+                logger.info(f"Resolved research code '{drug_name}' -> generic name '{resolved.generic_name}'")
+
             # Step 1: Check if drug already exists (unless force refresh)
+            # Now checks by: original name, resolved generic name, development code, and PubChem CID
             if self.db_ops and not force_refresh:
-                existing = self.db_ops.find_drug_by_identifier(drug_name)
+                existing = self._find_existing_drug(drug_name, resolved)
                 if existing:
-                    logger.info(f"Drug '{drug_name}' already exists (ID: {existing['drug_id']})")
+                    logger.info(f"Drug '{drug_name}' already exists as '{existing.get('generic_name')}' (ID: {existing['drug_id']})")
                     result.status = ProcessingStatus.SKIPPED
                     result.drug_id = existing["drug_id"]
                     result.drug_key = existing.get("drug_key")
                     result.completeness_score = existing.get("completeness_score", 0)
+
+                    # Update the existing drug with any new info from resolution
+                    self._update_existing_drug_with_resolved_info(existing['drug_id'], resolved)
+
                     return result
 
             # Step 2: Detect drug status
@@ -194,6 +208,117 @@ class DrugProcessor:
             result.status = ProcessingStatus.FAILED
             result.error = str(e)
             return result
+
+    def _find_existing_drug(self, original_name: str, resolved) -> Optional[Dict]:
+        """
+        Find an existing drug in the database using multiple identifiers.
+
+        Checks by:
+        1. Original drug name
+        2. Resolved generic name (from PubChem)
+        3. Development code
+        4. PubChem CID
+        5. Synonyms from PubChem
+
+        Args:
+            original_name: Original drug name provided
+            resolved: ResolvedDrug from DrugNameResolver
+
+        Returns:
+            Existing drug record if found, None otherwise
+        """
+        if not self.db_ops:
+            return None
+
+        # First try original name
+        existing = self.db_ops.find_drug_by_identifier(original_name)
+        if existing:
+            return existing
+
+        # Try resolved generic name (if different from original)
+        if resolved.generic_name and resolved.generic_name.lower() != original_name.lower():
+            existing = self.db_ops.find_drug_by_identifier(resolved.generic_name)
+            if existing:
+                return existing
+
+        # Try development code
+        if resolved.development_code:
+            existing = self.db_ops.find_drug_by_identifier(resolved.development_code)
+            if existing:
+                return existing
+
+        # Try checking by PubChem CID (if we have one and it's positive - compound DB)
+        if resolved.pubchem_cid and resolved.pubchem_cid > 0:
+            try:
+                with self.db.cursor() as cur:
+                    cur.execute("""
+                        SELECT drug_id, drug_key, generic_name, completeness_score
+                        FROM drugs
+                        WHERE pubchem_cid = %s
+                        LIMIT 1
+                    """, (resolved.pubchem_cid,))
+                    result = cur.fetchone()
+                    if result:
+                        return dict(result)
+            except Exception as e:
+                logger.debug(f"Error checking PubChem CID: {e}")
+
+        # Try synonyms from PubChem
+        for synonym in resolved.synonyms[:20]:  # Limit to first 20
+            existing = self.db_ops.find_drug_by_identifier(synonym)
+            if existing:
+                logger.info(f"Found existing drug via PubChem synonym '{synonym}'")
+                return existing
+
+        return None
+
+    def _update_existing_drug_with_resolved_info(self, drug_id: int, resolved) -> None:
+        """
+        Update an existing drug record with new information from name resolution.
+
+        This fills in missing fields like development_code or pubchem_cid.
+
+        Args:
+            drug_id: ID of existing drug to update
+            resolved: ResolvedDrug with new information
+        """
+        if not self.db:
+            return
+
+        updates = []
+        values = []
+
+        # Add development_code if we have it and drug doesn't
+        if resolved.development_code:
+            updates.append("development_code = COALESCE(development_code, %s)")
+            values.append(resolved.development_code)
+
+        # Add pubchem_cid if we have it
+        if resolved.pubchem_cid and resolved.pubchem_cid > 0:
+            updates.append("pubchem_cid = COALESCE(pubchem_cid, %s)")
+            values.append(resolved.pubchem_cid)
+
+        # Add rxcui if we have it
+        if resolved.rxcui:
+            updates.append("rxcui = COALESCE(rxcui, %s)")
+            values.append(resolved.rxcui)
+
+        if not updates:
+            return
+
+        try:
+            values.append(drug_id)
+            with self.db.cursor() as cur:
+                cur.execute(f"""
+                    UPDATE drugs
+                    SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP
+                    WHERE drug_id = %s
+                """, tuple(values))
+            self.db.commit()
+            logger.debug(f"Updated drug {drug_id} with resolved info")
+        except Exception as e:
+            logger.warning(f"Failed to update drug with resolved info: {e}")
+            self.db.rollback()
 
     def _store_drug(self, data: ExtractedDrugData, batch_id: Optional[str]) -> Tuple[int, str]:
         """Store extracted drug data in database."""

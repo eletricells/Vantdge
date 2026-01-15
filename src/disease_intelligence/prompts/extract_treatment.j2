@@ -2,10 +2,30 @@
 
 Extract the treatment paradigm for {{ disease_name }} in the United States.
 
+{% if known_drugs %}
+=== IMPORTANT: ENRICHMENT MODE ===
+The following drugs have already been identified as approved for {{ disease_name }}:
+{% for drug in known_drugs %}
+- {{ drug }}
+{% endfor %}
+
+Your task is to ENRICH this data with:
+1. WAC (Wholesale Acquisition Cost) pricing for these drugs
+2. Treatment guidelines and sequencing recommendations
+3. Combination therapy protocols
+4. Off-label uses mentioned in the literature
+5. Treatment rate estimates (% of patients treated)
+
+Do NOT focus on discovering new approved drugs - that has already been done.
+Focus on finding PRICING, GUIDELINES, and TREATMENT RATES.
+{% endif %}
+
 === SOURCE DOCUMENTS ===
 {% for source in sources %}
 --- Source {{ loop.index }}: {{ source.title }} ---
-{% if source.journal %}{{ source.journal }} ({{ source.year }}){% endif %}
+PMID: {{ source.pmid or 'N/A' }}
+{% if source.authors %}Authors: {{ source.authors }}{% endif %}
+{% if source.journal %}Journal: {{ source.journal }} ({{ source.year }}){% endif %}
 {% if source.url %}URL: {{ source.url }}{% endif %}
 
 {{ source.content }}
@@ -14,7 +34,16 @@ Extract the treatment paradigm for {{ disease_name }} in the United States.
 
 === EXTRACTION INSTRUCTIONS ===
 
+{% if known_drugs %}
+Since approved drugs are already known, focus on extracting:
+1. **WAC Pricing**: Monthly cost for each known drug
+2. **Treatment Guidelines**: Official recommendations (ACR, EULAR, etc.)
+3. **Treatment Sequences**: Which drug classes are used 1L vs 2L
+4. **Combination Therapies**: Common drug combinations
+5. **Treatment Rates**: What % of patients receive treatment
+{% else %}
 Extract the standard treatment paradigm organized by line of therapy:
+{% endif %}
 
 **First-Line (1L)**: Initial treatment for newly diagnosed or treatment-naive patients
 - Typically conventional therapies, immunosuppressants, or standard DMARDs
@@ -63,8 +92,30 @@ Return JSON:
     "paradigm_summary": "<2-3 sentence overall treatment approach>",
     "guideline_source": "<e.g., 'ACR 2023', 'EULAR 2024'>"
   },
+  "treatment_rate_estimates": [
+    {
+      "source_index": 1,
+      "title": "<paper title>",
+      "pmid": "<PMID if available>",
+      "journal": "<journal name>",
+      "publication_year": <year>,
+      "authors": "<first author et al.>",
+      "quality_tier": "Tier 1/Tier 2/Tier 3",
+      "pct_treated": <percentage of patients receiving treatment, 0-100>,
+      "treatment_definition": "<how 'treated' was defined, e.g., 'receiving immunosuppressive therapy'>",
+      "patient_population": "<who was studied>",
+      "methodology": "<claims, registry, survey, etc.>",
+      "notes": "<important caveats>"
+    }
+  ],
+  "sources_without_treatment_data": [
+    {
+      "source_index": 2,
+      "title": "<paper title>",
+      "reason": "<why no treatment rate data>"
+    }
+  ],
   "segmentation": {
-    "pct_treated": <percentage of patients receiving any treatment, 0-100>,
     "severity_breakdown": {
       "mild": <percentage if applicable>,
       "moderate": <percentage>,
@@ -72,12 +123,54 @@ Return JSON:
     },
     "notes": "<any segmentation caveats>"
   },
+  "consensus": {
+    "median_pct_treated": <median of treatment rate estimates>,
+    "range": "<low% - high%>",
+    "recommended_estimate": <best estimate to use>,
+    "recommended_rationale": "<why this estimate>",
+    "confidence": "High/Medium/Low",
+    "confidence_rationale": "<why this confidence level>"
+  },
   "data_quality": "High/Medium/Low",
   "extraction_notes": "<any important context>"
 }
+
+{% if known_drugs %}
+Additional output for enrichment mode:
+{
+  "wac_prices": {
+    "<generic_drug_name>": {
+      "wac_monthly": <monthly WAC in USD>,
+      "wac_annual": <annual WAC>,
+      "source": "<where price was found>"
+    }
+  },
+  "combination_therapies": [
+    {
+      "drugs": ["<drug1>", "<drug2>"],
+      "indication": "<when this combination is used>",
+      "source": "<PMID or guideline>"
+    }
+  ],
+  "off_label_uses": [
+    {
+      "drug": "<drug name>",
+      "off_label_for": "<condition or use>",
+      "evidence_level": "<case reports, retrospective, RCT>",
+      "source": "<PMID>"
+    }
+  ],
+  "first_line_description": "<1-2 sentence summary of 1L approach>",
+  "second_line_description": "<1-2 sentence summary of 2L approach>",
+  "paradigm_summary": "<overall treatment approach summary>"
+}
+{% endif %}
 
 Rules:
 - Focus on US treatment patterns and FDA-approved therapies
 - Distinguish between branded biologics and generic immunosuppressants
 - For 2L drugs, try to find WAC or annual cost data
 - Note if treatment varies significantly by disease severity or subtype
+- Extract treatment rate FROM EACH source that mentions it - don't skip sources
+- CRITICAL: Include PMID for each source estimate so it can be traced back
+{% if known_drugs %}- ENRICHMENT MODE: Focus on pricing, guidelines, and treatment rates - not discovering new drugs{% endif %}

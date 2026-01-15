@@ -10,8 +10,20 @@ Defines structured data models for:
 
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from enum import Enum
+
+
+def _safe_int(value) -> Optional[int]:
+    """Convert value to int or None. Handles 'Unknown', floats, etc."""
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
 
 
 class EvidenceLevel(str, Enum):
@@ -108,6 +120,12 @@ class CaseSeriesSource(BaseModel):
     publication_venue: str = Field("Unknown", description="Peer-reviewed journal, Conference abstract, etc.")
     is_open_access: bool = Field(False, description="Whether paper is open access")
 
+    @field_validator('year', mode='before')
+    @classmethod
+    def validate_year(cls, v):
+        """Convert string values like 'Unknown' to None."""
+        return _safe_int(v)
+
 
 class PatientPopulation(BaseModel):
     """Patient characteristics from case series"""
@@ -115,9 +133,24 @@ class PatientPopulation(BaseModel):
     age_description: Optional[str] = Field(None, description="Age range or mean")
     sex_distribution: Optional[str] = Field(None, description="Sex distribution")
     prior_treatments_failed: Optional[List[str]] = Field(None, description="Prior treatments that failed")
-    disease_severity: Optional[str] = Field(None, description="Disease severity at baseline")
+    disease_severity: Optional[str] = Field(None, description="Disease severity at baseline (e.g., mild, moderate, severe)")
     comorbidities: Optional[List[str]] = Field(None, description="Notable comorbidities")
     description: Optional[str] = Field(None, description="Free-text population description")
+
+    # Refractory/treatment-resistant population fields
+    is_refractory: Optional[bool] = Field(None, description="True if population is refractory/treatment-resistant")
+    prior_therapy_lines: Optional[int] = Field(None, description="Number of prior therapy lines failed (0 = treatment-naive)")
+    refractory_to: Optional[List[str]] = Field(None, description="Specific treatments/drug classes patients are refractory to")
+    population_type: Optional[str] = Field(
+        None,
+        description="Population type: 'treatment-naive', 'inadequate-responders', 'refractory', 'highly-refractory' (3+ lines failed)"
+    )
+
+    @field_validator('n_patients', 'prior_therapy_lines', mode='before')
+    @classmethod
+    def validate_int_fields(cls, v):
+        """Convert string values like 'Unknown' to None."""
+        return _safe_int(v)
 
 
 class TreatmentDetails(BaseModel):
@@ -154,6 +187,12 @@ class EfficacyOutcome(BaseModel):
     durability_signal: Optional[str] = Field(None, description="Durability of response")
     efficacy_summary: Optional[str] = Field(None, description="2-3 sentence efficacy summary")
 
+    @field_validator('responders_n', mode='before')
+    @classmethod
+    def validate_int_fields(cls, v):
+        """Convert string values like 'Unknown' to None."""
+        return _safe_int(v)
+
 
 class SafetyOutcome(BaseModel):
     """Safety outcomes from case series"""
@@ -166,6 +205,12 @@ class SafetyOutcome(BaseModel):
     discontinuation_reasons: Optional[List[str]] = Field(None, description="Reasons for discontinuation")
     safety_summary: Optional[str] = Field(None, description="2-3 sentence safety summary")
     safety_profile: SafetyProfile = Field(SafetyProfile.UNKNOWN, description="Overall safety assessment")
+
+    @field_validator('sae_count', 'discontinuations_n', 'discontinuations_due_to_ae', mode='before')
+    @classmethod
+    def validate_int_fields(cls, v):
+        """Convert string values like 'Unknown' to None."""
+        return _safe_int(v)
 
 
 class DetailedEfficacyEndpoint(BaseModel):
@@ -194,6 +239,12 @@ class DetailedEfficacyEndpoint(BaseModel):
     is_validated_instrument: Optional[bool] = Field(None, description="Whether this is a validated clinical instrument")
     instrument_quality_tier: Optional[int] = Field(None, description="Quality tier: 1=gold standard, 2=validated PRO, 3=investigator-assessed")
     is_biomarker: Optional[bool] = Field(None, description="True if this is a laboratory biomarker (CRP, LDH, complement, cytokines, etc.) rather than clinical endpoint")
+
+    @field_validator('total_n', 'responders_n', 'instrument_quality_tier', mode='before')
+    @classmethod
+    def validate_int_fields(cls, v):
+        """Convert string values like 'Unknown' to None."""
+        return _safe_int(v)
 
     @property
     def is_primary(self) -> bool:
@@ -309,6 +360,32 @@ class AggregateScore(BaseModel):
     )
 
 
+class AdditionalDisease(BaseModel):
+    """Additional disease mentioned in a multi-disease study with disease-specific efficacy"""
+    # Disease identification
+    disease: str = Field(..., description="Disease name")
+    disease_subtype: Optional[str] = Field(None, description="Disease subtype")
+    disease_category: Optional[str] = Field(None, description="Therapeutic area")
+
+    # Patient population for this disease
+    n_patients: Optional[int] = Field(None, description="Number of patients with this disease")
+    patient_description: Optional[str] = Field(None, description="Patient characteristics for this disease subset")
+    disease_severity: Optional[str] = Field(None, description="Disease severity: mild/moderate/severe/mixed")
+
+    # Disease-specific efficacy metrics
+    response_rate: Optional[str] = Field(None, description="Response rate in X/N (Y%) format")
+    responders_n: Optional[int] = Field(None, description="Number of responders")
+    responders_pct: Optional[float] = Field(None, description="Percentage of responders")
+    primary_endpoint: Optional[str] = Field(None, description="Primary endpoint measured for this disease")
+    endpoint_result: Optional[str] = Field(None, description="Result on primary endpoint")
+    efficacy_signal: Optional[str] = Field(None, description="Efficacy signal: Strong/Moderate/Weak/None")
+    efficacy_summary: Optional[str] = Field(None, description="2-3 sentence efficacy summary for this disease")
+
+    # Additional context
+    follow_up_duration: Optional[str] = Field(None, description="Follow-up duration for this disease subset")
+    key_findings: Optional[str] = Field(None, description="Key findings specific to this disease")
+
+
 class CaseSeriesExtraction(BaseModel):
     """Complete extraction from a case series/report"""
     # Source info
@@ -321,6 +398,7 @@ class CaseSeriesExtraction(BaseModel):
     disease_category: Optional[str] = Field(None, description="Top-level disease category (e.g., 'Inflammatory Myopathies')")
     disease_raw: Optional[str] = Field(None, description="Original disease text before normalization")
     parent_disease: Optional[str] = Field(None, description="Parent disease for hierarchy grouping (e.g., 'SLE' for 'Lupus Nephritis')")
+    additional_diseases: List[AdditionalDisease] = Field(default_factory=list, description="Other diseases studied in this paper")
     score_explanation: Optional[str] = Field(None, description="AI-generated explanation of how the score was derived")
     is_off_label: bool = Field(True, description="Whether use is off-label")
     is_relevant: bool = Field(True, description="Whether paper is relevant for drug repurposing (set by LLM during extraction)")
@@ -372,6 +450,11 @@ class CaseSeriesExtraction(BaseModel):
         None,
         description="Individual study score breakdown"
     )
+
+    # Preprint metadata
+    is_preprint: bool = Field(False, description="Whether source is a preprint (bioRxiv/medRxiv)")
+    preprint_server: Optional[str] = Field(None, description="Preprint server: 'biorxiv' or 'medrxiv'")
+    published_doi: Optional[str] = Field(None, description="DOI of published version if preprint was later published")
 
     # Extraction metadata
     extraction_timestamp: datetime = Field(default_factory=datetime.now)

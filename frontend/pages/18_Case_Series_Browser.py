@@ -15,6 +15,8 @@ project_root = frontend_dir.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
+from auth import check_password, check_page_access, show_access_denied, render_sidebar_nav
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -29,6 +31,17 @@ st.set_page_config(
     page_icon="📚",
     layout="wide"
 )
+
+# Password protection
+if not check_password():
+    st.stop()
+
+# Page access check
+if not check_page_access("Case_Series_Browser"):
+    show_access_denied()
+
+# Render custom sidebar navigation for restricted users
+render_sidebar_nav()
 
 st.title("Case Series Browser")
 st.markdown("Browse case series extractions by drug with dynamic scoring")
@@ -46,7 +59,7 @@ def get_service():
 
 def format_score(score: float) -> str:
     """Format score with color indicator."""
-    if score >= 7.0:
+    if score >= 6.5:
         return f"🟢 {score:.1f}"
     elif score >= 5.0:
         return f"🟡 {score:.1f}"
@@ -73,14 +86,18 @@ def export_to_excel(data: dict) -> BytesIO:
     return output
 
 
-# Initialize service
-service = get_service()
+# Initialize service with error handling
+try:
+    service = get_service()
 
-# Get list of drugs
-drugs = service.get_drugs_with_extractions()
+    # Get list of drugs
+    drugs = service.get_drugs_with_extractions()
 
-if not drugs:
-    st.warning("No case series extractions found in the database.")
+    if not drugs:
+        st.warning("No case series extractions found in the database.")
+        st.stop()
+except Exception as e:
+    st.error(f"Error initializing service: {e}")
     st.stop()
 
 # Drug selector
@@ -166,25 +183,51 @@ with col3:
 with col4:
     # Export button
     st.markdown("<br>", unsafe_allow_html=True)
-    export_data = service.export_drug_data(selected_drug_name)
-    excel_file = export_to_excel(export_data)
-    st.download_button(
-        "📥 Export to Excel",
-        data=excel_file,
-        file_name=f"{selected_drug_name}_case_series.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    try:
+        export_data = service.export_drug_data(selected_drug_name)
+        excel_file = export_to_excel(export_data)
+        st.download_button(
+            "📥 Export to Excel",
+            data=excel_file,
+            file_name=f"{selected_drug_name}_case_series.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        st.error(f"Export error: {e}")
 
 # Get disease summaries
-summaries = service.get_disease_summaries(
-    selected_drug_name,
-    min_patients=min_patients,
-    evidence_filter=evidence_filter if evidence_filter != 'Any' else None,
-    sort_by=sort_by
-)
+try:
+    summaries = service.get_disease_summaries(
+        selected_drug_name,
+        min_patients=min_patients,
+        evidence_filter=evidence_filter if evidence_filter != 'Any' else None,
+        sort_by=sort_by
+    )
+except Exception as e:
+    st.error(f"Error loading disease summaries: {e}")
+    summaries = []
+
+# Filter out oncology/hematology diseases for CAR-T (focus on autoimmune applications)
+if selected_drug_name == "CAR-T" and summaries:
+    ONCOLOGY_DISEASES = {
+        "Diffuse Large B-Cell Lymphoma",
+        "Mixed Phenotype Acute Leukemia",
+        "Multiple Myeloma",
+        "Neurolymphomatosis",
+        "Philadelphia-Like Acute Lymphoblastic Leukemia",
+        "Philadelphia Chromosome-Like Acute Lymphoblastic Leukemia",
+        "Post-Transplant Lymphoproliferative Disorder",
+        "Richter's Transformation",
+        "Cytokine Release Syndrome",  # Side effect, not indication
+    }
+    try:
+        summaries = [s for s in summaries if s.disease and s.disease not in ONCOLOGY_DISEASES]
+    except Exception as e:
+        st.error(f"Error filtering diseases: {e}")
 
 st.markdown("---")
 st.subheader(f"Disease Opportunities ({len(summaries)} found)")
+st.caption("Orange title = Abstract-only extraction (may need manual review)")
 
 if not summaries:
     st.info("No diseases match the current filters.")
@@ -226,13 +269,27 @@ else:
             with mcol5:
                 st.markdown(f"**Evidence Level:** {summary.best_evidence_level}")
 
+            # Display AI-generated explanation if available
+            if summary.explanation:
+                st.markdown("---")
+                st.markdown("**📋 Evidence Summary**")
+                st.markdown(summary.explanation)
+
             st.markdown("---")
 
             # Individual papers
-            papers = service.get_disease_papers(selected_drug_name, summary.disease)
+            try:
+                papers = service.get_disease_papers(selected_drug_name, summary.disease)
+            except Exception as e:
+                st.error(f"Error loading papers for {summary.disease}: {e}")
+                papers = []
 
             if papers:
-                st.markdown("**Individual Papers:**")
+                # Count papers by extraction method
+                full_text_count = sum(1 for p in papers if p.get('extraction_method') == 'multi_stage')
+                abstract_only_count = len(papers) - full_text_count
+
+                st.markdown(f"**Individual Papers:** ({full_text_count} full-text, {abstract_only_count} abstract-only)")
 
                 for paper in papers:
                     pcol1, pcol2 = st.columns([4, 1])
@@ -244,17 +301,23 @@ else:
                         n = paper['n_patients'] or "N/A"
                         evidence = paper['evidence_level'] or "N/A"
 
+                        # Check extraction method for title styling
+                        extraction_method = paper.get('extraction_method')
+                        is_abstract_only = extraction_method != 'multi_stage'
+
                         st.markdown(
                             f"**[PMID {pmid}](https://pubmed.ncbi.nlm.nih.gov/{pmid}/)** ({year}) - N={n} | {evidence}"
                         )
-                        st.markdown(f"*{title}*")
 
-                        # Efficacy summary (truncated)
+                        # Show title in orange if abstract-only extraction
+                        if is_abstract_only:
+                            st.markdown(f"<span style='color: orange'><i>{title}</i></span>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"*{title}*")
+
+                        # Efficacy summary (full text)
                         if paper['efficacy_summary']:
-                            eff = paper['efficacy_summary'][:300]
-                            if len(paper['efficacy_summary']) > 300:
-                                eff += "..."
-                            st.markdown(f"📊 {eff}")
+                            st.markdown(f"📊 {paper['efficacy_summary']}")
 
                     with pcol2:
                         score = paper['individual_score']
@@ -266,6 +329,81 @@ else:
                         signal = paper['efficacy_signal']
                         if signal:
                             st.markdown(f"**Signal:** {signal}")
+
+                    # Display detailed endpoints table if available
+                    detailed_endpoints = paper.get('detailed_endpoints')
+                    if detailed_endpoints and len(detailed_endpoints) > 0:
+                        endpoint_data = []
+                        for ep in detailed_endpoints:
+                            # Build result string with proper None handling
+                            resp_n = ep.get('responders_n')
+                            total_n = ep.get('total_n')
+                            resp_pct = ep.get('responders_pct')
+                            baseline = ep.get('baseline_value')
+                            final = ep.get('final_value')
+                            change_pct = ep.get('change_pct')
+                            value = ep.get('value')
+
+                            if resp_n is not None and total_n is not None:
+                                pct_str = f" ({resp_pct:.0f}%)" if resp_pct is not None else ""
+                                result = f"{resp_n}/{total_n}{pct_str}"
+                            elif baseline is not None and final is not None:
+                                result = f"{baseline} → {final}"
+                            elif change_pct is not None:
+                                result = f"{change_pct:+.1f}%"
+                            elif value is not None:
+                                unit = ep.get('unit') or ''
+                                result = f"{value}{unit}"
+                            else:
+                                result = "-"
+
+                            endpoint_name = ep.get('endpoint_name') or ''
+                            endpoint_data.append({
+                                "Endpoint": endpoint_name[:50] if endpoint_name else '-',
+                                "Category": ep.get('endpoint_category') or '-',
+                                "Timepoint": ep.get('timepoint') or '-',
+                                "Result": result,
+                                "p-value": ep.get('p_value') or '-'
+                            })
+
+                        if endpoint_data:
+                            st.markdown("**📊 Efficacy Endpoints:**")
+                            df_endpoints = pd.DataFrame(endpoint_data)
+                            st.dataframe(df_endpoints, hide_index=True, use_container_width=True)
+
+                    # Display biomarker table if available
+                    biomarkers = paper.get('biomarkers_data')
+                    if biomarkers and len(biomarkers) > 0:
+                        biomarker_data = []
+                        for bm in biomarkers:
+                            # Build change string with proper None handling
+                            change_pct = bm.get('change_pct')
+                            baseline = bm.get('baseline_value')
+                            final = bm.get('final_value')
+                            direction = bm.get('change_direction')
+
+                            if change_pct is not None:
+                                dir_str = f"{direction} " if direction else ""
+                                change = f"{dir_str}{change_pct:.0f}%"
+                            elif baseline is not None and final is not None:
+                                unit = bm.get('baseline_unit') or ''
+                                change = f"{baseline}{unit} → {final}{unit}"
+                            elif direction:
+                                change = direction
+                            else:
+                                change = "-"
+
+                            biomarker_name = bm.get('biomarker_name') or '-'
+                            biomarker_data.append({
+                                "Biomarker": biomarker_name,
+                                "Change": change,
+                                "Beneficial": "✓" if bm.get('is_beneficial') else ""
+                            })
+
+                        if biomarker_data:
+                            st.markdown("**🧬 Biomarker Changes:**")
+                            df_biomarkers = pd.DataFrame(biomarker_data)
+                            st.dataframe(df_biomarkers, hide_index=True, use_container_width=True)
 
                     st.markdown("---")
             else:

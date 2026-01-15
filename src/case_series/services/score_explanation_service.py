@@ -26,37 +26,36 @@ logger = logging.getLogger(__name__)
 # Prompt Templates
 # =============================================================================
 
-AGGREGATE_EXPLANATION_SYSTEM = """You are a clinical research analyst explaining drug repurposing evidence.
-Your explanations should be professional, data-driven, and accessible to both clinical and business audiences.
-Use specific numbers from the provided data. Be honest about limitations while highlighting strengths."""
+AGGREGATE_EXPLANATION_SYSTEM = """You are a clinical research analyst writing scientific evidence summaries for drug repurposing.
+Write like a methods/results section of a scientific paper - precise, data-focused, no marketing language.
+Reference specific data points from the studies. Avoid superlatives and filler words."""
 
-AGGREGATE_EXPLANATION_PROMPT = """Generate a 2-3 paragraph explanation for why {disease} scored {overall_score:.1f}/10 for repurposing potential with {drug_name}.
+AGGREGATE_EXPLANATION_PROMPT = """Write a scientific evidence summary for {drug_name} in {disease} (score: {overall_score:.1f}/10).
 
-## Evidence Summary
-- Number of studies: {n_studies}
-- Total patients: {total_patients}
-- Pooled response rate: {pooled_response}
-- Response consistency: {consistency}
-- Evidence confidence: {evidence_confidence}
+## Aggregate Evidence
+- Studies: {n_studies} | Patients: {total_patients}
+- Pooled response: {pooled_response}
+- Consistency: {consistency} | Confidence: {evidence_confidence}
 
-## Score Breakdown
-- Clinical Signal: {clinical_score:.1f}/10 (response rates, safety, organ involvement)
-- Evidence Quality: {evidence_score:.1f}/10 (sample size, endpoints, follow-up)
-- Market Opportunity: {market_score:.1f}/10 (unmet need, competition)
+## Score Components
+- Clinical Signal: {clinical_score:.1f}/10
+- Evidence Quality: {evidence_score:.1f}/10
+- Market Opportunity: {market_score:.1f}/10
 
-## Individual Paper Highlights
+## Study-Level Data
 {paper_summaries}
 
 ---
 
-Write your explanation covering:
-1. **Opening paragraph:** Summarize the overall evidence strength and what the {overall_score:.1f}/10 score indicates. Highlight the most compelling data points.
+Write 2-3 concise paragraphs as a scientific evidence summary. Do NOT use headers like "Paragraph 1" or section labels.
 
-2. **Middle paragraph:** Explain the key score drivers - what aspects were strongest (e.g., high response rates, validated endpoints, large samples) and what limitations exist (e.g., small samples, short follow-up, case reports only).
+First paragraph: Summarize the efficacy findings across studies. Reference specific response rates, endpoints used, and patient numbers. If biomarker data exists, describe the observed changes.
 
-3. **Closing paragraph:** Briefly address clinical plausibility and what additional evidence would strengthen the case.
+Second paragraph: Describe study characteristics - designs, follow-up durations, dosing regimens. Note endpoint quality (regulatory vs author-defined) and key limitations.
 
-Keep paragraphs concise (3-4 sentences each). Use specific numbers."""
+Third paragraph: Balanced assessment of evidence strength. What does the data support? What gaps remain?
+
+IMPORTANT: Reference actual data (e.g., "3/4 patients achieved complete response", "CRP decreased 80%", "at 12-week follow-up"). Avoid vague phrases like "promising results" or "demonstrates potential"."""
 
 
 PAPER_EXPLANATION_PROMPT = """Explain in 2-3 sentences why this study scored {total_score:.1f}/10.
@@ -317,7 +316,7 @@ class ScoreExplanationService:
         self,
         opportunities: List["RepurposingOpportunity"],
     ) -> str:
-        """Build formatted paper summaries for the prompt."""
+        """Build detailed paper summaries with specific data for the prompt."""
         if not opportunities:
             return "No individual papers available."
 
@@ -326,16 +325,85 @@ class ScoreExplanationService:
             ext = opp.extraction
             pmid = ext.source.pmid if ext.source else "N/A"
             n = ext.patient_population.n_patients if ext.patient_population else 0
-            resp = ext.efficacy.responders_pct if ext.efficacy else None
             score = ext.individual_score.total_score if ext.individual_score else 0
 
-            resp_str = f"{resp:.0f}% response" if resp is not None else "response not quantified"
-            summaries.append(f"{i}. PMID {pmid}: N={n} patients, {resp_str}, score {score:.1f}/10")
+            # Build detailed study summary
+            lines = [f"### Study {i}: PMID {pmid} (Score: {score:.1f}/10)"]
+
+            # Patient info
+            lines.append(f"- Patients: N={n}")
+
+            # Efficacy data
+            if ext.efficacy:
+                eff = ext.efficacy
+                if eff.responders_n is not None and eff.responders_pct is not None:
+                    lines.append(f"- Response: {eff.responders_n}/{n} ({eff.responders_pct:.0f}%)")
+                elif eff.responders_pct is not None:
+                    lines.append(f"- Response rate: {eff.responders_pct:.0f}%")
+
+                if eff.primary_endpoint:
+                    endpoint_text = eff.primary_endpoint[:150] if len(eff.primary_endpoint) > 150 else eff.primary_endpoint
+                    lines.append(f"- Primary endpoint: {endpoint_text}")
+                    if eff.endpoint_result:
+                        result_text = eff.endpoint_result[:150] if len(eff.endpoint_result) > 150 else eff.endpoint_result
+                        lines.append(f"- Endpoint result: {result_text}")
+
+                if eff.time_to_response:
+                    lines.append(f"- Time to response: {eff.time_to_response}")
+                if eff.duration_of_response:
+                    lines.append(f"- Duration of response: {eff.duration_of_response}")
+
+                # Add efficacy summary if available
+                if eff.efficacy_summary:
+                    summary_text = eff.efficacy_summary[:200] if len(eff.efficacy_summary) > 200 else eff.efficacy_summary
+                    lines.append(f"- Efficacy summary: {summary_text}")
+
+            # Key findings (often the most valuable)
+            if ext.key_findings:
+                findings = ext.key_findings[:300] if len(ext.key_findings) > 300 else ext.key_findings
+                lines.append(f"- Key findings: {findings}")
+
+            # Biomarker data
+            if ext.biomarkers:
+                biomarker_details = []
+                for bm in ext.biomarkers[:3]:  # Limit to 3 biomarkers
+                    bm_str = bm.biomarker_name
+                    if bm.change_direction:
+                        bm_str += f" {bm.change_direction.lower()}"
+                    if bm.change_pct is not None:
+                        bm_str += f" {bm.change_pct:.0f}%"
+                    if bm.baseline_value is not None and bm.final_value is not None:
+                        unit = bm.baseline_unit or ""
+                        bm_str += f" ({bm.baseline_value}{unit} → {bm.final_value}{unit})"
+                    if bm.p_value:
+                        bm_str += f", p={bm.p_value}"
+                    biomarker_details.append(bm_str)
+                if biomarker_details:
+                    lines.append(f"- Biomarkers: {'; '.join(biomarker_details)}")
+
+            # Treatment details
+            if ext.treatment:
+                tx = ext.treatment
+                # Handle both old field names (dosing_regimen) and new (dose)
+                dosing = getattr(tx, 'dosing_regimen', None) or getattr(tx, 'dose', None)
+                if dosing:
+                    lines.append(f"- Dosing: {dosing}")
+                duration = getattr(tx, 'treatment_duration', None) or getattr(tx, 'duration', None)
+                if duration:
+                    lines.append(f"- Treatment duration: {duration}")
+
+            # Follow-up and study design
+            if ext.follow_up_duration:
+                lines.append(f"- Follow-up: {ext.follow_up_duration}")
+            if ext.evidence_level:
+                lines.append(f"- Study type: {ext.evidence_level.value if hasattr(ext.evidence_level, 'value') else ext.evidence_level}")
+
+            summaries.append("\n".join(lines))
 
         if len(opportunities) > 5:
-            summaries.append(f"... and {len(opportunities) - 5} more papers")
+            summaries.append(f"\n... and {len(opportunities) - 5} additional studies")
 
-        return "\n".join(summaries)
+        return "\n\n".join(summaries)
 
     def _build_fallback_explanation(
         self,

@@ -57,6 +57,7 @@ class DiseaseSummary:
     efficacy_signal: Optional[str]
     best_evidence_level: str
     consistency_level: Optional[str]
+    explanation: Optional[str] = None  # AI-generated scientific explanation
     papers: List[Dict[str, Any]] = None
 
 
@@ -400,6 +401,16 @@ class BrowserScoringService:
                     best = cur.fetchone()
                     best_pmid = best['pmid'] if best else None
 
+                    # Get explanation from cs_opportunities
+                    cur.execute("""
+                        SELECT key_findings FROM cs_opportunities
+                        WHERE LOWER(drug_name) = LOWER(%s)
+                          AND LOWER(disease) = LOWER(%s)
+                        LIMIT 1
+                    """, (drug_name, row['disease']))
+                    opp = cur.fetchone()
+                    explanation = opp['key_findings'] if opp else None
+
                     results.append(DiseaseSummary(
                         disease=row['disease'],
                         disease_normalized=row['disease_normalized'],
@@ -413,6 +424,7 @@ class BrowserScoringService:
                         efficacy_signal=row['efficacy_signal'],
                         best_evidence_level=row['best_evidence_level'],
                         consistency_level=None,  # Calculated if needed
+                        explanation=explanation,
                     ))
 
                 return results
@@ -428,7 +440,7 @@ class BrowserScoringService:
         Get individual papers for a drug/disease combination.
 
         Returns:
-            List of paper dicts with extraction data
+            List of paper dicts with extraction data including detailed endpoints
         """
         conn = self._get_connection()
         try:
@@ -449,7 +461,10 @@ class BrowserScoringService:
                         study_design,
                         follow_up_duration,
                         individual_score,
-                        scored_at
+                        scored_at,
+                        full_extraction->>'extraction_method' as extraction_method,
+                        full_extraction->'detailed_efficacy_endpoints' as detailed_endpoints,
+                        biomarkers_data
                     FROM cs_extractions
                     WHERE LOWER(drug_name) = LOWER(%s)
                       AND disease = %s
@@ -457,7 +472,21 @@ class BrowserScoringService:
                     ORDER BY individual_score DESC NULLS LAST
                 """, (drug_name, disease))
 
-                return [dict(row) for row in cur.fetchall()]
+                results = []
+                for row in cur.fetchall():
+                    paper = dict(row)
+                    # Parse detailed endpoints if present
+                    if paper.get('detailed_endpoints'):
+                        endpoints = paper['detailed_endpoints']
+                        if isinstance(endpoints, str):
+                            paper['detailed_endpoints'] = json.loads(endpoints)
+                    # Parse biomarkers if present
+                    if paper.get('biomarkers_data'):
+                        biomarkers = paper['biomarkers_data']
+                        if isinstance(biomarkers, str):
+                            paper['biomarkers_data'] = json.loads(biomarkers)
+                    results.append(paper)
+                return results
         finally:
             conn.close()
 
@@ -516,3 +545,60 @@ class BrowserScoringService:
             ],
             'papers': all_papers
         }
+
+    def get_papers_for_manual_review(self, drug_name: str) -> List[Dict[str, Any]]:
+        """
+        Get papers that need manual review for a drug.
+
+        These are papers that passed filters but were extracted from abstract only
+        (no full text available), ranked by patient count.
+
+        Args:
+            drug_name: Drug to get papers for
+
+        Returns:
+            List of paper dicts needing manual review
+        """
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT
+                        pmid,
+                        doi,
+                        title,
+                        authors,
+                        journal,
+                        year,
+                        disease,
+                        n_patients,
+                        n_confidence,
+                        response_rate,
+                        primary_endpoint,
+                        efficacy_mention,
+                        reason,
+                        has_full_text,
+                        extraction_method,
+                        created_at
+                    FROM cs_papers_for_manual_review
+                    WHERE LOWER(drug_name) = LOWER(%s)
+                    ORDER BY n_patients DESC NULLS LAST, year DESC NULLS LAST
+                """, (drug_name,))
+
+                return [dict(row) for row in cur.fetchall()]
+        finally:
+            conn.close()
+
+    def get_manual_review_count(self, drug_name: str) -> int:
+        """Get count of papers needing manual review for a drug."""
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COUNT(*)
+                    FROM cs_papers_for_manual_review
+                    WHERE LOWER(drug_name) = LOWER(%s)
+                """, (drug_name,))
+                return cur.fetchone()[0]
+        finally:
+            conn.close()

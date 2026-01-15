@@ -324,12 +324,13 @@ class PubMedAPI:
             logger.error(f"PubMed search error: {str(e)}")
             return []
 
-    def fetch_abstracts(self, pmids: List[str]) -> List[Dict[str, Any]]:
+    def fetch_abstracts(self, pmids: List[str], batch_size: int = 50) -> List[Dict[str, Any]]:
         """
         Fetch article abstracts for given PMIDs.
 
         Args:
             pmids: List of PubMed IDs
+            batch_size: Number of PMIDs to fetch per request (default 50 to avoid 414 errors)
 
         Returns:
             List of article details with abstracts
@@ -337,36 +338,46 @@ class PubMedAPI:
         if not pmids:
             return []
 
-        try:
-            self._rate_limit()  # Enforce rate limiting
+        all_articles = []
 
-            params = {
-                "db": "pubmed",
-                "id": ",".join(pmids),
-                "retmode": "xml",
-                "rettype": "abstract",
-                "tool": "biopharma-investment-agent",
-                "email": self.email
-            }
+        # Process in batches to avoid "414 Request-URI Too Long" errors
+        for i in range(0, len(pmids), batch_size):
+            batch_pmids = pmids[i:i + batch_size]
 
-            if self.api_key:
-                params["api_key"] = self.api_key
+            try:
+                self._rate_limit()  # Enforce rate limiting
 
-            response = self.session.get(
-                f"{self.BASE_URL}/efetch.fcgi",
-                params=params
-            )
-            response.raise_for_status()
+                params = {
+                    "db": "pubmed",
+                    "id": ",".join(batch_pmids),
+                    "retmode": "xml",
+                    "rettype": "abstract",
+                    "tool": "biopharma-investment-agent",
+                    "email": self.email
+                }
 
-            # Parse XML response
-            articles = self._parse_xml_response(response.text)
-            logger.info(f"Retrieved {len(articles)} article abstracts")
+                if self.api_key:
+                    params["api_key"] = self.api_key
 
-            return articles
+                response = self.session.get(
+                    f"{self.BASE_URL}/efetch.fcgi",
+                    params=params
+                )
+                response.raise_for_status()
 
-        except httpx.HTTPError as e:
-            logger.error(f"PubMed fetch error: {str(e)}")
-            return []
+                # Parse XML response
+                articles = self._parse_xml_response(response.text)
+                all_articles.extend(articles)
+
+                if len(pmids) > batch_size:
+                    logger.info(f"Fetched batch {i//batch_size + 1}/{(len(pmids) + batch_size - 1)//batch_size}: {len(articles)} articles")
+
+            except httpx.HTTPError as e:
+                logger.error(f"PubMed fetch error for batch {i//batch_size + 1}: {str(e)}")
+                # Continue with other batches instead of failing completely
+
+        logger.info(f"Retrieved {len(all_articles)} total article abstracts from {len(pmids)} PMIDs")
+        return all_articles
 
     def search_and_fetch(
         self,
@@ -389,6 +400,65 @@ class PubMedAPI:
         if pmids:
             return self.fetch_abstracts(pmids)
         return []
+
+    def get_related_articles(
+        self,
+        pmid: str,
+        max_results: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Get related articles for a given PMID using PubMed's eLink API.
+
+        This finds papers that are related to the given paper based on
+        shared references, citations, and topic similarity.
+
+        Args:
+            pmid: PubMed ID to find related articles for
+            max_results: Maximum number of related articles to return
+
+        Returns:
+            List of related article dictionaries with pmid, title, abstract, etc.
+        """
+        try:
+            # Use eLink to find related articles
+            elink_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi"
+            params = {
+                "dbfrom": "pubmed",
+                "db": "pubmed",
+                "id": pmid,
+                "linkname": "pubmed_pubmed",  # Related articles link
+                "retmode": "json",
+                "tool": self.tool,
+                "email": self.email,
+            }
+
+            self._rate_limit()
+            response = self.client.get(elink_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            # Extract related PMIDs
+            related_pmids = []
+            linksets = data.get("linksets", [])
+            for linkset in linksets:
+                linksetdbs = linkset.get("linksetdbs", [])
+                for linksetdb in linksetdbs:
+                    if linksetdb.get("linkname") == "pubmed_pubmed":
+                        links = linksetdb.get("links", [])
+                        related_pmids.extend(str(link) for link in links[:max_results])
+
+            if not related_pmids:
+                logger.debug(f"No related articles found for PMID {pmid}")
+                return []
+
+            logger.info(f"Found {len(related_pmids)} related articles for PMID {pmid}")
+
+            # Fetch abstracts for related PMIDs
+            return self.fetch_abstracts(related_pmids[:max_results])
+
+        except Exception as e:
+            logger.warning(f"Failed to get related articles for PMID {pmid}: {e}")
+            return []
 
     def search_papers(
         self,

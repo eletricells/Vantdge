@@ -279,10 +279,16 @@ class CaseSeriesScorer:
                 score = ext.individual_score
 
             n = ext.patient_population.n_patients or 1
-            pmid = ext.source.pmid if ext.source else None
+            # Use PMID or DOI as fallback identifier
+            paper_id = None
+            if ext.source:
+                if ext.source.pmid:
+                    paper_id = ext.source.pmid
+                elif ext.source.doi:
+                    paper_id = f"DOI:{ext.source.doi}"
 
             individual_scores.append({
-                "pmid": pmid,
+                "pmid": paper_id,
                 "n_patients": n,
                 "score": score.total_score,
             })

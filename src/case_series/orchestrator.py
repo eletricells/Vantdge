@@ -7,7 +7,7 @@ Main entry point that coordinates all services for drug repurposing analysis.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Set
 
 from src.case_series.models import (
     CaseSeriesExtraction,
@@ -24,6 +24,7 @@ from src.case_series.services.extraction_service import ExtractionService
 from src.case_series.services.market_intel_service import MarketIntelService
 from src.case_series.services.disease_standardizer import DiseaseStandardizer
 from src.case_series.services.score_explanation_service import ScoreExplanationService
+from src.case_series.services.preprint_search_service import PreprintSearchService
 from src.case_series.services.aggregation_service import (
     get_disease_aggregations_dict,
     get_opportunities_by_disease,
@@ -63,6 +64,8 @@ class AnalysisConfig:
     use_semantic_scholar: bool = True
     use_citation_mining: bool = True
     use_web_search: bool = True
+    # Supplemental mode: skip papers already processed in previous runs
+    supplemental: bool = False
 
 
 @dataclass
@@ -113,6 +116,7 @@ class CaseSeriesOrchestrator:
         disease_standardizer: DiseaseStandardizer,
         scoring_engine: ScoringEngine,
         repository: Optional[CaseSeriesRepository] = None,
+        preprint_search_service: Optional[PreprintSearchService] = None,
     ):
         """
         Initialize the orchestrator with all required services.
@@ -125,9 +129,11 @@ class CaseSeriesOrchestrator:
             disease_standardizer: Service for disease name normalization
             scoring_engine: Engine for opportunity scoring
             repository: Optional repository for persistence
+            preprint_search_service: Optional service for preprint search (bioRxiv/medRxiv)
         """
         self._drug_info_service = drug_info_service
         self._literature_search_service = literature_search_service
+        self._preprint_search_service = preprint_search_service
         self._extraction_service = extraction_service
         self._market_intel_service = market_intel_service
         self._disease_standardizer = disease_standardizer
@@ -184,7 +190,59 @@ class CaseSeriesOrchestrator:
                        f"max_total_discovered={config.max_total_discovered_papers}, "
                        f"sources=[pubmed={config.use_pubmed}, semantic_scholar={config.use_semantic_scholar}, "
                        f"citation_mining={config.use_citation_mining}, web={config.use_web_search}], "
-                       f"enrich_market_data={config.enrich_market_data}")
+                       f"enrich_market_data={config.enrich_market_data}, "
+                       f"supplemental={config.supplemental}")
+
+            # Supplemental mode: get PMIDs to skip BEFORE expensive LLM filtering
+            skip_pmids = None
+            if config.supplemental and self._repository and self._repository._db:
+                self._progress.current_step = "Loading previously processed papers"
+                skip_pmids = self._repository._db.get_processed_pmids(drug_name)
+                if skip_pmids:
+                    logger.info(f"Supplemental mode: Will skip {len(skip_pmids)} already-processed papers BEFORE filtering")
+                else:
+                    logger.info(f"Supplemental mode: No previously processed papers found for {drug_name}")
+
+            # Create checkpoint callback to save progress every 50 batches
+            def filter_checkpoint_callback(papers_so_far: list, batch_num: int):
+                """Save filtered papers checkpoint to database."""
+                if not self._repository or not self._repository._db:
+                    return
+                try:
+                    papers_for_checkpoint = []
+                    for p in papers_so_far:
+                        patient_count = getattr(p, 'extracted_patient_count', None)
+                        if patient_count is not None:
+                            try:
+                                patient_count = int(patient_count)
+                            except (ValueError, TypeError):
+                                patient_count = None
+                        papers_for_checkpoint.append({
+                            'pmid': p.pmid,
+                            'doi': p.doi,
+                            'title': p.title,
+                            'abstract': p.abstract,
+                            'year': p.year,
+                            'journal': p.journal,
+                            'source': p.source,
+                            'disease': getattr(p, 'extracted_disease', None),
+                            'patient_count': patient_count,
+                            'would_pass_filter': True,
+                            'filter_reason': f'Passed filter (checkpoint at batch {batch_num})',
+                        })
+                    # Save checkpoint
+                    self._repository.save_paper_discovery(
+                        drug_name=drug_name,
+                        generic_name=drug_info.generic_name,
+                        papers=papers_for_checkpoint,
+                        approved_indications=drug_info.approved_indications,
+                        sources_searched=['checkpoint'],
+                        duplicates_removed=0,
+                    )
+                    logger.info(f"Checkpoint saved: {len(papers_for_checkpoint)} papers at batch {batch_num}")
+                except Exception as e:
+                    logger.warning(f"Checkpoint save failed at batch {batch_num}: {e}")
+
             search_result = await self.search_literature(
                 drug_name=drug_name,
                 exclude_indications=drug_info.approved_indications,
@@ -196,8 +254,50 @@ class CaseSeriesOrchestrator:
                 use_semantic_scholar=config.use_semantic_scholar,
                 use_citation_mining=config.use_citation_mining,
                 use_web_search=config.use_web_search,
+                skip_pmids=skip_pmids,  # Skip these BEFORE LLM filter
+                filter_checkpoint_callback=filter_checkpoint_callback,
             )
             self._progress.papers_found = len(search_result.papers)
+
+            # Save discovered papers to database for future supplemental runs
+            # This saves the papers that passed the Haiku filter
+            if self._repository and self._repository._db and search_result.papers:
+                try:
+                    papers_for_db = []
+                    for p in search_result.papers:
+                        # Handle patient_count - ensure it's an integer or None
+                        patient_count = getattr(p, 'extracted_patient_count', None)
+                        if patient_count is not None:
+                            try:
+                                patient_count = int(patient_count)
+                            except (ValueError, TypeError):
+                                patient_count = None  # Can't convert, set to None
+
+                        papers_for_db.append({
+                            'pmid': p.pmid,
+                            'doi': p.doi,
+                            'title': p.title,
+                            'abstract': p.abstract,
+                            'year': p.year,
+                            'journal': p.journal,
+                            'source': p.source,
+                            'disease': getattr(p, 'extracted_disease', None),
+                            'patient_count': patient_count,
+                            'would_pass_filter': True,  # These all passed the LLM filter
+                            'filter_reason': 'Passed Haiku filter in analyze()',
+                        })
+                    discovery_id = self._repository.save_paper_discovery(
+                        drug_name=drug_name,
+                        generic_name=drug_info.generic_name,
+                        papers=papers_for_db,
+                        approved_indications=drug_info.approved_indications,
+                        sources_searched=search_result.sources_searched,
+                        duplicates_removed=search_result.duplicates_removed,
+                    )
+                    if discovery_id:
+                        logger.info(f"Saved {len(papers_for_db)} papers to discovery cache for future supplemental runs")
+                except Exception as e:
+                    logger.warning(f"Failed to save paper discovery: {e}")
 
             # Step 3: Extract data
             self._progress.current_step = "Extracting clinical data"
@@ -218,9 +318,15 @@ class CaseSeriesOrchestrator:
 
             def is_likely_off_label(paper) -> bool:
                 """Check if paper's extracted disease is likely off-label."""
-                disease = (getattr(paper, 'extracted_disease', '') or '').lower()
+                raw_disease = getattr(paper, 'extracted_disease', '') or ''
+                # Handle case where extracted_disease is a list
+                if isinstance(raw_disease, list):
+                    raw_disease = ', '.join(str(d) for d in raw_disease) if raw_disease else ''
+                disease = raw_disease.lower()
                 if not disease:
-                    return True  # No disease extracted, include for safety
+                    # No disease extracted by Haiku - skip to avoid wasted Sonnet extraction
+                    logger.debug(f"Pre-filter excluding {paper.pmid}: No disease extracted by Haiku")
+                    return False
                 # Check if disease matches any approved indication
                 for approved in approved_lower:
                     if approved in disease or disease in approved:
@@ -231,7 +337,7 @@ class CaseSeriesOrchestrator:
             papers_to_extract = [p for p in papers_to_extract if is_likely_off_label(p)]
             skipped_count = pre_filter_count - len(papers_to_extract)
             if skipped_count > 0:
-                logger.info(f"Pre-filter: Skipped {skipped_count} papers with approved indications, {len(papers_to_extract)} remaining")
+                logger.info(f"Pre-filter: Skipped {skipped_count} papers (no disease or approved indication), {len(papers_to_extract)} remaining for extraction")
 
             if config.max_papers_to_extract and len(papers_to_extract) > config.max_papers_to_extract:
                 logger.info(f"Limiting extraction to {config.max_papers_to_extract} papers (found {len(papers_to_extract)})")
@@ -764,6 +870,8 @@ class CaseSeriesOrchestrator:
         use_semantic_scholar: bool = True,
         use_citation_mining: bool = True,
         use_web_search: bool = True,
+        skip_pmids: Optional[Set[str]] = None,
+        filter_checkpoint_callback: callable = None,
     ) -> SearchResult:
         """
         Step 2: Search for case series in literature.
@@ -779,6 +887,8 @@ class CaseSeriesOrchestrator:
             use_semantic_scholar: Whether to search Semantic Scholar
             use_citation_mining: Whether to mine citations from reviews
             use_web_search: Whether to search web sources
+            skip_pmids: Set of PMIDs to skip (already processed in previous runs)
+            filter_checkpoint_callback: Optional callback(papers, batch_num) for saving progress every 50 batches
 
         Returns:
             SearchResult with filtered papers
@@ -794,7 +904,81 @@ class CaseSeriesOrchestrator:
             use_pubmed=use_pubmed,
             use_semantic_scholar=use_semantic_scholar,
             use_web_search=use_web_search,
+            skip_pmids=skip_pmids,
+            filter_checkpoint_callback=filter_checkpoint_callback,
         )
+
+    async def search_preprint_literature(
+        self,
+        drug_name: str,
+        generic_name: Optional[str] = None,
+        approved_indications: Optional[List[str]] = None,
+        max_results: int = 200,
+        server: str = "both",
+        years_back: int = 2,
+        apply_llm_filter: bool = True,
+        standard_papers: Optional[List[Paper]] = None,
+    ) -> SearchResult:
+        """
+        Search preprint servers (bioRxiv/medRxiv) for case series papers.
+
+        This is a separate, optional search that can be run independently
+        of the standard literature search. Results are returned separately
+        and should be displayed in a dedicated preprint tab.
+
+        Args:
+            drug_name: Brand name of drug
+            generic_name: Generic name (if different from brand)
+            approved_indications: List of approved indications to exclude
+            max_results: Maximum papers to return
+            server: "biorxiv", "medrxiv", or "both"
+            years_back: Number of years back to search (default: 2)
+            apply_llm_filter: Whether to apply LLM-based filtering
+            standard_papers: Optional list of papers from standard search
+                            (used to deduplicate preprints with published versions)
+
+        Returns:
+            SearchResult with preprint papers
+        """
+        if not self._preprint_search_service:
+            logger.warning("Preprint search service not configured")
+            return SearchResult(
+                papers=[],
+                queries_used=[],
+                sources_searched=["bioRxiv", "medRxiv"],
+                total_found=0,
+                duplicates_removed=0
+            )
+
+        # Run preprint search
+        result = await self._preprint_search_service.search(
+            drug_name=drug_name,
+            generic_name=generic_name,
+            approved_indications=approved_indications or [],
+            max_results=max_results,
+            server=server,
+            years_back=years_back,
+            apply_llm_filter=apply_llm_filter,
+        )
+
+        # Deduplicate with standard papers if provided
+        if standard_papers and result.papers:
+            original_count = len(result.papers)
+            result.papers = self._preprint_search_service.deduplicate_with_published(
+                preprint_papers=result.papers,
+                standard_papers=standard_papers,
+            )
+            dedup_count = original_count - len(result.papers)
+            result.duplicates_removed += dedup_count
+            logger.info(f"Removed {dedup_count} preprints with published versions")
+
+        self._progress.status = "preprint_search_complete"
+        logger.info(
+            f"Preprint search complete: {len(result.papers)} papers "
+            f"from {', '.join(result.sources_searched)}"
+        )
+
+        return result
 
     async def extract_data(
         self,
@@ -822,22 +1006,87 @@ class CaseSeriesOrchestrator:
         # Only save relevant extractions to avoid cluttering database
         def save_extraction_callback(extraction: CaseSeriesExtraction, drug_name: str):
             if self._repository and self._run_id:
+                # Get paper identifier - prefer PMID, fallback to DOI
                 pmid = extraction.source.pmid if extraction.source else None
-                if pmid:
-                    # Skip saving irrelevant extractions
-                    if not extraction.is_relevant:
-                        logger.info(f"Skipping save for PMID {pmid} (not relevant: {extraction.disease})")
-                        return
+                doi = extraction.source.doi if extraction.source else None
+
+                # Use DOI as fallback identifier if no PMID
+                paper_id = pmid
+                if not paper_id and doi:
+                    paper_id = f"DOI:{doi}"
+                    logger.info(f"Using DOI as identifier for paper: {doi}")
+
+                if paper_id:
                     try:
+                        # Save extraction (including non-relevant ones for future skip optimization)
                         self._repository.save_extraction(
                             drug_name=drug_name,
-                            pmid=pmid,
+                            pmid=paper_id,
                             extraction_data=extraction.model_dump(),
                             run_id=self._run_id,
                         )
-                        logger.info(f"Saved extraction for PMID {pmid} (disease: {extraction.disease})")
+                        if extraction.is_relevant:
+                            logger.info(f"Saved extraction for {paper_id} (disease: {extraction.disease})")
+                        else:
+                            logger.info(f"Saved non-relevant extraction for {paper_id} (reason: {extraction.disease}) - will skip in future runs")
+
+                        # Save additional diseases as separate extractions (only for relevant papers)
+                        if extraction.is_relevant and extraction.additional_diseases:
+                            for add_disease in extraction.additional_diseases:
+                                # Create a copy of extraction with the additional disease
+                                add_extraction_data = extraction.model_dump()
+
+                                # Override disease identification
+                                add_extraction_data['disease'] = add_disease.disease
+                                add_extraction_data['disease_subtype'] = add_disease.disease_subtype
+                                add_extraction_data['disease_category'] = add_disease.disease_category
+                                add_extraction_data['additional_diseases'] = []  # Clear to avoid recursion
+
+                                # Override patient population if specified for this disease
+                                if add_disease.n_patients is not None:
+                                    add_extraction_data['patient_population']['n_patients'] = add_disease.n_patients
+                                if add_disease.patient_description:
+                                    add_extraction_data['patient_population']['description'] = add_disease.patient_description
+                                if add_disease.disease_severity:
+                                    add_extraction_data['patient_population']['disease_severity'] = add_disease.disease_severity
+
+                                # Override disease-specific efficacy data
+                                if add_disease.response_rate:
+                                    add_extraction_data['efficacy']['response_rate'] = add_disease.response_rate
+                                if add_disease.responders_n is not None:
+                                    add_extraction_data['efficacy']['responders_n'] = add_disease.responders_n
+                                if add_disease.responders_pct is not None:
+                                    add_extraction_data['efficacy']['responders_pct'] = add_disease.responders_pct
+                                if add_disease.primary_endpoint:
+                                    add_extraction_data['efficacy']['primary_endpoint'] = add_disease.primary_endpoint
+                                if add_disease.endpoint_result:
+                                    add_extraction_data['efficacy']['endpoint_result'] = add_disease.endpoint_result
+                                if add_disease.efficacy_summary:
+                                    add_extraction_data['efficacy']['efficacy_summary'] = add_disease.efficacy_summary
+
+                                # Override efficacy signal if specified
+                                if add_disease.efficacy_signal:
+                                    add_extraction_data['efficacy_signal'] = add_disease.efficacy_signal
+
+                                # Override follow-up and findings if specified
+                                if add_disease.follow_up_duration:
+                                    add_extraction_data['follow_up_duration'] = add_disease.follow_up_duration
+                                if add_disease.key_findings:
+                                    add_extraction_data['key_findings'] = add_disease.key_findings
+
+                                self._repository.save_extraction(
+                                    drug_name=drug_name,
+                                    pmid=paper_id,
+                                    extraction_data=add_extraction_data,
+                                    run_id=self._run_id,
+                                )
+                                logger.info(f"Saved additional disease extraction for {paper_id} (disease: {add_disease.disease}, n={add_disease.n_patients}, responders_pct={add_disease.responders_pct})")
                     except Exception as e:
-                        logger.warning(f"Failed to save extraction for {pmid}: {e}")
+                        logger.warning(f"Failed to save extraction for {paper_id}: {e}")
+                else:
+                    # No PMID or DOI - cannot save
+                    title = extraction.source.title if extraction.source else "Unknown"
+                    logger.warning(f"Cannot save extraction - no PMID or DOI for paper: {title[:100]}")
 
         extractions = await self._extraction_service.extract_batch(
             papers=papers,
@@ -1503,6 +1752,12 @@ class CaseSeriesOrchestrator:
                                 reason = result.get('reason', '')
                                 raw_disease = result.get('disease', '') or ''
                                 patient_count = result.get('patient_count')
+                                # Convert patient_count to int or None (LLM may return "Unknown")
+                                if patient_count is not None:
+                                    try:
+                                        patient_count = int(patient_count)
+                                    except (ValueError, TypeError):
+                                        patient_count = None
 
                                 # Standardize disease name using taxonomy
                                 disease = raw_disease

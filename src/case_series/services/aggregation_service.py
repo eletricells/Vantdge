@@ -231,12 +231,15 @@ def aggregate_opportunities_by_disease(
         else:
             avg_clinical = avg_evidence = avg_market = avg_overall = best_overall = 0.0
 
-        # Collect PMIDs
-        pmids = [
-            opp.extraction.source.pmid
-            for opp in opps
-            if opp.extraction.source and opp.extraction.source.pmid
-        ]
+        # Collect paper identifiers (PMIDs or DOI-based IDs as fallback)
+        pmids = []
+        for opp in opps:
+            if opp.extraction.source:
+                if opp.extraction.source.pmid:
+                    pmids.append(opp.extraction.source.pmid)
+                elif opp.extraction.source.doi:
+                    # Use DOI as fallback identifier
+                    pmids.append(f"DOI:{opp.extraction.source.doi}")
 
         aggregated.append(AggregatedEvidence(
             disease=disease,

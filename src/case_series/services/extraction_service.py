@@ -26,6 +26,7 @@ from src.case_series.models import (
     EfficacySignal,
     SafetyProfile,
     BiomarkerResult,
+    AdditionalDisease,
 )
 from src.case_series.protocols.llm_protocol import LLMClient
 from src.case_series.protocols.search_protocol import PubMedSearcher
@@ -978,7 +979,12 @@ class ExtractionService:
             age_description=pop_data.get('age_description') or data.get('patient_description'),
             sex_distribution=pop_data.get('sex_distribution'),
             prior_treatments_failed=pop_data.get('prior_treatments_failed') or data.get('prior_treatments_failed'),
-            disease_severity=pop_data.get('disease_severity'),
+            disease_severity=pop_data.get('disease_severity') or data.get('disease_severity'),
+            # Refractory population fields
+            is_refractory=pop_data.get('is_refractory') or data.get('is_refractory'),
+            prior_therapy_lines=pop_data.get('prior_therapy_lines') or data.get('prior_therapy_lines'),
+            refractory_to=pop_data.get('refractory_to') or data.get('refractory_to'),
+            population_type=pop_data.get('population_type') or data.get('population_type'),
         )
 
         # Build treatment details (check both flat and nested)
@@ -1088,6 +1094,9 @@ class ExtractionService:
                 except Exception as e:
                     logger.warning(f"Failed to parse biomarker {bm}: {e}")
 
+        # Parse additional diseases for multi-disease studies
+        additional_diseases = self._parse_additional_diseases(data)
+
         return CaseSeriesExtraction(
             source=source,
             disease=data.get('disease') or '',  # Handles None explicitly
@@ -1110,7 +1119,85 @@ class ExtractionService:
             follow_up_weeks=data.get('follow_up_weeks'),
             response_definition_quality=data.get('response_definition_quality'),
             biomarkers=biomarkers,
+            additional_diseases=additional_diseases,
         )
+
+    def _parse_additional_diseases(self, data: Dict[str, Any]) -> List[AdditionalDisease]:
+        """Parse additional diseases from extraction response with disease-specific efficacy."""
+        additional = []
+        raw_additional = data.get('additional_diseases', [])
+        if not raw_additional:
+            return additional
+
+        for ad in raw_additional:
+            if not isinstance(ad, dict):
+                continue
+            disease_name = ad.get('disease')
+            if not disease_name:
+                continue
+            try:
+                # Parse responders_pct (handle string percentages like "80%" or "80")
+                responders_pct = ad.get('responders_pct')
+                if isinstance(responders_pct, str):
+                    try:
+                        responders_pct = float(responders_pct.replace('%', '').strip())
+                    except ValueError:
+                        responders_pct = None
+                elif isinstance(responders_pct, (int, float)):
+                    responders_pct = float(responders_pct)
+                else:
+                    responders_pct = None
+
+                # Parse responders_n (handle string numbers)
+                responders_n = ad.get('responders_n')
+                if isinstance(responders_n, str):
+                    try:
+                        responders_n = int(responders_n.strip())
+                    except ValueError:
+                        responders_n = None
+                elif isinstance(responders_n, (int, float)):
+                    responders_n = int(responders_n)
+                else:
+                    responders_n = None
+
+                # Parse n_patients (handle string numbers)
+                n_patients = ad.get('n_patients')
+                if isinstance(n_patients, str):
+                    try:
+                        n_patients = int(n_patients.strip())
+                    except ValueError:
+                        n_patients = None
+                elif isinstance(n_patients, (int, float)):
+                    n_patients = int(n_patients)
+                else:
+                    n_patients = None
+
+                additional.append(AdditionalDisease(
+                    # Disease identification
+                    disease=disease_name,
+                    disease_subtype=ad.get('disease_subtype'),
+                    disease_category=ad.get('disease_category'),
+                    # Patient population for this disease
+                    n_patients=n_patients,
+                    patient_description=ad.get('patient_description'),
+                    disease_severity=ad.get('disease_severity'),
+                    # Disease-specific efficacy metrics
+                    response_rate=ad.get('response_rate'),
+                    responders_n=responders_n,
+                    responders_pct=responders_pct,
+                    primary_endpoint=ad.get('primary_endpoint'),
+                    endpoint_result=ad.get('endpoint_result'),
+                    efficacy_signal=ad.get('efficacy_signal'),
+                    efficacy_summary=ad.get('efficacy_summary'),
+                    # Additional context
+                    follow_up_duration=ad.get('follow_up_duration'),
+                    key_findings=ad.get('key_findings'),
+                ))
+                logger.info(f"Found additional disease: {disease_name} (n={n_patients}, responders_pct={responders_pct})")
+            except Exception as e:
+                logger.warning(f"Failed to parse additional disease {ad}: {e}")
+
+        return additional
 
     # Common abbreviation mappings for indication matching
     INDICATION_ABBREVIATIONS = {

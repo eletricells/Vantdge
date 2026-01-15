@@ -8,7 +8,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, Set
 import psycopg2
 from psycopg2.extras import RealDictCursor, Json
 
@@ -272,7 +272,7 @@ class CaseSeriesDatabase:
                         relevance_score = EXCLUDED.relevance_score,
                         relevance_reason = EXCLUDED.relevance_reason,
                         extracted_disease = EXCLUDED.extracted_disease
-                """, (pmid, drug_name, title, abstract, year,
+                """, (pmid, drug_name, title, abstract, self._safe_int(year),
                       is_relevant, relevance_score, relevance_reason, extracted_disease,
                       kwargs.get('source'), kwargs.get('journal'), kwargs.get('authors')))
                 conn.commit()
@@ -310,6 +310,87 @@ class CaseSeriesDatabase:
             return None
         finally:
             conn.close()
+
+    def get_processed_pmids(self, drug_name: str) -> Set[str]:
+        """
+        Get all paper identifiers (PMIDs and DOI-based IDs) that have been seen in previous runs for a drug.
+        This includes:
+        - Papers that were extracted (cs_extractions) - both PMID and DOI-based identifiers
+        - Papers that were discovered and filtered by Haiku (cs_discovery_papers)
+        - Papers in the relevance cache (cs_papers)
+
+        Used for supplemental searches to avoid re-filtering/re-processing papers.
+
+        Args:
+            drug_name: Name of the drug
+
+        Returns:
+            Set of paper identifiers (PMIDs and "DOI:xxx" format) that have already been seen
+        """
+        if not self.is_available:
+            return set()
+
+        conn = self._get_connection()
+        paper_ids = set()
+        extracted_count = 0
+        discovered_count = 0
+        cached_count = 0
+
+        try:
+            with conn.cursor() as cur:
+                # 1. Get PMIDs from extractions (papers that were fully processed)
+                # This includes both regular PMIDs and DOI-based identifiers stored as "DOI:xxx"
+                cur.execute("""
+                    SELECT DISTINCT pmid FROM cs_extractions
+                    WHERE drug_name ILIKE %s AND pmid IS NOT NULL
+                """, (drug_name,))
+                extracted_ids = {row[0] for row in cur.fetchall() if row[0]}
+                extracted_count = len(extracted_ids)
+                paper_ids.update(extracted_ids)
+
+                # 2. Get PMIDs and DOIs from paper discoveries (papers that were filtered by Haiku)
+                # This is the key optimization - skip ALL previously seen papers
+                cur.execute("""
+                    SELECT DISTINCT dp.pmid, dp.doi
+                    FROM cs_discovery_papers dp
+                    JOIN cs_paper_discoveries pd ON dp.discovery_id = pd.discovery_id
+                    WHERE pd.drug_name ILIKE %s
+                """, (drug_name,))
+                for row in cur.fetchall():
+                    pmid, doi = row
+                    if pmid:
+                        paper_ids.add(pmid)
+                    # Also add DOI-based identifier if no PMID but DOI exists
+                    if not pmid and doi:
+                        paper_ids.add(f"DOI:{doi}")
+                discovered_count = len(paper_ids) - extracted_count
+
+                # 3. Get PMIDs from paper relevance cache (legacy cache)
+                cur.execute("""
+                    SELECT DISTINCT pmid FROM cs_papers
+                    WHERE relevance_drug ILIKE %s AND pmid IS NOT NULL
+                """, (drug_name,))
+                cached_pmids = {row[0] for row in cur.fetchall() if row[0]}
+                cached_count = len(cached_pmids - paper_ids)  # Only count new ones
+                paper_ids.update(cached_pmids)
+
+            logger.info(f"Found {len(paper_ids)} previously seen paper IDs for {drug_name} "
+                       f"(extracted: {extracted_count}, discovered/filtered: {discovered_count}, cached: {cached_count})")
+            return paper_ids
+        except Exception as e:
+            logger.error(f"Error getting processed paper IDs: {e}")
+            return set()
+        finally:
+            conn.close()
+
+    def _safe_int(self, value) -> Optional[int]:
+        """Convert value to int or None. Handles 'Unknown', floats, etc."""
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
 
     def _build_dosing_regimen(self, treatment) -> Optional[str]:
         """Build dosing regimen string from TreatmentDetails fields."""
@@ -400,11 +481,11 @@ class CaseSeriesDatabase:
                         extracted_at = CURRENT_TIMESTAMP
                     RETURNING id
                 """, (
-                    run_id, source.pmid, source.title, source.year, drug_name,
+                    run_id, source.pmid, source.title, self._safe_int(source.year), drug_name,
                     extraction.disease,
                     getattr(extraction, 'disease_normalized', None),  # Normalized disease name
                     extraction.is_off_label, extraction.is_relevant,
-                    patient_pop.n_patients if patient_pop else None,
+                    self._safe_int(patient_pop.n_patients) if patient_pop else None,
                     patient_pop.age_description if patient_pop else None,
                     patient_pop.sex_distribution if patient_pop else None,  # Model uses sex_distribution
                     patient_pop.disease_severity if patient_pop else None,
@@ -1730,11 +1811,11 @@ class CaseSeriesDatabase:
                         paper.get('doi'),
                         paper.get('title'),
                         paper.get('abstract'),
-                        paper.get('year'),
+                        self._safe_int(paper.get('year')),  # Convert to int or None
                         paper.get('journal'),
                         paper.get('source'),
                         paper.get('disease'),
-                        paper.get('patient_count'),
+                        self._safe_int(paper.get('patient_count')),  # Convert to int or None
                         paper.get('would_pass_filter', False),
                         paper.get('filter_reason'),
                     ))
@@ -1951,10 +2032,10 @@ class CaseSeriesDatabase:
                             paper.get('title', ''),
                             paper.get('authors'),
                             paper.get('journal'),
-                            paper.get('year'),
+                            self._safe_int(paper.get('year')),
                             paper.get('abstract'),
                             paper.get('disease'),
-                            paper.get('n_patients'),
+                            self._safe_int(paper.get('n_patients')),
                             paper.get('n_confidence', 'Unknown'),
                             paper.get('response_rate'),
                             paper.get('primary_endpoint'),

@@ -23,7 +23,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(frontend_dir))
 sys.path.insert(0, str(project_root))
 
-from auth import check_password
+from auth import check_password, check_page_access, show_access_denied
 
 st.set_page_config(
     page_title="Scoring Analysis",
@@ -34,6 +34,10 @@ st.set_page_config(
 # Password protection
 if not check_password():
     st.stop()
+
+# Page access check
+if not check_page_access("Scoring_Analysis"):
+    show_access_denied()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

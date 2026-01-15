@@ -60,9 +60,24 @@ CRITICAL RULES:
 2. Do NOT include drugs for related but different indications (e.g., if extracting for SLE, don't include drugs only for Lupus Nephritis or Cutaneous Lupus)
 3. Combine data for the same drug across multiple trials
 4. Use highest phase across all trials for that drug
-5. generic_name is REQUIRED for each drug
+5. generic_name is REQUIRED for each drug - use INN name, NOT drug codes
 6. Set confidence_score based on data completeness and source reliability
 7. Deduplicate - each drug should appear only once
 8. Include both approved drugs (if in trials for new indications) and investigational drugs
+
+IMPORTANT - DRUG CODE TO GENERIC NAME MAPPING:
+Many trials use internal drug codes instead of generic names. Convert these to generic/INN names:
+- VAY736 = ianalumab (Novartis, anti-BAFF-R mAb)
+- M281/JNJ-80202135 = nipocalimab (Janssen, anti-FcRn mAb)
+- BMS-986165 = deucravacitinib (BMS, TYK2 inhibitor)
+- CC-220 = iberdomide (BMS, cereblon modulator)
+- CFZ533 = iscalimab (Novartis, anti-CD40 mAb)
+- BIIB059 = litifilimab (Biogen, anti-BDCA2 mAb)
+- MEDI-546/anifrolumab = anifrolumab (AstraZeneca, anti-IFNAR1 mAb)
+- RC18 = telitacicept (RemeGen, TACI-Fc)
+- HZN-7734/VIB7734 = dapirolizumab pegol (Horizon, anti-CD40L)
+- LOU064 = remibrutinib (Novartis, BTK inhibitor)
+
+If you see a drug code you don't recognize, still include it with the code as the generic_name and note it in extraction_notes.
 
 Output valid JSON only.
