@@ -57,6 +57,11 @@ except ImportError as e:
     IMPORTS_OK = False
     IMPORT_ERROR = str(e)
 
+def get_database_url() -> str:
+    """Get database URL from environment."""
+    return os.getenv('DATABASE_URL', '')
+
+
 # Checkpoint file location
 CHECKPOINT_DIR = Path(__file__).parent.parent.parent / "data" / "batch_checkpoints"
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
@@ -164,7 +169,7 @@ def extract_efficacy_safety(drug_id: int, drug_name: str, is_investigational: bo
             anthropic = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
             # Get indications
-            with DatabaseConnection() as db:
+            with DatabaseConnection(database_url=get_database_url()) as db:
                 with db.cursor() as cur:
                     cur.execute("""
                         SELECT disease_name FROM drug_indications WHERE drug_id = %s
@@ -249,7 +254,7 @@ Return ONLY valid JSON."""
 
             # Store in database
             if efficacy_data or safety_data:
-                with DatabaseConnection() as db:
+                with DatabaseConnection(database_url=get_database_url()) as db:
                     with db.cursor() as cur:
                         cur.execute('DELETE FROM drug_efficacy_data WHERE drug_id = %s', (drug_id,))
                         cur.execute('DELETE FROM drug_safety_data WHERE drug_id = %s', (drug_id,))
@@ -319,7 +324,7 @@ Return ONLY valid JSON."""
 
             # Get brand name from database as fallback
             brand_name = None
-            with DatabaseConnection() as db:
+            with DatabaseConnection(database_url=get_database_url()) as db:
                 with db.cursor() as cur:
                     cur.execute("SELECT brand_name FROM drugs WHERE drug_id = %s", (drug_id,))
                     row = cur.fetchone()
@@ -346,7 +351,7 @@ Return ONLY valid JSON."""
             extractor = EfficacySafetyExtractor()
             efficacy_results, safety_results = extractor.extract_from_label(drug_name, labels[0])
 
-            with DatabaseConnection() as db:
+            with DatabaseConnection(database_url=get_database_url()) as db:
                 ops = DrugDatabaseOperations(db)
                 ops.clear_efficacy_safety_data(drug_id)
                 eff_count = ops.store_efficacy_data(drug_id, efficacy_results)
@@ -392,7 +397,7 @@ def process_drug(drug_name: str, is_investigational: bool, development_code: str
             return result
 
         # Step 2: Store to database
-        with DatabaseConnection() as db:
+        with DatabaseConnection(database_url=get_database_url()) as db:
             ops = DrugDatabaseOperations(db)
             store_result = store_drug_data(ops, extracted_data, is_investigational)
 
@@ -442,7 +447,7 @@ with st.sidebar:
 
     # Check database connection
     try:
-        with DatabaseConnection() as db:
+        with DatabaseConnection(database_url=get_database_url()) as db:
             with db.cursor() as cur:
                 cur.execute("SELECT COUNT(*) as count FROM drugs")
                 drug_count = cur.fetchone()['count']
@@ -718,7 +723,7 @@ with tab2:
                     # Check if drug exists (if skip_existing)
                     if skip_existing:
                         try:
-                            with DatabaseConnection() as db:
+                            with DatabaseConnection(database_url=get_database_url()) as db:
                                 with db.cursor() as cur:
                                     cur.execute("""
                                         SELECT drug_id FROM drugs
